@@ -1,5 +1,5 @@
 /**
- * CarrotCutter - Enhanced for individual top hand-placement and dynamic aspect-ratio mapping.
+ * CarrotCutter - Adjusted for customizable base image size and multi-top alignment offsets.
  */
 class CarrotCutter {
   /**
@@ -23,18 +23,11 @@ class CarrotCutter {
       baseWidth: 100,            // Scaled render width
       baseHeight: 90,           // Scaled render height
 
-      // 3. CARROT TOPS GENERAL REFERENCE
-      topLength: 60,             // Base length parameter
-
-      // 3b. INDIVIDUAL HAND-PLACEMENT OFFSETS
-      // Tweak these properties for each individual carrot top to line them up perfectly!
-      tops: [
-        { angleDeg: 20.0, pivotOffset: -37, offsetY: -30, scale: 0.5 }, // carrot-1.png (Far Left)
-        { angleDeg: 0, pivotOffset: 11, offsetY: -48, scale: 1.0 }, // carrot-2.png
-        { angleDeg: -12.0, pivotOffset: 23, offsetY: -20,  scale: 1.35 }, // carrot-3.png (Center)
-        { angleDeg: -12.5, pivotOffset: 32, offsetY: 1,  scale: 1.2 }, // carrot-4.png
-        { angleDeg: -12.5, pivotOffset: 26, offsetY: 22,  scale: 1.15 }  // carrot-5.png (Far Right)
-      ],
+      // 3. CARROT TOPS (carrot-1.png -> carrot-5.png)
+      topLength: 60,             // Render length of the carrot top
+      topWidth: 36,              // Render thickness of the carrot top
+      topPivotOffset: 50,        // Pixel distance from anchor to where the top graphic starts
+      topOffsetY: 0,             // Fine-tune vertical offset along rotation axis
 
       // 4. INTERACTION DETECTOR
       hubRadius: 26              // Hover and click radius
@@ -52,11 +45,13 @@ class CarrotCutter {
     this.particles = [];
     this.isHubHovered = false;
 
-    // Instantiate 5 carrots mapped to the individual configuration table
+    // Instantiate 5 carrots fanned from left-most to right-most
     this.carrots = [];
+    const leftMostAngle = -80 * Math.PI / 180;
+    const rightMostAngle = -10 * Math.PI / 180;
+    
     for (let i = 0; i < 5; i++) {
-      const config = this.layout.tops[i];
-      const angle = (config.angleDeg * Math.PI) / 180;
+      const angle = leftMostAngle + (rightMostAngle - leftMostAngle) * (i / 4);
       const topAssetKey = `top${i + 1}`;
       
       this.carrots.push({ 
@@ -100,22 +95,9 @@ class CarrotCutter {
 
     this.screenShake = 16;
 
-    // Resolve individual configuration parameters for cutting calculations
-    const config = this.layout.tops[carrot.index];
-    const angle = (config.angleDeg * Math.PI) / 180;
-
-    const imgTop = this.getAsset(carrot.topAsset);
-    let aspect = 1.667; // Fallback procedural aspect ratio
-    if (imgTop && imgTop.naturalWidth) {
-      aspect = imgTop.naturalWidth / imgTop.naturalHeight;
-    }
-
-    const length = this.layout.topLength * config.scale;
-    const width = length / aspect; // Perfectly constrained aspect ratio!
-
     // Synchronize physics cut point directly to the configured top layout offsets
-    const midX = this.layout.nodeX + Math.cos(angle) * config.pivotOffset;
-    const midY = this.layout.nodeY + Math.sin(angle) * config.pivotOffset;
+    const midX = this.layout.nodeX + Math.cos(carrot.angle) * this.layout.topPivotOffset;
+    const midY = this.layout.nodeY + Math.sin(carrot.angle) * this.layout.topPivotOffset;
 
     this.shockwaves.push({
       x: midX,
@@ -125,25 +107,22 @@ class CarrotCutter {
       alpha: 1.0
     });
 
-    const spawnDist = config.pivotOffset + length / 2;
-    const spawnX = this.layout.nodeX + Math.cos(angle) * spawnDist;
-    const spawnY = this.layout.nodeY + Math.sin(angle) * spawnDist;
+    const spawnDist = this.layout.topPivotOffset + this.layout.topLength / 2;
+    const spawnX = this.layout.nodeX + Math.cos(carrot.angle) * spawnDist;
+    const spawnY = this.layout.nodeY + Math.sin(carrot.angle) * spawnDist;
 
     const vx = 1.5 + Math.random() * 4.5;
     const vy = -18 - Math.random() * 7;
 
-    // Passing down hand-tailored metrics to maintain visual continuity when flying away
     this.flyingTops.push({
       x: spawnX,
       y: spawnY,
       vx: vx,
       vy: vy,
-      angle: angle,
+      angle: carrot.angle,
       va: (Math.random() > 0.5 ? 1 : -1) * (0.3 + Math.random() * 0.3),
-      r: width / 2, 
-      length: length,
-      width: width,
-      offsetY: config.offsetY,
+      r: this.layout.topWidth / 2, 
+      length: this.layout.topLength,
       topAsset: carrot.topAsset, 
       index: carrot.index
     });
@@ -301,37 +280,30 @@ class CarrotCutter {
       ctx.restore();
     });
 
-    // 2. Draw Combined Non-Moving Base Graphic
+    // 2. Draw Combined Non-Moving Base Graphic (with custom scale and positioning parameters)
     if (imgBase) {
       ctx.drawImage(imgBase, this.layout.baseX, this.layout.baseY, this.layout.baseWidth, this.layout.baseHeight);
     } else {
-      // Procedural Fallback bottom hubs mapped to individual configurations
+      // Procedural Fallback bottom hubs
       this.carrots.forEach((carrot) => {
         ctx.save();
         ctx.translate(this.layout.nodeX, this.layout.nodeY);
-
-        const config = this.layout.tops[carrot.index];
-        const angle = (config.angleDeg * Math.PI) / 180;
-        ctx.rotate(angle);
-
-        const aspect = 1.667;
-        const length = this.layout.topLength * config.scale;
-        const width = length / aspect;
+        ctx.rotate(carrot.angle);
 
         ctx.fillStyle = '#ff6b00';
         ctx.beginPath();
-        ctx.moveTo(0, -width / 2);
-        ctx.lineTo(config.pivotOffset, -width * 0.45);
-        ctx.lineTo(config.pivotOffset, width * 0.45);
-        ctx.lineTo(0, width / 2);
+        ctx.moveTo(0, -this.layout.topWidth / 2);
+        ctx.lineTo(this.layout.topPivotOffset, -this.layout.topWidth * 0.45);
+        ctx.lineTo(this.layout.topPivotOffset, this.layout.topWidth * 0.45);
+        ctx.lineTo(0, this.layout.topWidth / 2);
         ctx.closePath();
         ctx.fill();
         
         ctx.strokeStyle = '#e65c00';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(config.pivotOffset * 0.4, -width * 0.4);
-        ctx.lineTo(config.pivotOffset * 0.4, width * 0.4);
+        ctx.moveTo(this.layout.topPivotOffset * 0.4, -this.layout.topWidth * 0.4);
+        ctx.lineTo(this.layout.topPivotOffset * 0.4, this.layout.topWidth * 0.4);
         ctx.stroke();
         ctx.restore();
       });
@@ -348,50 +320,40 @@ class CarrotCutter {
       ctx.restore();
     }
 
-    // 3. Draw Static Tops (Aligned dynamically via their customizable array values)
+    // 3. Draw Static Tops (Aligned dynamically via topPivotOffset and topOffsetY)
     this.carrots.forEach((carrot) => {
       if (!carrot.isCut) {
         ctx.save();
         ctx.translate(this.layout.nodeX, this.layout.nodeY);
-
-        const config = this.layout.tops[carrot.index];
-        const angle = (config.angleDeg * Math.PI) / 180;
-        ctx.rotate(angle);
+        ctx.rotate(carrot.angle);
 
         const imgTop = this.getAsset(carrot.topAsset);
-        let aspect = 1.667;
-        if (imgTop && imgTop.naturalWidth) {
-          aspect = imgTop.naturalWidth / imgTop.naturalHeight;
-        }
-
-        const length = this.layout.topLength * config.scale;
-        const width = length / aspect;
 
         if (imgTop) {
           ctx.drawImage(
             imgTop, 
-            config.pivotOffset, 
-            -width / 2 + config.offsetY, 
-            length, 
-            width
+            this.layout.topPivotOffset, 
+            -this.layout.topWidth / 2 + this.layout.topOffsetY, 
+            this.layout.topLength, 
+            this.layout.topWidth
           );
         } else {
-          // Procedural Fallback preserving offsets & calculated aspect ratio metrics
+          // Procedural Fallback
           ctx.fillStyle = `hsl(${14 + carrot.index * 3}, 100%, 48%)`;
           ctx.beginPath();
-          ctx.moveTo(config.pivotOffset, -width * 0.45);
-          ctx.lineTo(config.pivotOffset + length - 12, -width * 0.25);
-          ctx.lineTo(config.pivotOffset + length, 0);
-          ctx.lineTo(config.pivotOffset + length - 12, width * 0.25);
-          ctx.lineTo(config.pivotOffset, width * 0.45);
+          ctx.moveTo(this.layout.topPivotOffset, -this.layout.topWidth * 0.45);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength - 12, -this.layout.topWidth * 0.25);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength, 0);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength - 12, this.layout.topWidth * 0.25);
+          ctx.lineTo(this.layout.topPivotOffset, this.layout.topWidth * 0.45);
           ctx.closePath();
           ctx.fill();
 
           ctx.fillStyle = '#27ae60';
           ctx.beginPath();
-          ctx.arc(config.pivotOffset + length + 3, -5, 7, 0, Math.PI * 2);
-          ctx.arc(config.pivotOffset + length + 5, 5, 6, 0, Math.PI * 2);
-          ctx.arc(config.pivotOffset + length, 0, 5, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength + 3, -5, 7, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength + 5, 5, 6, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength, 0, 5, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
@@ -405,20 +367,20 @@ class CarrotCutter {
       ctx.rotate(top.angle);
 
       const drawX = -top.length / 2;
-      const drawY = -top.width / 2 + top.offsetY;
+      const drawY = -this.layout.topWidth / 2 + this.layout.topOffsetY;
       const imgTop = this.getAsset(top.topAsset);
 
       if (imgTop) {
-        ctx.drawImage(imgTop, drawX, drawY, top.length, top.width);
+        ctx.drawImage(imgTop, drawX, drawY, top.length, this.layout.topWidth);
       } else {
-        // Fallback drawing using inherited dynamic geometry variables
+        // Fallback
         ctx.fillStyle = `hsl(${14 + top.index * 3}, 100%, 48%)`;
         ctx.beginPath();
-        ctx.moveTo(drawX, -top.width * 0.45);
-        ctx.lineTo(top.length / 2 - 12, -top.width * 0.25);
+        ctx.moveTo(drawX, -this.layout.topWidth * 0.45);
+        ctx.lineTo(top.length / 2 - 12, -this.layout.topWidth * 0.25);
         ctx.lineTo(top.length / 2, 0);
-        ctx.lineTo(top.length / 2 - 12, top.width * 0.25);
-        ctx.lineTo(drawX, top.width * 0.45);
+        ctx.lineTo(top.length / 2 - 12, this.layout.topWidth * 0.25);
+        ctx.lineTo(drawX, this.layout.topWidth * 0.45);
         ctx.closePath();
         ctx.fill();
 
