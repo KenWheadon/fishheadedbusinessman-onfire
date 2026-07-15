@@ -19,12 +19,38 @@
       overflow: hidden;
     }
 
-    #game-container {
-      text-align: center;
-      border: 4px solid #4e4e50;
-      padding: 40px;
-      border-radius: 12px;
+    #game-layout {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 30px;
+      max-width: 1100px;
+      width: 90%;
+    }
+
+    /* Core Application Wrapper acting as Flex item contexts box containers */
+    .viewport-box {
+      flex: 1;
       background: #252529;
+      border: 4px solid #4e4e50;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    #canvas-container {
+      flex: 1.2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      background: transparent;
+      cursor: pointer;
+      display: block;
+      border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
@@ -56,7 +82,7 @@
     }
 
     .dev-panel {
-      margin-top: 30px;
+      margin-top: 20px;
       padding: 15px;
       border: 1px dashed #4e4e50;
       border-radius: 8px;
@@ -65,32 +91,102 @@
 </head>
 <body>
 
-  <div id="game-container">
-    <h1>Super Cool Game</h1>
-    <p>Play the game and unlock epic milestones!</p>
-    
-    <button id="pause-btn" class="btn-game">⏸️ Pause & Achievements</button>
+  <div id="game-layout">
+    <!-- Left Layout Control Box -->
+    <div class="viewport-box">
+      <h1>Super Cool Game</h1>
+      <p>Play the game and unlock epic milestones!</p>
+      
+      <button id="pause-btn" class="btn-game">⏸️ View Catalog Panel</button>
 
-    <div class="dev-panel">
-      <h3>Developer Simulation Panel</h3>
-      <button onclick="unlockDemo('made it')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "made it" Unlock</button>
-      <button onclick="unlockDemo('friends')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "friends" Unlock</button>
-      <button onclick="resetDemo()" class="btn-game" style="background:#c94c4c; color:white;">Reset Saved Progress</button>
+      <div class="dev-panel">
+        <h3>Developer Simulation Panel</h3>
+        <button onclick="unlockDemo('made it')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "made it" Unlock</button>
+        <button onclick="unlockDemo('friends')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "friends" Unlock</button>
+        <button onclick="unlockDemo('champion')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "champion" Unlock</button>
+        <button onclick="resetDemo()" class="btn-game" style="background:#c94c4c; color:white;">Reset Saved Progress</button>
+      </div>
+    </div>
+
+    <!-- Right Layout Canvas Engine Embed Box Container Contexts -->
+    <div id="canvas-container">
+      <canvas id="mainGameCanvas"></canvas>
     </div>
   </div>
 
-  <!-- Loaded as standard script to bypass local file system CORS limits -->
+  <!-- Loaded as standard script modules-->
   <script src="achievements.js"></script>
   <script>
-    // Initialize the system
-    const achievements = new AchievementSystem();
+    // 1. Setup host Canvas properties variables
+    const canvas = document.getElementById('mainGameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Configured Layout sizing parameters
+    const COMPONENT_WIDTH = 580;
+    const COMPONENT_HEIGHT = 420;
+    
+    canvas.width = COMPONENT_WIDTH;
+    canvas.height = COMPONENT_HEIGHT;
 
-    // Hook up the pause button to open the overlay
+    // 2. Initialize self-contained decoupled module system components
+    const achievements = new AchievementSystem({
+      width: COMPONENT_WIDTH,
+      height: COMPONENT_HEIGHT
+    });
+
+    // Hook up external UI buttons to communicate explicitly with the target API architecture 
     document.getElementById('pause-btn').addEventListener('click', () => {
       achievements.openCatalog();
     });
 
-    // Helper functions for the simulation buttons
+    // 3. Centralized Coordinate Translation Handling Pipeline Matrix
+    function getLocalMouseCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      // Calculate local mouse points based on physical canvas scaling factor properties
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+      const coords = getLocalMouseCoords(e);
+      achievements.handleMouseMove(coords.x, coords.y);
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const coords = getLocalMouseCoords(e);
+      achievements.handleMouseClick(coords.x, coords.y);
+    });
+
+    // 4. Central Host Render & Delta Clock Ticking Loops Execution Path
+    let lastTime = performance.now();
+
+    function mainLoop(currentTime) {
+      // Calculate elapsed delta timing variables safely
+      let dt = (currentTime - lastTime) / 1000;
+      if (dt > 0.1) dt = 0.1; // Cap extreme lag frames
+      lastTime = currentTime;
+
+      // Clear main host canvas container layout contexts pipeline frames
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // System ticks
+      achievements.update(dt);
+      
+      // Draw sub-component at coordinate offset position (0, 0) relative to its parent canvas block container element
+      achievements.draw(ctx, 0, 0);
+
+      requestAnimationFrame(mainLoop);
+    }
+    
+    // Spin up application execution
+    requestAnimationFrame(mainLoop);
+
+    // Development Event Simulator Hooks
     function unlockDemo(title) {
       achievements.unlockAchievement(title);
     }
