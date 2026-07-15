@@ -1,5 +1,6 @@
 /**
  * CarrotCutter - Enhanced for individual top hand-placement and dynamic aspect-ratio mapping.
+ * Upgraded with lifetime-based energy decay and dynamic squash/stretch collision physics.
  */
 class CarrotCutter {
   /**
@@ -27,7 +28,6 @@ class CarrotCutter {
       topLength: 60,             // Base length parameter
 
       // 3b. INDIVIDUAL HAND-PLACEMENT OFFSETS
-      // Tweak these properties for each individual carrot top to line them up perfectly!
       tops: [
         { angleDeg: 20.0, pivotOffset: -37, offsetY: -30, scale: 0.5 }, // carrot-1.png (Far Left)
         { angleDeg: 0, pivotOffset: 11, offsetY: -48, scale: 1.0 }, // carrot-2.png
@@ -145,7 +145,12 @@ class CarrotCutter {
       width: width,
       offsetY: config.offsetY,
       topAsset: carrot.topAsset, 
-      index: carrot.index
+      index: carrot.index,
+      
+      // NEW: State for squash/stretch & momentum dampening
+      age: 0,
+      scaleX: 1.0,
+      scaleY: 1.0
     });
 
     const particleCount = 40; 
@@ -220,18 +225,42 @@ class CarrotCutter {
     }
 
     for (let top of this.flyingTops) {
+      // Increment age
+      top.age += dt;
+
+      // 1. After 1 second (~60 ticks at 60fps), drain momentum and energy much faster!
+      if (top.age > 60) {
+        const dragFactor = Math.pow(0.92, dt); // High air resistance over time
+        top.vx *= dragFactor;
+        top.vy *= dragFactor;
+        top.va *= dragFactor;
+      }
+
       top.vy += this.gravity * dt;
       top.x += top.vx * dt;
       top.y += top.vy * dt;
       top.angle += top.va * dt;
 
+      // Smoothly recover squish/stretch values back to scale 1.0 (dt-independent lerp)
+      top.scaleX += (1.0 - top.scaleX) * (1 - Math.pow(0.82, dt));
+      top.scaleY += (1.0 - top.scaleY) * (1 - Math.pow(0.82, dt));
+
+      // 2. Collision checks with dynamic squash and stretch reactions
       if (top.y < top.r) {
+        const impactY = Math.abs(top.vy);
         top.y = top.r;
         top.vy = -top.vy * this.bounce;
         top.va *= -0.8; 
+
+        if (impactY > 1) {
+          const intensity = Math.min(0.4, impactY * 0.025);
+          top.scaleY = 1.0 - intensity; // Squish vertical
+          top.scaleX = 1.0 + intensity; // Stretch horizontal
+        }
       }
 
       if (top.y > this.height - top.r) {
+        const impactY = Math.abs(top.vy);
         top.y = this.height - top.r;
         top.vy = -top.vy * this.bounce;
         top.vx *= Math.pow(this.friction, dt);
@@ -239,17 +268,37 @@ class CarrotCutter {
 
         if (Math.abs(top.vy) < 0.3) top.vy = 0;
         if (Math.abs(top.vx) < 0.1) top.vx = 0;
+
+        if (impactY > 1) {
+          const intensity = Math.min(0.4, impactY * 0.025);
+          top.scaleY = 1.0 - intensity; // Squish vertical
+          top.scaleX = 1.0 + intensity; // Stretch horizontal
+        }
       }
 
       if (top.x < top.r) {
+        const impactX = Math.abs(top.vx);
         top.x = top.r;
         top.vx = -top.vx * this.bounce;
         top.va = -top.va * this.bounce;
+
+        if (impactX > 1) {
+          const intensity = Math.min(0.4, impactX * 0.025);
+          top.scaleX = 1.0 - intensity; // Squish horizontal
+          top.scaleY = 1.0 + intensity; // Stretch vertical
+        }
       }
       if (top.x > this.width - top.r) {
+        const impactX = Math.abs(top.vx);
         top.x = this.width - top.r;
         top.vx = -top.vx * this.bounce;
         top.va = -top.va * this.bounce;
+
+        if (impactX > 1) {
+          const intensity = Math.min(0.4, impactX * 0.025);
+          top.scaleX = 1.0 - intensity; // Squish horizontal
+          top.scaleY = 1.0 + intensity; // Stretch vertical
+        }
       }
     }
 
@@ -398,11 +447,14 @@ class CarrotCutter {
       }
     });
 
-    // 4. Draw Flying Cut Tops (Maintains visual continuity during separation physics)
+    // 4. Draw Flying Cut Tops (Includes Squash & Stretch transformations)
     this.flyingTops.forEach((top) => {
       ctx.save();
       ctx.translate(top.x, top.y);
       ctx.rotate(top.angle);
+      
+      // APPLY SQUISH AND STRETCH
+      ctx.scale(top.scaleX, top.scaleY);
 
       const drawX = -top.length / 2;
       const drawY = -top.width / 2 + top.offsetY;
