@@ -1,33 +1,14 @@
 class GamePopup {
-    constructor() {
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        
+    constructor(config = {}) {
         // Configuration
-        this.width = 500;
-        this.height = 250;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
-
-        // Apply default styling to the overlay canvas
-        Object.assign(this.canvas.style, {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) scale(0)',
-            pointerEvents: 'none',
-            zIndex: '9999',
-            display: 'none',
-            imageRendering: 'pixelated' // Great for retro style games
-        });
-
-        document.body.appendChild(this.canvas);
+        this.width = config.width || 500;
+        this.height = config.height || 250;
 
         // State variables
         this.isOpen = false;
         this.isTransitioning = false;
         this.message = "";
-        this.image = null;
+        this.image = null; // Assumes a preloaded Image/Canvas asset passed externally
         this.callback = null;
 
         // Animation / Physics state
@@ -38,7 +19,7 @@ class GamePopup {
         this.yOffset = 100; // Slide down offset
         this.targetYOffset = 100;
 
-        // Spring constants (Tweak these for different feels!)
+        // Spring constants (Framerate independent updates applied)
         this.springStiffness = 0.15;
         this.springDamping = 0.75;
 
@@ -47,37 +28,25 @@ class GamePopup {
         this.btnScale = 1;
         this.btnTargetScale = 1;
 
-        // Bounds for mouse clicks (relative to canvas local space)
+        // Bounds for mouse clicks (relative to component-local space)
         this.btnWidth = 100;
         this.btnHeight = 40;
         this.btnX = this.width - this.btnWidth - 30; // Bottom right-ish
         this.btnY = this.height - this.btnHeight - 20;
-
-        // Bind events
-        window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        window.addEventListener('click', (e) => this.handleMouseClick(e));
-
-        // Start local animation loop
-        this.lastTime = performance.now();
-        this.loop();
     }
 
-    show(message, imgSrc, callback = null) {
+    /**
+     * Activates the component.
+     * @param {string} message - Text content to render.
+     * @param {HTMLImageElement} preloadedImage - A preloaded, ready-to-draw Image object.
+     * @param {Function} [callback] - Invoked once the close animation fully finishes.
+     */
+    show(message, preloadedImage, callback = null) {
         this.message = message;
+        this.image = preloadedImage;
         this.callback = callback;
         this.isOpen = true;
         this.isTransitioning = true;
-        this.canvas.style.display = 'block';
-        this.canvas.style.pointerEvents = 'auto';
-
-        // Load image if provided
-        if (imgSrc) {
-            this.image = new Image();
-            this.image.src = imgSrc;
-            this.image.onload = () => { /* Image loaded, canvas redraw handles it */ };
-        } else {
-            this.image = null;
-        }
 
         // Trigger entrance targets
         this.targetScale = 1;
@@ -88,67 +57,95 @@ class GamePopup {
         this.isTransitioning = true;
         this.targetScale = 0;
         this.targetYOffset = 80; // Slide down out of view
-        this.canvas.style.pointerEvents = 'none';
     }
 
+    /**
+     * Framerate-independent state evaluation.
+     * @param {number} dt - Delta time in seconds since the last frame (e.g. 0.016).
+     */
     update(dt) {
+        // Normalize physics updates around ~60 FPS (step multiplier)
+        const step = Math.min(dt * 60, 2); // Cap scaling to avoid physics freakouts on massive lag spikes
+
         // --- Spring physics for the main scale ---
         let force = (this.targetScale - this.scale) * this.springStiffness;
-        this.velScale += force;
-        this.velScale *= this.springDamping;
-        this.scale += this.velScale;
+        this.velScale += force * step;
+        this.velScale *= Math.pow(this.springDamping, step);
+        this.scale += this.velScale * step;
 
         // Smoothly interpolate Y Offset & Opacity
-        this.yOffset += (this.targetYOffset - this.yOffset) * 0.15;
-        this.opacity += ((this.isOpen && this.targetScale > 0 ? 1 : 0) - this.opacity) * 0.2;
+        this.yOffset += (this.targetYOffset - this.yOffset) * (1 - Math.pow(1 - 0.15, step));
+        
+        const targetOpacity = (this.isOpen && this.targetScale > 0) ? 1 : 0;
+        this.opacity += (targetOpacity - this.opacity) * (1 - Math.pow(1 - 0.2, step));
 
         // Button Hover squash-and-stretch interpolation
         this.btnTargetScale = this.btnHovered ? 1.1 : 1.0;
-        this.btnScale += (this.btnTargetScale - this.btnScale) * 0.25;
+        this.btnScale += (this.btnTargetScale - this.btnScale) * (1 - Math.pow(1 - 0.25, step));
 
-        // Update DOM transform and opacity properties for smooth window positioning
-        this.canvas.style.transform = `translate(-50%, calc(-50% + ${this.yOffset}px)) scale(${this.scale})`;
-        this.canvas.style.opacity = this.opacity;
-
-        // Fully shut down if we shrunk to nothing during close transition
+        // Handle closure callback cleanly when exit transition is complete
         if (!this.isOpen && this.scale < 0.01 && this.isTransitioning) {
-            this.canvas.style.display = 'none';
             this.isTransitioning = false;
             if (this.callback) {
                 const cb = this.callback;
-                this.callback = null; // Prevent double firing
+                this.callback = null; // Prevent double execution
                 cb();
             }
         }
     }
 
-    draw() {
-        const ctx = this.ctx;
-        ctx.clearRect(0, 0, this.width, this.height);
+    /**
+     * Renders the component onto a parent canvas relative to a local offset.
+     * @param {CanvasRenderingContext2D} ctx - Target execution layer context.
+     * @param {number} x - Parent workspace translation X coordinate.
+     * @param {number} y - Parent workspace translation Y coordinate.
+     */
+    draw(ctx, x, y) {
+        // Completely skip execution if the component is asleep/hidden
+        if (!this.isOpen && !this.isTransitioning) return;
+
+        ctx.save();
+
+        // Translate and scale relative to component center for dynamic animations
+        const centerX = x + this.width / 2;
+        const centerY = y + this.height / 2 + this.yOffset;
+        
+        ctx.translate(centerX, centerY);
+        ctx.scale(this.scale, this.scale);
+        
+        // Translate back to origin point (0, 0) relative to current position matrix
+        ctx.translate(-this.width / 2, -this.height / 2);
+
+        // Respect system transitions (fading layer)
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * this.opacity;
 
         // 1. Draw Dialog Background (Game UI Box)
         ctx.fillStyle = '#1e1e2e'; // Dark background
         ctx.strokeStyle = '#f5c2e7'; // Juicy pink border
         ctx.lineWidth = 6;
-        
         this.drawRoundedRect(ctx, 3, 3, this.width - 6, this.height - 6, 16, true, true);
 
         // 2. Draw Left-aligned Square Image (cropped)
         const pad = 20;
         const imgSize = this.height - (pad * 2);
         
-        // Draw image frame
+        // Draw image frame background
         ctx.fillStyle = '#11111b';
         this.drawRoundedRect(ctx, pad, pad, imgSize, imgSize, 8, true, false);
 
-        if (this.image && this.image.complete) {
+        if (this.image && (this.image.complete || this.image.width > 0)) {
             ctx.save();
             // Clip image to a rounded square
             ctx.beginPath();
-            ctx.roundRect ? ctx.roundRect(pad, pad, imgSize, imgSize, 8) : ctx.rect(pad, pad, imgSize, imgSize);
+            if (ctx.roundRect) {
+                ctx.roundRect(pad, pad, imgSize, imgSize, 8);
+            } else {
+                ctx.rect(pad, pad, imgSize, imgSize);
+            }
             ctx.clip();
 
-            // Center-crop (cover) calculation
+            // Center-crop (cover) calculations
             const img = this.image;
             let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
             if (img.width > img.height) {
@@ -176,22 +173,22 @@ class GamePopup {
         ctx.fillStyle = '#cdd6f4'; // Off-white
         ctx.font = 'bold 16px "Segoe UI", Tahoma, sans-serif';
         ctx.textBaseline = 'top';
+        ctx.textAlign = 'left'; // Strictly control alignment inside modular components
         this.wrapText(ctx, this.message, textX, textY, maxTextWidth, 24);
 
         // 4. Draw Animated OK Button
         ctx.save();
-        // Translate to the center of the button for accurate scaling rotation
+        // Translate inside layout coordinates to cleanly scale locally
         const btnCenterX = this.btnX + this.btnWidth / 2;
         const btnCenterY = this.btnY + this.btnHeight / 2;
         ctx.translate(btnCenterX, btnCenterY);
         ctx.scale(this.btnScale, this.btnScale);
 
         // Button background
-        ctx.fillStyle = this.btnHovered ? '#a6e3a1' : '#89b4fa'; // Green on hover, Blue normal
+        ctx.fillStyle = this.btnHovered ? '#a6e3a1' : '#89b4fa'; // Green hover, Blue normal
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         
-        // Draw relative to translated coordinates
         const halfW = this.btnWidth / 2;
         const halfH = this.btnHeight / 2;
         this.drawRoundedRect(ctx, -halfW, -halfH, this.btnWidth, this.btnHeight, 8, true, true);
@@ -204,6 +201,43 @@ class GamePopup {
         ctx.fillText('OK', 0, 0);
 
         ctx.restore();
+
+        // Restore layer rules
+        ctx.globalAlpha = prevAlpha;
+        ctx.restore();
+    }
+
+    /**
+     * Localized Input Listeners: coordinates mapped directly inside component frame bounds.
+     */
+    handleMouseMove(localX, localY) {
+        if (!this.isOpen || this.scale < 0.8) {
+            this.btnHovered = false;
+            return;
+        }
+
+        // Check boundary maps of internal component space
+        this.btnHovered = (
+            localX >= this.btnX &&
+            localX <= this.btnX + this.btnWidth &&
+            localY >= this.btnY &&
+            localY <= this.btnY + this.btnHeight
+        );
+    }
+
+    handleMouseClick(localX, localY) {
+        if (!this.isOpen || this.scale < 0.8) return;
+
+        if (
+            localX >= this.btnX &&
+            localX <= this.btnX + this.btnWidth &&
+            localY >= this.btnY &&
+            localY <= this.btnY + this.btnHeight
+        ) {
+            this.btnScale = 0.8; // Squash visual confirmation feedback
+            this.isOpen = false;
+            this.close();
+        }
     }
 
     // Helper: Rounded Rectangle generator
@@ -212,7 +246,6 @@ class GamePopup {
         if (ctx.roundRect) {
             ctx.roundRect(x, y, width, height, radius);
         } else {
-            // Fallback for older environments
             ctx.moveTo(x + radius, y);
             ctx.lineTo(x + width - radius, y);
             ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
@@ -247,58 +280,5 @@ class GamePopup {
             }
         }
         ctx.fillText(line, x, currentY);
-    }
-
-    // Helper: Mouse hit test
-    getCanvasLocalCoords(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        // Map viewport click cleanly to internal Canvas system coordinates
-        const scaleX = this.width / rect.width;
-        const scaleY = this.height / rect.height;
-        return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
-        };
-    }
-
-    handleMouseMove(e) {
-        if (!this.isOpen || this.scale < 0.8) return;
-        const coords = this.getCanvasLocalCoords(e);
-        
-        // Check if cursor bounds are inside the OK button rect
-        this.btnHovered = (
-            coords.x >= this.btnX &&
-            coords.x <= this.btnX + this.btnWidth &&
-            coords.y >= this.btnY &&
-            coords.y <= this.btnY + this.btnHeight
-        );
-    }
-
-    handleMouseClick(e) {
-        if (!this.isOpen || this.scale < 0.8) return;
-        const coords = this.getCanvasLocalCoords(e);
-
-        if (
-            coords.x >= this.btnX &&
-            coords.x <= this.btnX + this.btnWidth &&
-            coords.y >= this.btnY &&
-            coords.y <= this.btnY + this.btnHeight
-        ) {
-            // Juice: Click scale squish
-            this.btnScale = 0.8;
-            this.isOpen = false;
-            this.close();
-        }
-    }
-
-    loop() {
-        const now = performance.now();
-        const dt = (now - this.lastTime) / 1000;
-        this.lastTime = now;
-
-        this.update(dt);
-        this.draw();
-
-        requestAnimationFrame(() => this.loop());
     }
 }
