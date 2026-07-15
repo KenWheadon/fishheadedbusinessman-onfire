@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credits Integration</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: white; font-family: sans-serif; }
+        #game-ui { padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="game-ui">
+        <h2>Main Game Engine</h2>
+        <button id="btn-credits">Roll Credits</button>
+    </div>
+
+    <script src="CreditsPopup.js"></script>
+    <script>
+        // Data is now baked into the class, so we just instantiate it!
+        const creditsUI = new CreditsPopup();
+        creditsUI.mount('game-ui');
+
+        document.getElementById('btn-credits').addEventListener('click', () => {
+            creditsUI.show();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Popup Sandbox</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+        }
+        #wrapper {
+            text-align: center;
+        }
+        canvas {
+            background-color: #1e1e1e;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            display: block;
+        }
+        .instructions {
+            color: #888;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="wrapper">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="instructions">
+            Drag the sliders • Click buttons to test callbacks • Close to test pop-out animation
+        </div>
+    </div>
+
+    <!-- Only loading the popup file for isolation -->
+    <script src="SettingsPopup.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 1. Initialize the Settings Popup by itself
+        const settingsPopup = new SettingsPopup('gameCanvas', {
+            onAchievements: () => {
+                console.log('%c🏆 Achievements Clicked!', 'color: #FF9800; font-weight: bold;');
+            },
+            onCredits: () => {
+                console.log('%c🎬 Credits Clicked!', 'color: #2196F3; font-weight: bold;');
+            },
+            onClose: () => {
+                console.log('%c❌ Popup Closed!', 'color: #e81123; font-weight: bold;');
+            },
+            onVolumeChange: (type, value) => {
+                console.log(`Volume [${type.toUpperCase()}]: ${Math.round(value * 100)}%`);
+            }
+        });
+
+        // 2. Open it immediately on load
+        settingsPopup.show();
+
+        // 3. Isolated Render Loop
+        function loop() {
+            // Clear the canvas with a grid pattern so you can easily judge alignment
+            ctx.fillStyle = '#1e1e1e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawGridBackground();
+
+            // Update and draw the popup if it's active or animating
+            if (!settingsPopup.isoffscreen()) {
+                settingsPopup.update();
+                settingsPopup.draw();
+            } else {
+                // If the popup is closed, draw a friendly prompt to reopen it
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click anywhere on the canvas to pop settings back open!', canvas.width / 2, canvas.height / 2);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // Helper to draw a subtle alignment grid
+        function drawGridBackground() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // 4. Click-to-reopen handler
+        canvas.addEventListener('click', () => {
+            if (settingsPopup.isoffscreen()) {
+                settingsPopup.show();
+            }
+        });
+
+        // Fire up the loop
+        loop();
+    </script>
+</body>
+</html>
