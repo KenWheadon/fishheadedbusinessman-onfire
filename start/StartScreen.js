@@ -1,55 +1,53 @@
 class StartScreen {
-    constructor(canvasId, callbacks = {}) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
+    constructor(config = {}) {
+        this.width = config.width || 800;
+        this.height = config.height || 600;
         
-        this.onHelp = callbacks.onHelp || (() => {});
-        this.onSettings = callbacks.onSettings || (() => {});
+        // Setup Callbacks
+        this.onSettings = config.onSettings || (() => {});
+        this.onPlay = config.onPlay || (() => {});
         
         // Component state
         this.state = 'ACTIVE'; // ACTIVE, POPPING_OUT, OFFSCREEN
         this.time = 0;
         
-        // Logo setup
+        // Dynamic positioning based on component dimensions
         this.logo = {
-            img: new Image(),
-            loaded: false,
-            x: this.canvas.width / 2,
-            y: 180,
-            width: 300,
-            height: 150,
+            x: this.width / 2,
+            y: this.height * 0.3,
+            width: Math.min(this.width * 0.375, 300),
+            height: Math.min(this.height * 0.25, 150),
             scale: 1,
             targetScale: 1,
             rotation: 0,
-            targetRotation: 0,
             twirlVelocity: 0
         };
-        this.logo.img.src = 'images/logo.png';
-        this.logo.img.onload = () => { this.logo.loaded = true; };
 
-        // Buttons setup
-        const startY = 350;
-        const spacing = 70;
+        // Buttons setup (HELP completely removed, coordinates auto-spaced)
+        const startY = this.height * 0.58;
+        const spacing = Math.min(this.height * 0.13, 80);
+        
         this.buttons = [
             this.createButton('PLAY', startY, '#4CAF50'),
-            this.createButton('HELP', startY + spacing, '#2196F3'),
-            this.createButton('SETTINGS', startY + spacing * 2, '#FF9800')
+            this.createButton('SETTINGS', startY + spacing, '#FF9800')
         ];
 
-        this.mouseX = 0;
-        this.mouseY = 0;
-
-        this.bindEvents();
-        this.loop();
+        // Decoupled Mouse Local State
+        this.mouseX = -9999;
+        this.mouseY = -9999;
+        
+        // State transition trackers (replacing setTimeout)
+        this.popOutTimer = 0;
+        this.popOutPhase = 0; // 0: Inactive, 1: Anticipation, 2: Shrink
     }
 
     createButton(text, y, color) {
         return {
             text: text,
-            x: this.canvas.width / 2,
+            x: this.width / 2,
             y: y,
-            width: 200,
-            height: 50,
+            width: Math.min(this.width * 0.25, 200),
+            height: Math.min(this.height * 0.083, 50),
             color: color,
             scale: 1,
             targetScale: 1,
@@ -57,44 +55,77 @@ class StartScreen {
         };
     }
 
-    bindEvents() {
-        this.canvas.addEventListener('mousemove', (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            this.mouseX = e.clientX - rect.left;
-            this.mouseY = e.clientY - rect.top;
+    // Public Reset API (Restores component to pristine starting state)
+    reset() {
+        this.state = 'ACTIVE';
+        this.time = 0;
+        
+        this.logo.scale = 1;
+        this.logo.targetScale = 1;
+        this.logo.rotation = 0;
+        this.logo.twirlVelocity = 0;
+
+        this.buttons.forEach(btn => {
+            btn.scale = 1;
+            btn.targetScale = 1;
+            btn.isHovered = false;
         });
 
-        this.canvas.addEventListener('mousedown', () => {
-            if (this.state !== 'ACTIVE') return;
+        this.popOutTimer = 0;
+        this.popOutPhase = 0;
+    }
 
-            // Check Logo Click (Twirl)
-            if (this.isPointInRect(this.mouseX, this.mouseY, this.logo)) {
-                this.logo.twirlVelocity = Math.PI * 2; // Full spin
-                this.logo.targetScale = 1.2;
+    // Localized Input Hooks
+    handleMouseMove(localX, localY) {
+        this.mouseX = localX;
+        this.mouseY = localY;
+    }
+
+    handleMouseDown(localX, localY) {
+        this.mouseX = localX;
+        this.mouseY = localY;
+
+        if (this.state !== 'ACTIVE') return;
+
+        // Check Logo Click (Give it high angular velocity)
+        if (this.isPointInRect(this.mouseX, this.mouseY, this.logo)) {
+            this.logo.twirlVelocity = 12; // Dynamic spin impulse
+            this.logo.targetScale = 1.2;
+        }
+
+        // Check Button Clicks (Visual press down feel)
+        this.buttons.forEach(btn => {
+            if (this.isPointInRect(this.mouseX, this.mouseY, btn)) {
+                btn.isHovered = true;
+                btn.targetScale = 0.8; 
             }
-
-            // Check Button Clicks
-            this.buttons.forEach(btn => {
-                if (btn.isHovered) {
-                    btn.targetScale = 0.8; // Squish on click
-                }
-            });
         });
+    }
 
-        this.canvas.addEventListener('mouseup', () => {
-            if (this.state !== 'ACTIVE') return;
-            
-            this.logo.targetScale = 1;
+    handleMouseUp(localX, localY) {
+        this.mouseX = localX;
+        this.mouseY = localY;
 
-            this.buttons.forEach(btn => {
-                if (btn.isHovered) {
-                    if (btn.text === 'PLAY') this.triggerPopOut();
-                    if (btn.text === 'HELP') this.onHelp();
-                    if (btn.text === 'SETTINGS') this.onSettings();
-                }
-                btn.targetScale = btn.isHovered ? 1.1 : 1;
-            });
+        if (this.state !== 'ACTIVE') return;
+        
+        this.logo.targetScale = 1;
+
+        this.buttons.forEach(btn => {
+            const isHovered = this.isPointInRect(this.mouseX, this.mouseY, btn);
+            if (isHovered) {
+                if (btn.text === 'PLAY') this.triggerPopOut();
+                if (btn.text === 'SETTINGS') this.onSettings();
+                btn.targetScale = 1.1;
+            } else {
+                btn.targetScale = 1.0;
+            }
+            btn.isHovered = isHovered;
         });
+    }
+
+    handleMouseClick(localX, localY) {
+        this.handleMouseDown(localX, localY);
+        this.handleMouseUp(localX, localY);
     }
 
     isPointInRect(px, py, rect) {
@@ -106,46 +137,58 @@ class StartScreen {
 
     triggerPopOut() {
         this.state = 'POPPING_OUT';
+        this.popOutTimer = 0.15; // 150ms anticipation phase
+        this.popOutPhase = 1; 
         
-        // Anticipation phase (swell up before popping)
         this.logo.targetScale = 1.4;
         this.buttons.forEach(btn => btn.targetScale = 1.4);
-
-        // Pop out phase
-        setTimeout(() => {
-            this.logo.targetScale = 0;
-            this.buttons.forEach(btn => btn.targetScale = 0);
-        }, 150);
     }
 
     isoffscreen() {
         return this.state === 'OFFSCREEN';
     }
 
-    // A simple linear interpolation for smooth animations
+    // Mathematical frame-rate independent interpolation
     lerp(start, end, amt) {
         return (1 - amt) * start + amt * end;
     }
 
-    update() {
-        this.time += 0.05;
-
-        // Check completion of pop out
-        if (this.state === 'POPPING_OUT' && this.logo.scale < 0.05) {
-            this.state = 'OFFSCREEN';
-            this.logo.scale = 0;
-            this.buttons.forEach(btn => btn.scale = 0);
-        }
+    update(dt) {
+        // Scalar to match original 60fps frame calculations
+        const frameMultiplier = dt * 60;
+        this.time += dt * 3.0; 
 
         if (this.state === 'OFFSCREEN') return;
 
-        // Update Logo Juice
-        this.logo.scale = this.lerp(this.logo.scale, this.logo.targetScale, 0.2);
-        this.logo.rotation += this.logo.twirlVelocity;
-        this.logo.twirlVelocity = this.lerp(this.logo.twirlVelocity, 0, 0.1);
+        // Manage Pop Out transition cycles strictly with dt
+        if (this.state === 'POPPING_OUT') {
+            if (this.popOutPhase === 1) {
+                this.popOutTimer -= dt;
+                if (this.popOutTimer <= 0) {
+                    this.popOutPhase = 2; // Move to shrink phase
+                    this.logo.targetScale = 0;
+                    this.buttons.forEach(btn => btn.targetScale = 0);
+                }
+            } else if (this.popOutPhase === 2 && this.logo.scale < 0.05) {
+                this.state = 'OFFSCREEN';
+                this.logo.scale = 0;
+                this.buttons.forEach(btn => btn.scale = 0);
+                if (this.onPlay) this.onPlay();
+            }
+        }
+
+        // Update Logo Scale Juice
+        const logoRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
+        this.logo.scale = this.lerp(this.logo.scale, this.logo.targetScale, logoRate);
         
-        // Idle hover for logo
-        const logoIdle = this.state === 'ACTIVE' ? Math.sin(this.time) * 10 : 0;
+        // Update Logo Rotation (Twirl impulse fades and elastic-snaps back to original 0 rotation)
+        this.logo.rotation += this.logo.twirlVelocity * frameMultiplier;
+        
+        const twirlRate = 1 - Math.pow(1 - 0.1, frameMultiplier);
+        this.logo.twirlVelocity = this.lerp(this.logo.twirlVelocity, 0, twirlRate);
+
+        const snapBackRate = 1 - Math.pow(1 - 0.12, frameMultiplier);
+        this.logo.rotation = this.lerp(this.logo.rotation, 0, snapBackRate);
 
         // Update Buttons Juice
         this.buttons.forEach((btn, index) => {
@@ -153,80 +196,94 @@ class StartScreen {
                 btn.isHovered = this.isPointInRect(this.mouseX, this.mouseY, btn);
                 
                 if (btn.isHovered) {
-                    btn.targetScale = this.lerp(btn.targetScale, 1.1, 0.2);
-                    this.canvas.style.cursor = 'pointer';
+                    const hoverRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
+                    btn.targetScale = this.lerp(btn.targetScale, 1.1, hoverRate);
                 } else {
-                    // Idle breathing offset based on index
                     const idleScale = 1 + Math.sin(this.time + index) * 0.02;
-                    btn.targetScale = this.lerp(btn.targetScale, idleScale, 0.2);
+                    const idleRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
+                    btn.targetScale = this.lerp(btn.targetScale, idleScale, idleRate);
                 }
             }
-            btn.scale = this.lerp(btn.scale, btn.targetScale, 0.3);
+            const btnScaleRate = 1 - Math.pow(1 - 0.3, frameMultiplier);
+            btn.scale = this.lerp(btn.scale, btn.targetScale, btnScaleRate);
         });
-
-        // Reset cursor if nothing hovered
-        if (this.state === 'ACTIVE' && !this.buttons.some(b => b.isHovered) && !this.isPointInRect(this.mouseX, this.mouseY, this.logo)) {
-            this.canvas.style.cursor = 'default';
-        }
     }
 
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+    draw(ctx, x, y) {
         if (this.state === 'OFFSCREEN') return;
 
+        ctx.save();
+        // Translate context relative to offset specified by caller
+        ctx.translate(x, y);
+
+        // Clip context bounds to guarantee strict modular layout boundaries
+        ctx.beginPath();
+        ctx.rect(0, 0, this.width, this.height);
+        ctx.clip();
+
+        // Local background card design
+        ctx.fillStyle = '#2b2b2b';
+        ctx.fillRect(0, 0, this.width, this.height);
+
         // Draw Logo
-        this.ctx.save();
+        ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
-        this.ctx.translate(this.logo.x, this.logo.y + logoIdleY);
-        this.ctx.rotate(this.logo.rotation);
-        this.ctx.scale(this.logo.scale, this.logo.scale);
+        ctx.translate(this.logo.x, this.logo.y + logoIdleY);
+        ctx.rotate(this.logo.rotation);
+        ctx.scale(this.logo.scale, this.logo.scale);
         
-        if (this.logo.loaded) {
-            this.ctx.drawImage(this.logo.img, -this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
+        // Safe global asset lookup
+        let logoImg = null;
+        try {
+            logoImg = typeof AssetManager !== 'undefined' ? AssetManager.get('logo') : null;
+        } catch (e) {}
+
+        if (logoImg) {
+            ctx.drawImage(logoImg, -this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
         } else {
-            // Fallback box if logo.png is missing
-            this.ctx.fillStyle = '#fff';
-            this.ctx.fillRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
-            this.ctx.fillStyle = '#000';
-            this.ctx.font = '24px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('LOGO MISSING', 0, 10);
+            // Elegant placeholder fallback 
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
+            
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('LOGO IMAGE', 0, 0);
         }
-        this.ctx.restore();
+        ctx.restore();
 
         // Draw Buttons
         this.buttons.forEach(btn => {
-            this.ctx.save();
-            this.ctx.translate(btn.x, btn.y);
-            this.ctx.scale(btn.scale, btn.scale);
+            ctx.save();
+            ctx.translate(btn.x, btn.y);
+            ctx.scale(btn.scale, btn.scale);
 
             // Button Shadow
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            this.ctx.beginPath();
-            this.ctx.roundRect(-btn.width / 2, -btn.height / 2 + 5, btn.width, btn.height, 10);
-            this.ctx.fill();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.roundRect(-btn.width / 2, -btn.height / 2 + 5, btn.width, btn.height, 10);
+            ctx.fill();
 
             // Button Body
-            this.ctx.fillStyle = btn.color;
-            this.ctx.beginPath();
-            this.ctx.roundRect(-btn.width / 2, -btn.height / 2, btn.width, btn.height, 10);
-            this.ctx.fill();
+            ctx.fillStyle = btn.color;
+            ctx.beginPath();
+            ctx.roundRect(-btn.width / 2, -btn.height / 2, btn.width, btn.height, 10);
+            ctx.fill();
 
             // Button Text
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = 'bold 20px sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(btn.text, 0, 0);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(btn.text, 0, 0);
 
-            this.ctx.restore();
+            ctx.restore();
         });
-    }
 
-    loop() {
-        this.update();
-        this.draw();
-        requestAnimationFrame(() => this.loop());
+        ctx.restore();
     }
 }
