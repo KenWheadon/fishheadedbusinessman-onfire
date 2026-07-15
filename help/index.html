@@ -3,43 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Integration</title>
+    <title>Juicy Game UI Integration</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #1a1a1a;
+            background-color: #0b0e14;
             color: white;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Placeholder background grid to simulate a game running behind the UI */
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
         }
-        /* Temporary button to trigger the canvas UI */
+        
         #game-ui {
-            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
         }
+
+        h1 {
+            color: #00d8d6;
+            text-shadow: 0 0 10px rgba(0, 216, 214, 0.5);
+        }
+
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
+            background: linear-gradient(45deg, #00d8d6, #00a8ff);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0, 216, 214, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 216, 214, 0.6);
+        }
+
+        button:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
     <div id="game-ui">
-        <h2>Main Game Engine Render Space</h2>
-        <button id="btn-help">Show Help Carousel</button>
+        <h1>Main Game Engine Render Space</h1>
+        <button id="btn-help">Open Manual</button>
     </div>
 
     <script src="HelpCarousel.js"></script>
     
     <script>
-        // Instantiate the UI class
         const helpUI = new HelpCarousel();
-        
-        // Mount it to the body (it uses fixed positioning and z-index to overlay)
         helpUI.mount('game-ui');
 
-        // Bind your game's trigger to the show function
         document.getElementById('btn-help').addEventListener('click', () => {
             helpUI.show();
         });
