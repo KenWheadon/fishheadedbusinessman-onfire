@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Popup Testbed</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #11111b;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #cdd6f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #f5c2e7;
+        }
+
+        button.trigger-btn {
+            background-color: #cba6f7;
+            color: #11111b;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.2s ease;
+            box-shadow: 0 4px 15px rgba(203, 166, 247, 0.4);
+        }
+
+        button.trigger-btn:hover {
+            background-color: #f5c2e7;
+            transform: scale(1.05);
+        }
+
+        button.trigger-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Game Engine UI Test</h1>
+    <button class="trigger-btn" id="triggerBtn">Open Quest Dialogue</button>
+
+    <script src="GamePopup.js"></script>
+    <script>
+        // Ensure DOM is fully parsed before initializing the popup
+        document.addEventListener('DOMContentLoaded', () => {
+            const popup = new GamePopup();
+            const triggerButton = document.getElementById('triggerBtn');
+
+            // Safe inline SVG to prevent CORS/file-protocol canvas security errors
+            const placeholderImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f5c2e7'/><circle cx='50' cy='50' r='30' fill='%2311111b'/></svg>";
+
+            triggerButton.addEventListener('click', () => {
+                popup.show(
+                    "Great job traveler! You have successfully configured your custom canvas UI system. Proceed onward!", 
+                    placeholderImage, 
+                    () => {
+                        console.log("Popup Callback Executed smoothly!");
+                    }
+                );
+            });
+        });
+    </script>
+</body>
+</html>
