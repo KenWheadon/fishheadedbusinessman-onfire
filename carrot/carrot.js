@@ -1,6 +1,6 @@
 /**
  * CarrotCutter - Enhanced for individual top hand-placement and dynamic aspect-ratio mapping.
- * Upgraded with lifetime-based energy decay and dynamic squash/stretch collision physics.
+ * Upgraded with mid-flight pivot centering and early, ultra-smooth ground settling.
  */
 class CarrotCutter {
   /**
@@ -147,10 +147,12 @@ class CarrotCutter {
       topAsset: carrot.topAsset, 
       index: carrot.index,
       
-      // NEW: State for squash/stretch & momentum dampening
+      // State for squash/stretch & momentum dampening
       age: 0,
       scaleX: 1.0,
-      scaleY: 1.0
+      scaleY: 1.0,
+      isSettled: false,     // Tracks if the carrot has transitioned to its ground alignment phase
+      settleSlideX: 0      // Retains a fraction of lateral speed for a gentle slide as it settles
     });
 
     const particleCount = 40; 
@@ -225,15 +227,61 @@ class CarrotCutter {
     }
 
     for (let top of this.flyingTops) {
-      // Increment age
       top.age += dt;
 
-      // 1. After 1 second (~60 ticks at 60fps), drain momentum and energy much faster!
+      // Smoothly recover squish/stretch values back to scale 1.0 (dt-independent lerp)
+      top.scaleX += (1.0 - top.scaleX) * (1 - Math.pow(0.82, dt));
+      top.scaleY += (1.0 - top.scaleY) * (1 - Math.pow(0.82, dt));
+
+      // 1. HALFWAY ANCHOR POINT MOVEMENT
+      // Smoothly shift the offset to 0 mid-air so rotation centers seamlessly
+      if (top.age > 30) {
+        top.offsetY += (0 - top.offsetY) * (1 - Math.pow(0.88, dt));
+      }
+
+      // --- SETTLED GROUND-ALIGNMENT TRANSITION ---
+      if (top.isSettled) {
+        // A. Rotate smoothly to the nearest flat horizontal orientation (0 or 180 degrees)
+        const targetAngle = Math.round(top.angle / Math.PI) * Math.PI;
+        top.angle += (targetAngle - top.angle) * (1 - Math.pow(0.82, dt));
+
+        // B. Ensure pivot point is completely centered
+        top.offsetY += (0 - top.offsetY) * (1 - Math.pow(0.80, dt));
+
+        // C. Allow horizontal momentum to slide out smoothly
+        if (top.settleSlideX !== 0) {
+          top.x += top.settleSlideX * dt;
+          top.settleSlideX *= Math.pow(0.85, dt);
+          if (Math.abs(top.settleSlideX) < 0.05) top.settleSlideX = 0;
+        }
+
+        // D. Push the y position flush against the floor bounding box boundary
+        const targetY = this.height - (top.width / 2) * top.scaleY;
+        top.y += (targetY - top.y) * (1 - Math.pow(0.80, dt));
+
+        // Keep bounds aligned
+        if (top.x < top.r) top.x = top.r;
+        if (top.x > this.width - top.r) top.x = this.width - top.r;
+
+        continue; // Skip active gravity and collision checking
+      }
+
+      // After 1 second (~60 ticks at 60fps), drain momentum and energy much faster!
       if (top.age > 60) {
         const dragFactor = Math.pow(0.92, dt); // High air resistance over time
         top.vx *= dragFactor;
         top.vy *= dragFactor;
         top.va *= dragFactor;
+
+        // Trigger early ground settling while the carrot still has a tiny bit of kinetic energy
+        if (top.y > this.height - top.r - 8 && Math.abs(top.vy) < 1.8 && Math.abs(top.vx) < 1.8) {
+          top.isSettled = true;
+          top.settleSlideX = top.vx * 0.8; // Transfer remaining horizontal speed into a sliding settle
+          top.vy = 0;
+          top.vx = 0;
+          top.va = 0;
+          continue;
+        }
       }
 
       top.vy += this.gravity * dt;
@@ -241,11 +289,7 @@ class CarrotCutter {
       top.y += top.vy * dt;
       top.angle += top.va * dt;
 
-      // Smoothly recover squish/stretch values back to scale 1.0 (dt-independent lerp)
-      top.scaleX += (1.0 - top.scaleX) * (1 - Math.pow(0.82, dt));
-      top.scaleY += (1.0 - top.scaleY) * (1 - Math.pow(0.82, dt));
-
-      // 2. Collision checks with dynamic squash and stretch reactions
+      // Active Physics Collisions (with squash and stretch)
       if (top.y < top.r) {
         const impactY = Math.abs(top.vy);
         top.y = top.r;
@@ -447,7 +491,7 @@ class CarrotCutter {
       }
     });
 
-    // 4. Draw Flying Cut Tops (Includes Squash & Stretch transformations)
+    // 4. Draw Flying Cut Tops (Includes Squash & Stretch / Settle transformations)
     this.flyingTops.forEach((top) => {
       ctx.save();
       ctx.translate(top.x, top.y);
