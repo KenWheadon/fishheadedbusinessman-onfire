@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber-Sumo Debt Collector</title>
+    <style>
+        :root {
+            --bg-color: #0d0e15;
+            --panel-color: #1a1c29;
+            --accent-color: #ff0055;
+            --neon-blue: #00f0ff;
+            --neon-green: #39ff14;
+            --text-color: #f0f0f5;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            background-color: var(--panel-color);
+            border: 4px solid var(--accent-color);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.5);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Screen States */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            text-transform: uppercase;
+            margin-top: 0;
+            letter-spacing: 2px;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(255, 0, 85, 0.7);
+            font-size: 2.2rem;
+        }
+
+        h2 {
+            color: var(--neon-blue);
+        }
+
+        .btn {
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            margin: 10px auto;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .btn-danger {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .btn-danger:hover {
+            background: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 0 15px var(--accent-color);
+        }
+
+        /* Intro Screen */
+        #intro-screen .story-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #444;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Betting Screen */
+        #betting-screen .versus-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
+            margin-bottom: 20px;
+        }
+
+        .fighter-card {
+            width: 45%;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .fighter-card.selected {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+        }
+
+        .fighter-avatar {
+            width: 80px;
+            height: 80px;
+            margin: 10px auto;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border: 3px solid #fff;
+        }
+
+        .stats-list {
+            text-align: left;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+        }
+
+        .stat-bar {
+            width: 100px;
+            background: #333;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            align-self: center;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: var(--neon-blue);
+        }
+
+        /* Battle Screen */
+        #battle-screen {
+            padding: 10px;
+            align-items: center;
+        }
+
+        #battle-canvas {
+            background: #111;
+            border: 3px solid #333;
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        /* Penalty Screen */
+        #penalty-screen .choice-container {
+            display: flex;
+            justify-content: space-around;
+            flex: 1;
+            align-items: center;
+        }
+
+        .penalty-box {
+            width: 45%;
+            height: 380px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px dashed #444;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .possessions-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .possession-item {
+            padding: 10px;
+            background: #252839;
+            border: 1px solid #444;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .possession-item:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 0, 85, 0.1);
+        }
+
+        .possession-item.destroyed {
+            text-decoration: line-through;
+            opacity: 0.3;
+            pointer-events: none;
+            background: #111;
+            border-color: #222;
+        }
+
+        #hand-canvas {
+            background: #111;
+            border: 2px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Status Bar */
+        .game-status {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #000;
+            font-size: 0.9rem;
+            border-bottom: 2px solid #222;
+        }
+
+        .shake {
+            animation: shake 0.3s;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Top Status Bar -->
+        <div class="game-status">
+            <div>POSSESSIONS INTACT: <span id="status-possessions" style="color: var(--neon-blue);">5/5</span></div>
+            <div>ROBOTIC FINGERS: <span id="status-fingers" style="color: var(--neon-green);">5/5</span></div>
+        </div>
+
+        <!-- INTRO SCREEN -->
+        <div id="intro-screen" class="screen active">
+            <h1>DEBT COLLECTOR ROUND-UP</h1>
+            <div class="story-box">
+                <p>You owe <strong>$250,000</strong> to the Neo-Osaka Steel Sharks. Since you have zero cash, they've rigged up a gambling terminal to your neural network.</p>
+                <p>They are matching up cyber-sumo wrestlers. If you bet on the correct wrestler, your debt is deferred. </p>
+                <p><strong>IF YOU LOSE:</strong> You must choose to either <strong>EXPLODE</strong> one of your 5 most prized possessions, or <strong>CHOP OFF</strong> a finger from your high-tech prosthetic cyber-hand with an automatic laser guillotine.</p>
+            </div>
+            <button class="btn" onclick="goToBetting()">UNDERSTOOD. LET'S GAMBLE.</button>
+        </div>
+
+        <!-- BETTING SCREEN -->
+        <div id="betting-screen" class="screen">
+            <h2>PLACE YOUR BET</h2>
+            <p style="text-align: center; margin-top: 0;">Analyze stats and select your Champion. Your life depends on this.</p>
+            
+            <div class="versus-container">
+                <!-- Fighter 1 -->
+                <div id="card-0" class="fighter-card" onclick="selectFighter(0)">
+                    <div id="avatar-0" class="fighter-avatar">🔴</div>
+                    <h3 id="name-0">Sumo A</h3>
+                    <div class="stats-list" id="stats-0"></div>
+                </div>
+
+                <div style="font-size: 2rem; font-weight: bold; color: var(--accent-color);">VS</div>
+
+                <!-- Fighter 2 -->
+                <div id="card-1" class="fighter-card" onclick="selectFighter(1)">
+                    <div id="avatar-1" class="fighter-avatar">🔵</div>
+                    <h3 id="name-1">Sumo B</h3>
+                    <div class="stats-list" id="stats-1"></div>
+                </div>
+            </div>
+
+            <button id="fight-btn" class="btn btn-danger" style="display: none;" onclick="startFight()">INITIATE BATTLE</button>
+        </div>
+
+        <!-- BATTLE SCREEN -->
+        <div id="battle-screen" class="screen">
+            <h2 id="battle-title" style="margin-bottom: 5px;">BATTLE IN PROGRESS</h2>
+            <div id="battle-announcement" style="color: var(--neon-green); font-weight: bold; margin-bottom: 10px; text-align: center; height: 20px;"></div>
+            <canvas id="battle-canvas" width="740" height="400"></canvas>
+        </div>
+
+        <!-- PENALTY SCREEN -->
+        <div id="penalty-screen" class="screen">
+            <h1 style="color: var(--accent-color); margin-bottom: 5px;">YOU LOST THE BET!</h1>
+            <p style="text-align: center; margin-top: 0; color: #aaa;">The loan sharks demand payment. Choose your sacrifice.</p>
+            
+            <div class="choice-container">
+                <!-- Explode Possession -->
+                <div class="penalty-box">
+                    <h3 style="color: var(--accent-color);">1. Explode Possession</h3>
+                    <p style="font-size: 0.8rem; text-align: center; margin-top: 0;">Say goodbye to your items forever.</p>
+                    <div class="possessions-list" id="possessions-list-ui">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Cut Prosthetic Finger -->
+                <div class="penalty-box">
+                    <h3 style="color: var(--neon-blue);">2. Chop Cyber-Finger</h3>
+                    <p style="font-size: 0.8rem; text-align: center; margin-top: 0; margin-bottom: 5px;">Click a finger to trigger the laser cleaver.</p>
+                    <canvas id="hand-canvas" width="300" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="gameover-screen" class="screen">
+            <h1 id="gameover-title">TOTAL RUIN</h1>
+            <div class="story-box" id="gameover-text" style="text-align: center;">
+                <!-- Filled dynamically -->
+            </div>
+            <button class="btn" onclick="restartGame()">REBOOT INTERFACE (TRY AGAIN)</button>
+        </div>
+    </div>
+
+    <script>
+        // --- SOUND EFFECTS (Web Audio Synthesis) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'explosion') {
+                // Noise Buffer for explosion
+                const bufferSize = audioCtx.sampleRate * 1.5;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noiseNode = audioCtx.createBufferSource();
+                noiseNode.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 1.2);
+
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
+
+                noiseNode.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(audioCtx.destination);
+
+                noiseNode.start();
+                noiseNode.stop(audioCtx.currentTime + 1.2);
+            } else if (type === 'spark') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(2000 + Math.random() * 2000, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'cheer') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            }
+        }
+
+        // --- GAME STATE ---
+        let possessions = [
+            { name: "My Cyber-Grandma's Golden Urn", intact: true },
+            { name: "Vintage Smart-Toaster (Runs Crysis)", intact: true },
+            { name: "Mint Edition Holo-Charizard (2021)", intact: true },
+            { name: "The Main Router (Wi-Fi Source)", intact: true },
+            { name: "Ultra-Rare Waifu Pillow (Signed)", intact: true }
+        ];
+
+        let fingers = [
+            { name: "Thumb", intact: true, x: 60, y: 150, r: 18, segmentX: 55, segmentY: 100 },
+            { name: "Index", intact: true, x: 100, y: 80, r: 14, segmentX: 100, segmentY: 40 },
+            { name: "Middle", intact: true, x: 150, y: 60, r: 14, segmentX: 150, segmentY: 20 },
+            { name: "Ring", intact: true, x: 200, y: 80, r: 14, segmentX: 200, segmentY: 40 },
+            { name: "Pinky", intact: true, x: 240, y: 120, r: 14, segmentX: 245, segmentY: 80 }
+        ];
+
+        const sumoNames = [
+            "Giga-Mecha Taro", "Cyber-Musashimaru", "Chiyonofuji v4.2", "Neon Yokozuna",
+            "Bouncing Dynamo", "Titanium Tanigawa", "Super-Conducting Asashoryu", "Hydraulic Hakuho",
+            "Megawatt Miyabiyama", "The Chrome Colossus", "Silicon Slapper", "Copper Crush"
+        ];
+
+        const shapes = ['circle', 'hexagon', 'shield'];
+        const colors = ['#ff0055', '#00f0ff', '#39ff14', '#ffcc00', '#ff00ff', '#ffffff'];
+
+        let fighter0, fighter1;
+        let selectedBet = -1;
+        let activeFingersCount = 5;
+        let activePossessionsCount = 5;
+
+        // Canvas setups
+        const bCanvas = document.getElementById('battle-canvas');
+        const bCtx = bCanvas.getContext('2d');
+        const hCanvas = document.getElementById('hand-canvas');
+        const hCtx = hCanvas.getContext('2d');
+
+        // Spark Particle System
+        let sparks = [];
+        let brokenParts = []; // Visual storage for cut finger flying physics
+
+        // --- SCREEN ROUTING ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function updateStatusBars() {
+            activePossessionsCount = possessions.filter(p => p.intact).length;
+            activeFingersCount = fingers.filter(f => f.intact).length;
+
+            document.getElementById('status-possessions').textContent = `${activePossessionsCount}/5`;
+            document.getElementById('status-fingers').textContent = `${activeFingersCount}/5`;
+
+            if (activePossessionsCount === 0 && activeFingersCount === 0) {
+                gameOver();
+            }
+        }
+
+        // --- PROC-GEN SUMOS ---
+        function generateSumo(side) {
+            const name = sumoNames[Math.floor(Math.random() * sumoNames.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            
+            // Randomly distribute weight points into stats (total around 60 points)
+            const pts = 60;
+            const power = 5 + Math.floor(Math.random() * 20); // Impact force
+            const speedGain = 5 + Math.floor(Math.random() * 15); // Acceleration
+            const topSpeed = 5 + Math.floor(Math.random() * 15); // Max speed
+            const grapple = 5 + Math.floor(Math.random() * 15); // Pushing match force
+            const endurance = 5 + Math.floor(Math.random() * 15); // Stamina reserve
+            const energy = 100;
+
+            return {
+                name, color, shape,
+                power, speedGain, topSpeed, grapple, endurance, energy, maxEnergy: 100,
+                x: side === 'left' ? 220 : 520,
+                y: 200,
+                vx: 0,
+                vy: 0,
+                radius: 25 + (power / 2), // power dictates visual size!
+                chargeTimer: 0
+            };
+        }
+
+        function createStatBarHTML(value) {
+            const percentage = (value / 25) * 100;
+            return `
+                <div class="stat-bar">
+                    <div class="stat-fill" style="width: ${percentage}%"></div>
+                </div>
+            `;
+        }
+
+        function renderStatsCard(fighter, index) {
+            document.getElementById(`name-${index}`).textContent = fighter.name;
+            document.getElementById(`avatar-${index}`).style.backgroundColor = fighter.color;
+            document.getElementById(`avatar-${index}`).textContent = fighter.shape === 'circle' ? '🔴' : (fighter.shape === 'hexagon' ? '💠' : '🛡️');
+            
+            const statsHTML = `
+                <div class="stat-row"><span>Power:</span> ${createStatBarHTML(fighter.power)}</div>
+                <div class="stat-row"><span>Accel:</span> ${createStatBarHTML(fighter.speedGain)}</div>
+                <div class="stat-row"><span>Top Speed:</span> ${createStatBarHTML(fighter.topSpeed)}</div>
+                <div class="stat-row"><span>Grapple:</span> ${createStatBarHTML(fighter.grapple)}</div>
+                <div class="stat-row"><span>Endurance:</span> ${createStatBarHTML(fighter.endurance)}</div>
+            `;
+            document.getElementById(`stats-${index}`).innerHTML = statsHTML;
+        }
+
+        function goToBetting() {
+            fighter0 = generateSumo('left');
+            fighter1 = generateSumo('right');
+            renderStatsCard(fighter0, 0);
+            renderStatsCard(fighter1, 1);
+            
+            // Reset selection
+            selectedBet = -1;
+            document.getElementById('card-0').classList.remove('selected');
+            document.getElementById('card-1').classList.remove('selected');
+            document.getElementById('fight-btn').style.display = 'none';
+
+            showScreen('betting-screen');
+        }
+
+        function selectFighter(index) {
+            selectedBet = index;
+            document.getElementById('card-0').classList.remove('selected');
+            document.getElementById('card-1').classList.remove('selected');
+            document.getElementById(`card-${index}`).classList.add('selected');
+            
+            document.getElementById('fight-btn').style.display = 'block';
+        }
+
+        // --- BATTLE ARENA (PHYSICS + AI) ---
+        let battleActive = false;
+        let ringRadius = 150;
+        let ringCenterX = 370;
+        let ringCenterY = 200;
+
+        function startFight() {
+            showScreen('battle-screen');
+            battleActive = true;
+            
+            // Reset sumo positions & vectors
+            fighter0.x = ringCenterX - 100;
+            fighter0.y = ringCenterY;
+            fighter0.vx = 0;
+            fighter0.vy = 0;
+            fighter0.energy = 100;
+
+            fighter1.x = ringCenterX + 100;
+            fighter1.y = ringCenterY;
+            fighter1.vx = 0;
+            fighter1.vy = 0;
+            fighter1.energy = 100;
+
+            document.getElementById('battle-announcement').textContent = "HAKKEYOI... NOKOTTA!";
+            setTimeout(() => {
+                document.getElementById('battle-announcement').textContent = "FIGHT!";
+            }, 1000);
+
+            requestAnimationFrame(updateBattle);
+        }
+
+        function updateBattle() {
+            if (!battleActive) return;
+
+            // --- AI & MOVEMENT LOGIC ---
+            [fighter0, fighter1].forEach((f, idx) => {
+                const opponent = idx === 0 ? fighter1 : fighter0;
+                
+                // Vector to opponent
+                const dx = opponent.x - f.x;
+                const dy = opponent.y - f.y;
+                const dist = Math.hypot(dx, dy);
+
+                // Simple AI Behavior State Machine based on energy
+                if (f.energy > 15) {
+                    // Charge state: accelerate toward opponent
+                    const accelX = (dx / dist) * (f.speedGain / 100);
+                    const accelY = (dy / dist) * (f.speedGain / 100);
+                    f.vx += accelX;
+                    f.vy += accelY;
+                } else {
+                    // Exhausted/Tactical Retrenchment: slow down, try to circle
+                    f.vx += (-dy / dist) * 0.05; 
+                    f.vy += (dx / dist) * 0.05;
+                }
+
+                // Speed limits (Top Speed Stat)
+                const currentSpeed = Math.hypot(f.vx, f.vy);
+                const limit = f.topSpeed / 3;
+                if (currentSpeed > limit) {
+                    f.vx = (f.vx / currentSpeed) * limit;
+                    f.vy = (f.vy / currentSpeed) * limit;
+                }
+
+                // Apply velocities
+                f.x += f.vx;
+                f.y += f.vy;
+
+                // Passive Friction
+                f.vx *= 0.98;
+                f.vy *= 0.98;
+
+                // Slow recovery of energy over time, burning during pushing
+                f.energy = Math.min(100, f.energy + (f.endurance / 100));
+            });
+
+            // --- BUMPER COLLISION RESOLUTION ---
+            const dx = fighter1.x - fighter0.x;
+            const dy = fighter1.y - fighter0.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = fighter0.radius + fighter1.radius;
+
+            if (dist < minDist) {
+                playSound('hit');
+                // Screen shake on massive hits
+                if (Math.hypot(fighter0.vx - fighter1.vx, fighter0.vy - fighter1.vy) > 2) {
+                    document.getElementById('game-container').classList.add('shake');
+                    setTimeout(() => {
+                        document.getElementById('game-container').classList.remove('shake');
+                    }, 300);
+                }
+
+                // Push them apart (basic spring collision)
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                fighter0.x -= nx * overlap * 0.5;
+                fighter0.y -= ny * overlap * 0.5;
+                fighter1.x += nx * overlap * 0.5;
+                fighter1.y += ny * overlap * 0.5;
+
+                // Apply grappling mechanics & knockback based on Power and Grapple
+                const energyFactor0 = fighter0.energy / 100;
+                const energyFactor1 = fighter1.energy / 100;
+
+                const force0 = (fighter0.power * 0.15) + (fighter0.grapple * energyFactor0);
+                const force1 = (fighter1.power * 0.15) + (fighter1.grapple * energyFactor1);
+
+                // Transfer velocity
+                fighter0.vx -= nx * force1 * 0.5;
+                fighter0.vy -= ny * force1 * 0.5;
+                fighter1.vx += nx * force0 * 0.5;
+                fighter1.vy += ny * force0 * 0.5;
+
+                // Deplete energy on impact proportional to grapple work
+                fighter0.energy = Math.max(0, fighter0.energy - (15 / fighter0.endurance));
+                fighter1.energy = Math.max(0, fighter1.energy - (15 / fighter1.endurance));
+            }
+
+            // --- DRAWING THE ARENA ---
+            bCtx.clearRect(0, 0, bCanvas.width, bCanvas.height);
+
+            // Ring (Dohyo)
+            bCtx.beginPath();
+            bCtx.arc(ringCenterX, ringCenterY, ringRadius, 0, Math.PI * 2);
+            bCtx.strokeStyle = 'var(--accent-color)';
+            bCtx.lineWidth = 10;
+            bCtx.shadowBlur = 15;
+            bCtx.shadowColor = 'var(--accent-color)';
+            bCtx.stroke();
+            bCtx.shadowBlur = 0; // reset
+            bCtx.fillStyle = '#111';
+            bCtx.fill();
+
+            // Inner Red Ring Line
+            bCtx.beginPath();
+            bCtx.arc(ringCenterX, ringCenterY, ringRadius - 10, 0, Math.PI * 2);
+            bCtx.strokeStyle = '#333';
+            bCtx.lineWidth = 2;
+            bCtx.stroke();
+
+            // Draw Sumos
+            [fighter0, fighter1].forEach(f => {
+                bCtx.fillStyle = f.color;
+                bCtx.shadowBlur = 8;
+                bCtx.shadowColor = f.color;
+
+                bCtx.beginPath();
+                if (f.shape === 'circle') {
+                    bCtx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                } else if (f.shape === 'hexagon') {
+                    // Draw hexagon
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i;
+                        const hx = f.x + f.radius * Math.cos(angle);
+                        const hy = f.y + f.radius * Math.sin(angle);
+                        if (i === 0) bCtx.moveTo(hx, hy);
+                        else bCtx.lineTo(hx, hy);
+                    }
+                    bCtx.closePath();
+                } else {
+                    // Shield / Square shape
+                    bCtx.rect(f.x - f.radius, f.y - f.radius, f.radius * 2, f.radius * 2);
+                }
+                bCtx.fill();
+                bCtx.shadowBlur = 0;
+
+                // Energy Bar overlay above sumo
+                bCtx.fillStyle = '#444';
+                bCtx.fillRect(f.x - f.radius, f.y - f.radius - 12, f.radius * 2, 4);
+                bCtx.fillStyle = 'var(--neon-green)';
+                bCtx.fillRect(f.x - f.radius, f.y - f.radius - 12, (f.radius * 2) * (f.energy / 100), 4);
+
+                // Eyes or indicator of direction
+                bCtx.fillStyle = '#000';
+                bCtx.beginPath();
+                bCtx.arc(f.x + (f.vx * 3), f.y + (f.vy * 3), 4, 0, Math.PI * 2);
+                bCtx.fill();
+            });
+
+            // --- CHECK FOR DEFEAT / RING OUT ---
+            const dist0FromCenter = Math.hypot(fighter0.x - ringCenterX, fighter0.y - ringCenterY);
+            const dist1FromCenter = Math.hypot(fighter1.x - ringCenterX, fighter1.y - ringCenterY);
+
+            let winner = null;
+            if (dist0FromCenter > ringRadius) {
+                winner = 1; // Fighter B wins
+            } else if (dist1FromCenter > ringRadius) {
+                winner = 0; // Fighter A wins
+            }
+
+            if (winner !== null) {
+                battleActive = false;
+                handleBattleOutcome(winner);
+                return;
+            }
+
+            requestAnimationFrame(updateBattle);
+        }
+
+        // --- OUTCOME SCENARIOS ---
+        function handleBattleOutcome(winningIndex) {
+            const betWon = (selectedBet === winningIndex);
+            const winningFighter = winningIndex === 0 ? fighter0 : fighter1;
+            
+            playSound('cheer');
+
+            if (betWon) {
+                alert(`CONGRATULATIONS! Your champion ${winningFighter.name} won! The loan sharks give you a temporary pass... for now.`);
+                goToBetting();
+            } else {
+                // Prepare Penalty Screen UI
+                setupPenaltyScreen();
+                showScreen('penalty-screen');
+            }
+        }
+
+        // --- PENALTY PHASE & INTERACTIVE HAND ---
+        function setupPenaltyScreen() {
+            // Render possessions
+            const listContainer = document.getElementById('possessions-list-ui');
+            listContainer.innerHTML = '';
+            possessions.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = `possession-item ${p.intact ? '' : 'destroyed'}`;
+                item.innerHTML = p.intact ? p.name : `${p.name} <span style="color: var(--accent-color);">[OBLITERATED]</span>`;
+                item.onclick = () => explodePossession(index);
+                listContainer.appendChild(item);
+            });
+
+            // Initialize/Redraw Cyber Hand Canvas
+            initHandCanvas();
+            requestAnimationFrame(drawHandLoop);
+        }
+
+        function explodePossession(index) {
+            if (!possessions[index].intact) return;
+            possessions[index].intact = false;
+            
+            playSound('explosion');
+
+            // Flash Screen Shake
+            document.getElementById('game-container').classList.add('shake');
+            setTimeout(() => {
+                document.getElementById('game-container').classList.remove('shake');
+                updateStatusBars();
+                if (activePossessionsCount > 0 || activeFingersCount > 0) {
+                    goToBetting();
+                }
+            }, 500);
+        }
+
+        // Cyber-Hand Rendering & Chop Physics
+        function initHandCanvas() {
+            sparks = [];
+            brokenParts = [];
+            
+            hCanvas.onmousedown = (e) => {
+                const rect = hCanvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                // Check click intersection with intact finger joints
+                fingers.forEach((f, idx) => {
+                    if (!f.intact) return;
+                    const d = Math.hypot(clickX - f.x, clickY - f.y);
+                    if (d < f.r + 10) {
+                        chopFinger(idx);
+                    }
+                });
+            };
+        }
+
+        function chopFinger(index) {
+            fingers[index].intact = false;
+            playSound('laser');
+
+            // Generate massive shower of metallic sparks
+            const originX = fingers[index].x;
+            const originY = fingers[index].y;
+
+            for (let i = 0; i < 80; i++) {
+                sparks.push({
+                    x: originX,
+                    y: originY,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.7) * 15 - 5,
+                    color: Math.random() > 0.3 ? 'var(--neon-blue)' : 'var(--accent-color)',
+                    life: 1.0,
+                    decay: 0.01 + Math.random() * 0.03
+                });
+            }
+
+            // Create flyaway finger segment physics body
+            brokenParts.push({
+                x: fingers[index].segmentX,
+                y: fingers[index].segmentY,
+                vx: (Math.random() - 0.5) * 8,
+                vy: -10 - Math.random() * 10,
+                angle: 0,
+                vAngle: (Math.random() - 0.5) * 0.5,
+                name: fingers[index].name
+            });
+
+            // Trigger constant buzz sound
+            for (let s = 0; s < 10; s++) {
+                setTimeout(() => playSound('spark'), s * 50);
+            }
+
+            setTimeout(() => {
+                updateStatusBars();
+                if (activePossessionsCount > 0 || activeFingersCount > 0) {
+                    goToBetting();
+                }
+            }, 1200);
+        }
+
+        function drawHandLoop() {
+            hCtx.fillStyle = '#111';
+            hCtx.fillRect(0, 0, hCanvas.width, hCanvas.height);
+
+            // Draw Cyber Wrist & Palm Plate
+            hCtx.strokeStyle = '#444';
+            hCtx.lineWidth = 4;
+            hCtx.fillStyle = '#222';
+            
+            // Palm box
+            hCtx.beginPath();
+            hCtx.moveTo(50, 150);
+            hCtx.lineTo(250, 140);
+            hCtx.lineTo(220, 240);
+            hCtx.lineTo(80, 250);
+            hCtx.closePath();
+            hCtx.fill();
+            hCtx.stroke();
+
+            // PCB Wiring Lines decoration
+            hCtx.strokeStyle = 'var(--neon-blue)';
+            hCtx.lineWidth = 1.5;
+            hCtx.beginPath();
+            hCtx.moveTo(150, 240);
+            hCtx.lineTo(150, 180);
+            hCtx.lineTo(100, 160);
+            hCtx.moveTo(150, 180);
+            hCtx.lineTo(190, 160);
+            hCtx.stroke();
+
+            // Draw Fingers (If intact, draw normally connected to palm)
+            fingers.forEach((f) => {
+                if (f.intact) {
+                    // Finger wire/strut connection
+                    hCtx.strokeStyle = '#555';
+                    hCtx.lineWidth = 8;
+                    hCtx.beginPath();
+                    hCtx.moveTo(f.x, 150);
+                    hCtx.lineTo(f.x, f.y);
+                    hCtx.stroke();
+
+                    // Finger tip/joint
+                    hCtx.fillStyle = 'var(--neon-green)';
+                    hCtx.beginPath();
+                    hCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                    hCtx.fill();
+                    hCtx.strokeStyle = '#fff';
+                    hCtx.lineWidth = 2;
+                    hCtx.stroke();
+
+                    // Mini target indicator for clickability
+                    hCtx.fillStyle = '#000';
+                    hCtx.font = '9px monospace';
+                    hCtx.textAlign = 'center';
+                    hCtx.fillText("CHOP", f.x, f.y + 3);
+                } else {
+                    // Severed connector socket (Sparking node)
+                    hCtx.fillStyle = '#3a0000';
+                    hCtx.beginPath();
+                    hCtx.arc(f.x, 150, 8, 0, Math.PI * 2);
+                    hCtx.fill();
+                    hCtx.strokeStyle = 'var(--accent-color)';
+                    hCtx.stroke();
+                }
+            });
+
+            // Update & Render cut finger segments flying off screen
+            brokenParts.forEach((part, index) => {
+                hCtx.save();
+                hCtx.translate(part.x, part.y);
+                hCtx.rotate(part.angle);
+                
+                // Draw flying metal rod
+                hCtx.fillStyle = '#555';
+                hCtx.fillRect(-5, -20, 10, 40);
+                hCtx.fillStyle = 'var(--accent-color)';
+                hCtx.beginPath();
+                hCtx.arc(0, -20, 8, 0, Math.PI * 2);
+                hCtx.fill();
+
+                hCtx.restore();
+
+                // Apply basic physics gravity
+                part.x += part.vx;
+                part.y += part.vy;
+                part.vy += 0.8; // Gravity
+                part.angle += part.vAngle;
+            });
+
+            // Update & Render Sparks
+            sparks.forEach((sp, index) => {
+                hCtx.fillStyle = sp.color;
+                hCtx.fillRect(sp.x, sp.y, 3, 3);
+
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.vy += 0.3; // Gravity pulling sparks down
+                sp.life -= sp.decay;
+
+                if (sp.life <= 0) {
+                    sparks.splice(index, 1);
+                }
+            });
+
+            // Only run the animation loop while we are on the penalty screen
+            if (document.getElementById('penalty-screen').classList.contains('active')) {
+                requestAnimationFrame(drawHandLoop);
+            }
+        }
+
+        // --- GAME OVER SYSTEM ---
+        function gameOver() {
+            showScreen('gameover-screen');
+            playSound('explosion');
+
+            const score = possessions.filter(p => p.intact).length + fingers.filter(f => f.intact).length;
+            
+            let commentary = "";
+            if (score === 0) {
+                commentary = "You are literally disarmed and bankrupt. The loan sharks threw you out into the neon slums without a smart-toaster to your name. Cruel fate.";
+            }
+
+            document.getElementById('gameover-text').innerHTML = `
+                <p>${commentary}</p>
+                <p><strong>FINAL RECORD:</strong> You sacrificed your belongings and digits but the system always wins.</p>
+            `;
+        }
+
+        function restartGame() {
+            possessions.forEach(p => p.intact = true);
+            fingers.forEach(f => f.intact = true);
+            updateStatusBars();
+            showScreen('intro-screen');
+        }
+
+        // Init status bars on launch
+        updateStatusBars();
+    </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Character Component Demo</title>
+  <style>
+    /* Dark Game Dashboard Interface Layout */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0b0b0f;
+      color: #eaeaf0;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+
+    /* Target UI elements indicating current game locks */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .badge-locked {
+      background-color: rgba(142, 142, 163, 0.15);
+      color: #8e8ea3;
+      border: 1px solid rgba(142, 142, 163, 0.3);
+    }
+
+    .badge-unlocked {
+      background-color: rgba(255, 78, 80, 0.15);
+      color: #ff4e50;
+      border: 1px solid rgba(255, 78, 80, 0.4);
+      box-shadow: 0 0 15px rgba(255, 78, 80, 0.2);
+    }
+
+    /* Strict 16:9 Aspect Ratio Canvas Wrapper */
+    .viewport-container {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+      border: 2px solid #232332;
+      background-color: #121216;
+    }
+
+    /* CSS Screen Shake applied directly on the canvas container */
+    @keyframes physical-rumble {
+      0% { transform: translate(2px, 2px) rotate(0deg); }
+      10% { transform: translate(-2px, -3px) rotate(-1.5deg); }
+      20% { transform: translate(-5px, 0px) rotate(1.5deg); }
+      30% { transform: translate(0px, 4px) rotate(0deg); }
+      40% { transform: translate(2px, -2px) rotate(1.5deg); }
+      50% { transform: translate(-2px, 4px) rotate(-1.5deg); }
+      60% { transform: translate(-5px, 2px) rotate(0deg); }
+      70% { transform: translate(4px, 2px) rotate(-1.5deg); }
+      80% { transform: translate(-2px, -2px) rotate(1.5deg); }
+      90% { transform: translate(4px, 4px) rotate(0deg); }
+      100% { transform: translate(2px, -3px) rotate(-1.5deg); }
+    }
+
+    .ultimate-shake {
+      animation: physical-rumble 0.1s infinite;
+    }
+
+    /* Control Panel Layout */
+    .controls-panel {
+      margin-top: 25px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .btn-next {
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: #121216;
+    }
+    .btn-next:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 20px rgba(255, 78, 80, 0.4);
+    }
+
+    .btn-win {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: #ffffff;
+    }
+    .btn-win:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 20px rgba(0, 198, 255, 0.4);
+    }
+
+    .btn-reset {
+      background-color: #232332;
+      color: #9e9ec0;
+      border: 1px solid #3c3c54;
+    }
+    .btn-reset:hover {
+      background-color: #2e2e42;
+      color: #fff;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Game Character Stage</h1>
+  <div id="status-badge" class="status-badge badge-locked">System Locked</div>
+
+  <!-- 16:9 Stage Screen -->
+  <div id="game-stage" class="viewport-container"></div>
+
+  <!-- Command Dashboard -->
+  <div class="controls-panel">
+    <button class="btn-next" onclick="triggerNext()">Unlock Selection</button>
+    <button class="btn-win" onclick="triggerWin()">Trigger Win</button>
+    <button class="btn-reset" onclick="triggerReset()">Reset</button>
+  </div>
+
+  <script src="GameJuice.js"></script>
+  <script>
+    // Initialize component
+    const game = new GameJuice('game-stage');
+    const badge = document.getElementById('status-badge');
+
+    // Polling function to keep HTML badge classes in sync with our canvas component state
+    function updateBadge() {
+      if (game.isLocked()) {
+        badge.textContent = "Board Status: LOCKED (Click 'Unlock Selection' to pick)";
+        badge.className = "status-badge badge-locked";
+      } else {
+        badge.textContent = "Board Status: UNLOCKED (Click a Hero in the stage!)";
+        badge.className = "status-badge badge-unlocked";
+      }
+    }
+
+    function triggerNext() {
+      game.next();
+      updateBadge();
+    }
+
+    function triggerReset() {
+      game.reset();
+      updateBadge();
+    }
+
+    function triggerWin() {
+      game.win();
+      updateBadge();
+    }
+
+    // Run initial update state
+    updateBadge();
+
+    // Check periodically for changes (e.g. locks resetting automatically after clicks)
+    setInterval(updateBadge, 100);
+  </script>
+</body>
+</html>

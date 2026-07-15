@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Character Component Demo</title>
+  <style>
+    /* Dark Game Dashboard Interface Layout */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0b0b0f;
+      color: #eaeaf0;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .badge-locked {
+      background-color: rgba(142, 142, 163, 0.15);
+      color: #8e8ea3;
+      border: 1px solid rgba(142, 142, 163, 0.3);
+    }
+
+    .badge-unlocked {
+      background-color: rgba(255, 78, 80, 0.15);
+      color: #ff4e50;
+      border: 1px solid rgba(255, 78, 80, 0.4);
+      box-shadow: 0 0 15px rgba(255, 78, 80, 0.2);
+    }
+
+    /* Strict 16:9 Aspect Ratio Canvas Wrapper */
+    .viewport-container {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+      border: 2px solid #232332;
+      background-color: #121216;
+    }
+
+    /* CSS Screen Shake applied directly on the canvas container */
+    @keyframes physical-rumble {
+      0% { transform: translate(2px, 2px) rotate(0deg); }
+      10% { transform: translate(-2px, -3px) rotate(-1.5deg); }
+      20% { transform: translate(-5px, 0px) rotate(1.5deg); }
+      30% { transform: translate(0px, 4px) rotate(0deg); }
+      40% { transform: translate(2px, -2px) rotate(1.5deg); }
+      50% { transform: translate(-2px, 4px) rotate(-1.5deg); }
+      60% { transform: translate(-5px, 2px) rotate(0deg); }
+      70% { transform: translate(4px, 2px) rotate(-1.5deg); }
+      80% { transform: translate(-2px, -2px) rotate(1.5deg); }
+      90% { transform: translate(4px, 4px) rotate(0deg); }
+      100% { transform: translate(2px, -3px) rotate(-1.5deg); }
+    }
+
+    .ultimate-shake {
+      animation: physical-rumble 0.1s infinite;
+    }
+
+    /* --- CUSTOM IN-GAME MODAL STYLING --- */
+    .game-modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(4px);
+    }
+
+    .game-modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .game-modal {
+      background: linear-gradient(145deg, #1e1e2d, #14141f);
+      border: 2px solid #3d3d5c;
+      border-radius: 16px;
+      width: 80%;
+      max-width: 500px;
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-align: center;
+    }
+
+    .game-modal-overlay.open .game-modal {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #3d3d5c;
+      padding-bottom: 15px;
+    }
+
+    .modal-headshot {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 3px solid #ff4e50;
+      background-color: #0b0b0f; /* fallback */
+      object-fit: cover;
+    }
+
+    .modal-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .modal-body {
+      margin-bottom: 30px;
+    }
+
+    .modal-plead-text {
+      font-style: italic;
+      color: #eaeaf0;
+      font-size: 1.1rem;
+      line-height: 1.5;
+      background-color: rgba(255,255,255,0.05);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .modal-confirm-text {
+      color: #8e8ea3;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    /* UI Control Panel Styling */
+    .controls-panel {
+      margin-top: 25px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Modal specific buttons */
+    .btn-modal-confirm {
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: #121216;
+      flex: 1;
+    }
+    .btn-modal-cancel {
+      background-color: #232332;
+      color: #eaeaf0;
+      border: 1px solid #3c3c54;
+      flex: 1;
+    }
+    .btn-modal-cancel:hover {
+      background-color: #3c3c54;
+    }
+
+    /* Main dashboard buttons */
+    .btn-next {
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: #121216;
+    }
+    .btn-next:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 20px rgba(255, 78, 80, 0.4);
+    }
+
+    .btn-win {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: #ffffff;
+    }
+    .btn-win:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 20px rgba(0, 198, 255, 0.4);
+    }
+
+    .btn-reset {
+      background-color: #232332;
+      color: #9e9ec0;
+      border: 1px solid #3c3c54;
+    }
+    .btn-reset:hover {
+      background-color: #2e2e42;
+      color: #fff;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Game Character Stage</h1>
+  <div id="status-badge" class="status-badge badge-locked">System Locked</div>
+
+  <!-- Main Viewport Container (keeps 16:9 ratio) -->
+  <div id="game-stage" class="viewport-container">
+    
+    <!-- Custom In-Game Modal HTML -->
+    <div id="modal-overlay" class="game-modal-overlay">
+      <div class="game-modal">
+        <div class="modal-header">
+          <img id="modal-headshot" src="" alt="Hero Headshot" class="modal-headshot">
+          <div id="modal-title" class="modal-title">Confirm Detonation</div>
+        </div>
+        <div class="modal-body">
+          <p id="modal-plead-text" class="modal-plead-text">Pleading text goes here...</p>
+          <p class="modal-confirm-text">Are you absolutely sure you want to explode them?</p>
+        </div>
+        <div class="modal-actions">
+          <button id="modal-btn-confirm" class="btn-modal-confirm">Yes, BOOM!</button>
+          <button id="modal-btn-cancel" class="btn-modal-cancel">No, Spare Them</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- External Command Dashboard -->
+  <div class="controls-panel">
+    <button class="btn-next" onclick="triggerNext()">Unlock Selection</button>
+    <button class="btn-win" onclick="triggerWin()">Trigger Win</button>
+    <button class="btn-reset" onclick="triggerReset()">Reset</button>
+  </div>
+
+  <script src="GameJuice.js"></script>
+  <script>
+    // Initialize component
+    const game = new GameJuice('game-stage');
+    const badge = document.getElementById('status-badge');
+
+    // UI Polling function
+    function updateBadge() {
+      if (game.isLocked()) {
+        badge.textContent = "Board Status: LOCKED (Click 'Unlock Selection')";
+        badge.className = "status-badge badge-locked";
+      } else {
+        badge.textContent = "Board Status: UNLOCKED (Click a Hero in stage!)";
+        badge.className = "status-badge badge-unlocked";
+      }
+    }
+
+    function triggerNext() {
+      game.next();
+      updateBadge();
+    }
+
+    function triggerReset() {
+      game.reset();
+      updateBadge();
+    }
+
+    function triggerWin() {
+      game.win();
+      updateBadge();
+    }
+
+    updateBadge();
+    // Check frequently for internal state changes
+    setInterval(updateBadge, 100);
+  </script>
+</body>
+</html>

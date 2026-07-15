@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juicy Carrot Cutter Component</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #1e1e24;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    #game-container {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(circle, #2d2d38 0%, #15151a 100%);
+      border: 4px solid #3f3f50;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      pointer-events: none;
+      /* Let clicks pass through to background */
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      background: #e67e22;
+      border: none;
+      border-bottom: 4px solid #d35400;
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      /* Re-enable click for buttons */
+      transition: all 0.1s ease;
+    }
+
+    button:hover {
+      background: #f39c12;
+      border-bottom-color: #e67e22;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+
+    #reset-btn {
+      background: #34495e;
+      border-bottom-color: #2c3e50;
+    }
+
+    #reset-btn:hover {
+      background: #4f6f8f;
+      border-bottom-color: #34495e;
+    }
+
+    #counter-display {
+      color: #ecf0f1;
+      font-size: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 20px;
+      border-radius: 20px;
+      align-self: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="game-container">
+    <div id="ui-layer">
+      <button id="cut-btn">🔪 CUT CARROT</button>
+      <div id="counter-display">Uncut Carrots: <span id="count">5</span></div>
+      <button id="reset-btn">🔄 RESET</button>
+    </div>
+  </div>
+
+  <!-- Include your class file here, or import it if using ES modules -->
+  <script src="carrot.js"></script>
+  <script>
+    // Initialization setup
+    const container = document.getElementById('game-container');
+    const cutBtn = document.getElementById('cut-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const countSpan = document.getElementById('count');
+
+    // Instantiate class using target containers dimensions
+    const game = new CarrotCutter(container, 800, 600);
+
+    const updateDisplay = () => {
+      countSpan.textContent = game.checkCut();
+    };
+
+    cutBtn.addEventListener('click', () => {
+      game.cut();
+      updateDisplay();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      game.reset();
+      updateDisplay();
+    });
+
+    // Support responsive sizing dynamically if container scales
+    window.addEventListener('resize', () => {
+      // Handled if using a liquid canvas layout setup
+      // game.resize(container.clientWidth, container.clientHeight);
+    });
+  </script>
+</body>
+
+</html>

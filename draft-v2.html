@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber-Sumo Debt Collector: Neo-Brutalist Edition</title>
+    <!-- Tailwind CSS for utility architecture -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700;900&family=Unbounded:wght@400;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neo-black: #000000;
+            --neo-white: #ffffff;
+            --neo-yellow: #f4f814;
+            --neo-pink: #ff2a85;
+            --neo-cyan: #00f0ff;
+            --neo-green: #39ff14;
+            --neo-purple: #9d4edd;
+        }
+
+        body {
+            background-color: var(--neo-yellow);
+            background-image: 
+                radial-gradient(var(--neo-black) 1.5px, transparent 1.5px), 
+                radial-gradient(var(--neo-black) 1.5px, #f4f814 1.5px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            color: var(--neo-black);
+            font-family: 'Space Grotesk', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Neo-Brutalism Design System Helpers */
+        .brutal-border {
+            border: 4px solid var(--neo-black);
+        }
+        
+        .brutal-border-thick {
+            border: 6px solid var(--neo-black);
+        }
+
+        .brutal-shadow {
+            box-shadow: 8px 8px 0px var(--neo-black);
+        }
+
+        .brutal-shadow-sm {
+            box-shadow: 4px 4px 0px var(--neo-black);
+        }
+
+        .brutal-shadow-lg {
+            box-shadow: 14px 14px 0px var(--neo-black);
+        }
+
+        .brutal-btn {
+            background-color: var(--neo-cyan);
+            border: 4px solid var(--neo-black);
+            box-shadow: 4px 4px 0px var(--neo-black);
+            font-family: 'Unbounded', sans-serif;
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.1s ease;
+            position: relative;
+        }
+
+        .brutal-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--neo-black);
+        }
+
+        .brutal-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px var(--neo-black);
+        }
+
+        .brutal-card {
+            background-color: var(--neo-white);
+            border: 4px solid var(--neo-black);
+            box-shadow: 8px 8px 0px var(--neo-black);
+            transition: transform 0.2s ease;
+        }
+
+        /* Screen transitions */
+        .screen {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Title glints and effects */
+        .glitch-text {
+            font-family: 'Unbounded', sans-serif;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 0px var(--neo-pink);
+            letter-spacing: -1px;
+        }
+
+        /* Custom Marquee for that urgent debt ticker feel */
+        .ticker-wrap {
+            background: var(--neo-black);
+            color: var(--neo-white);
+            overflow: hidden;
+            border-bottom: 4px solid var(--neo-black);
+            white-space: nowrap;
+            padding: 8px 0;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .ticker {
+            display: inline-block;
+            animation: marquee 25s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translate3d(100%, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        /* Screen Shake Animation */
+        .shake {
+            animation: mega-shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes mega-shake {
+            10%, 90% { transform: translate3d(-3px, 4px, 0) rotate(-1deg); }
+            20%, 80% { transform: translate3d(5px, -3px, 0) rotate(1.5deg); }
+            30%, 50%, 70% { transform: translate3d(-6px, 6px, 0) rotate(-2deg); }
+            40%, 60% { transform: translate3d(6px, -4px, 0) rotate(2deg); }
+        }
+
+        /* Laser Beam Slice Visual Effect */
+        #laser-guillotine {
+            position: absolute;
+            left: 0;
+            top: -100px;
+            width: 100%;
+            height: 12px;
+            background: var(--neo-pink);
+            border-top: 2px solid var(--neo-white);
+            border-bottom: 2px solid var(--neo-white);
+            box-shadow: 0 0 20px var(--neo-pink), 0 0 40px var(--neo-pink);
+            z-index: 50;
+            pointer-events: none;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Scanline filter for cyber terminal vibe */
+        .scanlines {
+            position: relative;
+            overflow: hidden;
+        }
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 10;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Responsive scaling with fixed aspect ratio */
+        #battle-canvas {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 2 / 1;
+        }
+
+        #hand-canvas {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 300 / 280;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- MAIN CONTAINER -->
+    <div id="game-container" class="w-full max-w-4xl brutal-card brutal-shadow-lg scanlines bg-white relative flex flex-col overflow-hidden">
+        
+        <!-- Retro News Ticker Top Banner -->
+        <div class="ticker-wrap text-sm">
+            <div class="ticker">
+                +++ DEBT AMOUNT UNPAID: $250,000 +++ SHARK BANK TERMINAL V.2.8 ACTIVE +++ SELECT SUMO WARRIORS +++ PAY IN FLESH OR COLD METAL +++ DEBT AMOUNT UNPAID: $250,000 +++
+            </div>
+        </div>
+
+        <!-- Top Status Bar (Chunky Brutalist Grid) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 border-b-4 border-black text-center font-black uppercase text-sm divide-y-4 md:divide-y-0 md:divide-x-4 divide-black">
+            <div class="bg-[#ff2a85] text-white p-3 flex justify-center items-center gap-2">
+                <span>ITEMS INTACT:</span> 
+                <span id="status-possessions" class="bg-black text-white px-3 py-1 brutal-border text-lg font-black">5/5</span>
+            </div>
+            <div class="bg-[#9d4edd] text-white p-3 flex justify-center items-center gap-2">
+                <span>CYBER FINGERS:</span> 
+                <span id="status-fingers" class="bg-black text-white px-3 py-1 brutal-border text-lg font-black">5/5</span>
+            </div>
+            <div class="bg-[#39ff14] text-black p-3 flex justify-center items-center gap-2">
+                <span>AUDIO STATUS:</span>
+                <button id="audio-toggle" onclick="toggleMusic()" class="bg-black text-white px-3 py-0.5 brutal-border text-xs font-black uppercase tracking-wider brutal-shadow-sm hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1">
+                    START BEATS 🔊
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN SCREENS CONTAINER -->
+        <div class="p-4 md:p-8 flex-1 min-h-[500px] flex flex-col justify-center relative">
+
+            <!-- INTRO SCREEN -->
+            <div id="intro-screen" class="screen active gap-6">
+                <div class="text-center">
+                    <span class="bg-black text-[#ff2a85] text-xs font-extrabold px-3 py-1 border-2 border-black tracking-widest uppercase mb-2 inline-block brutal-shadow-sm">NEO-OSAKA SHARK CREDIT INC.</span>
+                    <h1 class="glitch-text text-4xl md:text-6xl my-2">CYBER-SUMO<br><span class="text-white bg-black px-4 py-1 inline-block my-2 brutal-border">DEBT COLLECTOR</span></h1>
+                </div>
+
+                <div class="brutal-card p-6 bg-[#ffe135] brutal-border brutal-shadow font-bold text-md leading-relaxed border-black text-black">
+                    <p class="mb-4 text-lg">
+                        Yo, cyberpunk deadbeat. You owe the <span class="bg-black text-[#00f0ff] px-1.5 py-0.5">Steel Sharks Gang</span> a cool <strong class="text-xl">$250,000</strong>. Since your accounts are totally bone-dry, we have hijacked your neural interface.
+                    </p>
+                    <p class="mb-4">
+                        We're running automated high-stakes cyber-sumo fights. Pick the winning machine. If your champion wins, we delay your crushing debt.
+                    </p>
+                    <p class="font-extrabold text-[#ff2a85] border-t-2 border-black pt-3">
+                        ⚡ IF YOU LOSE THE BET: You must immediately EXPLODE one of your prized household possessions, or CHOP a finger off your experimental robotic hand. No excuses.
+                    </p>
+                </div>
+
+                <div class="flex justify-center">
+                    <button class="brutal-btn bg-[#39ff14] text-black text-xl px-8 py-5 w-full md:w-auto text-center" onclick="goToBetting()">
+                        I UNDERSTAND. LET'S BET!
+                    </button>
+                </div>
+            </div>
+
+            <!-- BETTING SCREEN -->
+            <div id="betting-screen" class="screen gap-6">
+                <div class="text-center">
+                    <h2 class="glitch-text text-3xl md:text-4xl text-[#ff2a85]">PICK YOUR GLADIATOR</h2>
+                    <p class="font-black text-xs md:text-sm tracking-wider uppercase mt-1">Review the logic-cores of our automated wrestlers. Choose or suffer.</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-6 justify-between items-stretch my-2">
+                    <!-- Fighter 1 -->
+                    <div id="card-0" class="brutal-card flex-1 p-5 cursor-pointer bg-white hover:bg-cyan-50 border-black flex flex-col justify-between" onclick="selectFighter(0)">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-black text-white px-2 py-1 text-xs font-black">CHAMPION A</span>
+                                <div id="avatar-0" class="w-16 h-16 brutal-border brutal-shadow-sm flex items-center justify-center text-4xl">🤖</div>
+                            </div>
+                            <h3 id="name-0" class="font-black text-2xl uppercase tracking-tight mb-4 text-[#ff2a85]">-</h3>
+                            <div class="space-y-2 font-bold text-sm" id="stats-0">
+                                <!-- Dynamic stats -->
+                            </div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <span class="select-label bg-black text-[#39ff14] py-2 px-4 brutal-border text-xs font-black tracking-widest block brutal-shadow-sm">BET ON THIS UNIT</span>
+                        </div>
+                    </div>
+
+                    <!-- VS Divider -->
+                    <div class="flex items-center justify-center">
+                        <div class="bg-black text-white brutal-border font-black text-4xl p-4 brutal-shadow rotate-3 transform">VS</div>
+                    </div>
+
+                    <!-- Fighter 2 -->
+                    <div id="card-1" class="brutal-card flex-1 p-5 cursor-pointer bg-white hover:bg-pink-50 border-black flex flex-col justify-between" onclick="selectFighter(1)">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-black text-white px-2 py-1 text-xs font-black">CHAMPION B</span>
+                                <div id="avatar-1" class="w-16 h-16 brutal-border brutal-shadow-sm flex items-center justify-center text-4xl">👾</div>
+                            </div>
+                            <h3 id="name-1" class="font-black text-2xl uppercase tracking-tight mb-4 text-[#00f0ff]">-</h3>
+                            <div class="space-y-2 font-bold text-sm" id="stats-1">
+                                <!-- Dynamic stats -->
+                            </div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <span class="select-label bg-black text-[#39ff14] py-2 px-4 brutal-border text-xs font-black tracking-widest block brutal-shadow-sm">BET ON THIS UNIT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="fight-btn" class="brutal-btn bg-[#ff2a85] text-white text-2xl py-6 w-full hidden" onclick="startFight()">
+                    🔥 INITIATE FIGHT SIMULATION 🔥
+                </button>
+            </div>
+
+            <!-- BATTLE SCREEN -->
+            <div id="battle-screen" class="screen gap-4">
+                <div class="text-center">
+                    <h2 id="battle-title" class="glitch-text text-3xl text-black">BATTLE IN PROGRESS</h2>
+                    <div id="battle-announcement" class="bg-black text-[#39ff14] py-1.5 px-4 font-black text-md tracking-wider uppercase inline-block brutal-border mt-1">
+                        HAKKEYOI... NOKOTTA!
+                    </div>
+                </div>
+                
+                <div class="relative brutal-border-thick bg-black p-1 brutal-shadow overflow-hidden">
+                    <canvas id="battle-canvas" class="w-full bg-[#111] block" width="800" height="400"></canvas>
+                </div>
+            </div>
+
+            <!-- PENALTY SCREEN -->
+            <div id="penalty-screen" class="screen gap-6 relative">
+                <div class="text-center">
+                    <div class="bg-black text-[#ff2a85] brutal-border text-xl font-extrabold px-6 py-2 uppercase brutal-shadow inline-block transform -rotate-2">
+                        🚨 TRANSACTION RETRACTED: YOU LOST!
+                    </div>
+                    <p class="font-black text-sm uppercase mt-4 text-black">Select your blood sacrifice to appease the lenders.</p>
+                </div>
+                
+                <div class="flex flex-col lg:flex-row gap-6 items-stretch justify-between">
+                    <!-- Explode Possession Box -->
+                    <div class="brutal-card bg-[#ff2a85]/10 flex-1 p-5 flex flex-col justify-between border-black">
+                        <div>
+                            <h3 class="font-black text-xl uppercase text-[#ff2a85] mb-2">OPTION 1: CRUSH VALUABLE</h3>
+                            <p class="font-bold text-xs uppercase mb-4 text-gray-700">Blow up one of your last biological attachments.</p>
+                            <div class="space-y-3" id="possessions-list-ui">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cut Prosthetic Finger Box -->
+                    <div class="brutal-card bg-[#00f0ff]/10 flex-1 p-5 flex flex-col justify-between border-black relative">
+                        <div id="laser-guillotine"></div>
+                        <div>
+                            <h3 class="font-black text-xl uppercase text-[#00f0ff] mb-2">OPTION 2: CHOP CYBER-DIGIT</h3>
+                            <p class="font-bold text-xs uppercase mb-4 text-gray-700">Laser-slice a cybernetic copper finger joint.</p>
+                            <div class="brutal-border bg-black p-1">
+                                <canvas id="hand-canvas" class="w-full bg-[#111]" width="300" height="280"></canvas>
+                            </div>
+                        </div>
+                        <div class="text-center font-black text-xs text-black mt-2">
+                            👇 CLICK A SPARKY GREEN NODE TO SLAM THE GUILOTINE BLADE!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GAME OVER SCREEN -->
+            <div id="gameover-screen" class="screen gap-6 text-center">
+                <h1 id="gameover-title" class="glitch-text text-5xl md:text-7xl text-[#ff2a85]">SYSTEM RUIN</h1>
+                <div class="brutal-card bg-[#ff2a85] text-white p-6 brutal-border brutal-shadow max-w-lg mx-auto text-left font-bold" id="gameover-text">
+                    <!-- Dynamic details -->
+                </div>
+                <div>
+                    <button class="brutal-btn bg-[#39ff14] text-black text-xl px-10 py-5" onclick="restartGame()">
+                        ♻️ REBOOT HARDWARE TERMINAL
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- HIGH QUALITY BRUTALIST MODAL NOTIFICATION OVERLAY (Replaces standard alert) -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+        <div class="brutal-card max-w-md w-full bg-white p-6 brutal-border-thick brutal-shadow-lg transform rotate-1">
+            <div id="modal-header-container" class="bg-black text-white p-2 text-center font-black uppercase text-md mb-4 tracking-wider">
+                ALERT INCOMING
+            </div>
+            <p id="modal-text" class="font-bold text-lg text-black mb-6 leading-relaxed">
+                Terminal notification placeholder text.
+            </p>
+            <div class="flex justify-end">
+                <button id="modal-btn" class="brutal-btn bg-[#39ff14] text-black py-3 px-8 text-sm" onclick="closeModal()">
+                    CONFIRM & DISMISS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SOUND EFFECTS (Web Audio Synthesis with full Arcade Juice) ---
+        let audioCtx = null;
+        let mainVolume = null;
+        let isMusicPlaying = false;
+        let musicInterval = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mainVolume = audioCtx.createGain();
+                mainVolume.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                mainVolume.connect(audioCtx.destination);
+            }
+        }
+
+        // Procedural Audio Engine for Juicy Retro Noises
+        function playSound(type) {
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.connect(oscGain);
+            oscGain.connect(mainVolume);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'hit') {
+                // Juicy punchy smash
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+                oscGain.gain.setValueAtTime(0.8, now);
+                oscGain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+
+                // Add mechanical slap noise overlay
+                const noiseNode = audioCtx.createBufferSource();
+                const bufferSize = audioCtx.sampleRate * 0.08;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                noiseNode.buffer = buffer;
+                
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.4, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+                noiseNode.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(mainVolume);
+                noiseNode.start(now);
+                noiseNode.stop(now + 0.08);
+
+            } else if (type === 'laser') {
+                // Slicing sweeping laser sweep
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(1200, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.6);
+                oscGain.gain.setValueAtTime(0.6, now);
+                oscGain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+
+            } else if (type === 'explosion') {
+                // Heavy explosive sound with rumbling noise buffer
+                const bufferSize = audioCtx.sampleRate * 1.5;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noiseNode = audioCtx.createBufferSource();
+                noiseNode.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(400, now);
+                filter.frequency.exponentialRampToValueAtTime(20, now + 1.4);
+
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.9, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+                noiseNode.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(mainVolume);
+
+                noiseNode.start(now);
+                noiseNode.stop(now + 1.4);
+
+            } else if (type === 'spark') {
+                // Electricity spark pop
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(3000 + Math.random() * 1000, now);
+                oscGain.gain.setValueAtTime(0.15, now);
+                oscGain.gain.linearRampToValueAtTime(0.01, now + 0.04);
+                osc.start(now);
+                osc.stop(now + 0.04);
+
+            } else if (type === 'click') {
+                // UI Click
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                oscGain.gain.setValueAtTime(0.1, now);
+                oscGain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+
+            } else if (type === 'fanfare-win') {
+                // Upward retro arpeggio
+                const scale = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
+                scale.forEach((freq, i) => {
+                    const noteOsc = audioCtx.createOscillator();
+                    const noteGain = audioCtx.createGain();
+                    noteOsc.type = 'triangle';
+                    noteOsc.frequency.setValueAtTime(freq, now + (i * 0.1));
+                    noteGain.gain.setValueAtTime(0.2, now + (i * 0.1));
+                    noteGain.gain.exponentialRampToValueAtTime(0.01, now + (i * 0.1) + 0.3);
+                    noteOsc.connect(noteGain);
+                    noteGain.connect(mainVolume);
+                    noteOsc.start(now + (i * 0.1));
+                    noteOsc.stop(now + (i * 0.1) + 0.35);
+                });
+
+            } else if (type === 'fanfare-lose') {
+                // Sad slide down
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.8);
+                oscGain.gain.setValueAtTime(0.5, now);
+                oscGain.gain.linearRampToValueAtTime(0.01, now + 0.8);
+                osc.start(now);
+                osc.stop(now + 0.8);
+            }
+        }
+
+        // Juicy retro synthesizer background music loop
+        function toggleMusic() {
+            initAudio();
+            const btn = document.getElementById('audio-toggle');
+            
+            if (isMusicPlaying) {
+                clearInterval(musicInterval);
+                isMusicPlaying = false;
+                btn.textContent = "START BEATS 🔊";
+                btn.classList.remove('bg-[#ff2a85]', 'text-white');
+                btn.classList.add('bg-black', 'text-white');
+            } else {
+                isMusicPlaying = true;
+                btn.textContent = "MUTE BEATS 🔇";
+                btn.classList.add('bg-[#ff2a85]', 'text-white');
+                btn.classList.remove('bg-black');
+                startBeats();
+            }
+            playSound('click');
+        }
+
+        function startBeats() {
+            let step = 0;
+            // High octane synth-wave bass sequence
+            const pattern = [55, 55, 65, 55, 48, 48, 55, 65]; 
+
+            musicInterval = setInterval(() => {
+                if (audioCtx.state === 'suspended') return;
+                const now = audioCtx.currentTime;
+                
+                // Play Synth Bass note
+                const bassOsc = audioCtx.createOscillator();
+                const bassGain = audioCtx.createGain();
+                bassOsc.type = 'sawtooth';
+                bassOsc.frequency.setValueAtTime(pattern[step % pattern.length], now);
+                bassGain.gain.setValueAtTime(0.12, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                bassOsc.connect(bassGain);
+                bassGain.connect(mainVolume);
+                bassOsc.start(now);
+                bassOsc.stop(now + 0.18);
+
+                // Play retro high-hat click on odd beats
+                if (step % 2 === 1) {
+                    const hatOsc = audioCtx.createOscillator();
+                    const hatGain = audioCtx.createGain();
+                    hatOsc.type = 'triangle';
+                    hatOsc.frequency.setValueAtTime(8000, now);
+                    hatGain.gain.setValueAtTime(0.02, now);
+                    hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    hatOsc.connect(hatGain);
+                    hatGain.connect(mainVolume);
+                    hatOsc.start(now);
+                    hatOsc.stop(now + 0.06);
+                }
+
+                step++;
+            }, 180);
+        }
+
+        // --- CUSTOM MODAL REPLACEMENT FOR NO-ALERT GUARANTEE ---
+        let currentModalCallback = null;
+
+        function triggerModal(title, text, btnText, callback) {
+            document.getElementById('modal-header-container').textContent = title;
+            document.getElementById('modal-text').innerHTML = text;
+            document.getElementById('modal-btn').textContent = btnText;
+            document.getElementById('custom-modal').classList.remove('hidden');
+            currentModalCallback = callback;
+            playSound('click');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            playSound('click');
+            if (currentModalCallback) {
+                const callback = currentModalCallback;
+                currentModalCallback = null;
+                callback();
+            }
+        }
+
+        // --- GAME STATE ---
+        let possessions = [
+            { name: "🫙 Cyber-Grandma's Golden Ashes", intact: true },
+            { name: "🍞 Smart-Toaster (Plays Cyberpunk)", intact: true },
+            { name: "🐉 Mint 2021 Cyber-Charizard Card", intact: true },
+            { name: "📡 Main Frame Hyper-Router", intact: true },
+            { name: "🛌 Legendary Signed Waifu Pillow", intact: true }
+        ];
+
+        let fingers = [
+            { name: "Cyber-Thumb", intact: true, x: 60, y: 150, r: 18, segmentX: 55, segmentY: 100 },
+            { name: "Cyber-Index", intact: true, x: 110, y: 80, r: 16, segmentX: 110, segmentY: 40 },
+            { name: "Cyber-Middle", intact: true, x: 160, y: 60, r: 16, segmentX: 160, segmentY: 20 },
+            { name: "Cyber-Ring", intact: true, x: 210, y: 80, r: 16, segmentX: 210, segmentY: 40 },
+            { name: "Cyber-Pinky", intact: true, x: 260, y: 130, r: 14, segmentX: 265, segmentY: 80 }
+        ];
+
+        const sumoRobotNames = [
+            "METAL MECH TARO", "CYBER-CHAMP 9000", "CHIYONOFUJI V12", "NEON YOKOZUNA",
+            "SOLDER SMASHER", "HYDRAULIC CRUSHER", "ASASHORYU EX", "MEGAWATT MIYABI",
+            "CHROME COLOSSUS", "SILICON STRIKER", "TITANIUM SLAPPER", "VOLTAGE VORTEX"
+        ];
+
+        const avatars = [
+            { icon: "🤖", shape: "circle" },
+            { icon: "👾", shape: "hexagon" },
+            { icon: "⚡", shape: "shield" },
+            { icon: "🔋", shape: "hexagon" },
+            { icon: "🔌", shape: "circle" },
+            { icon: "☄️", shape: "shield" }
+        ];
+
+        const colorsList = ['#ff2a85', '#00f0ff', '#39ff14', '#ffe135', '#9d4edd'];
+
+        let fighter0, fighter1;
+        let selectedBet = -1;
+        let activeFingersCount = 5;
+        let activePossessionsCount = 5;
+
+        // Canvas element setup - fixed internal rendering resolution
+        const bCanvas = document.getElementById('battle-canvas');
+        const bCtx = bCanvas.getContext('2d');
+        const hCanvas = document.getElementById('hand-canvas');
+        const hCtx = hCanvas.getContext('2d');
+
+        bCanvas.width = 800;
+        bCanvas.height = 400;
+        hCanvas.width = 300;
+        hCanvas.height = 280;
+
+        // Particle System
+        let sparks = [];
+        let debris = [];
+        let brokenParts = [];
+        let hitVFX = []; // Stores visual floating text hits: "SLAP!" "BAM!"
+
+        // --- SCREEN ROUTING ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            playSound('click');
+        }
+
+        function updateStatusBars() {
+            activePossessionsCount = possessions.filter(p => p.intact).length;
+            activeFingersCount = fingers.filter(f => f.intact).length;
+
+            document.getElementById('status-possessions').textContent = `${activePossessionsCount}/5`;
+            document.getElementById('status-fingers').textContent = `${activeFingersCount}/5`;
+
+            if (activePossessionsCount === 0 && activeFingersCount === 0) {
+                gameOver();
+            }
+        }
+
+        // --- STREAMING_CHUNK:Generating Sumos with custom stats... -->
+        function generateSumo(side) {
+            const name = sumoRobotNames[Math.floor(Math.random() * sumoRobotNames.length)];
+            const color = colorsList[Math.floor(Math.random() * colorsList.length)];
+            const av = avatars[Math.floor(Math.random() * avatars.length)];
+            
+            const power = 8 + Math.floor(Math.random() * 15);
+            const speedGain = 8 + Math.floor(Math.random() * 12);
+            const topSpeed = 10 + Math.floor(Math.random() * 12);
+            const grapple = 8 + Math.floor(Math.random() * 12);
+            const endurance = 8 + Math.floor(Math.random() * 12);
+
+            return {
+                name, color, shape: av.shape, icon: av.icon,
+                power, speedGain, topSpeed, grapple, endurance, energy: 100, maxEnergy: 100,
+                x: side === 'left' ? 240 : 560,
+                y: 200,
+                vx: 0,
+                vy: 0,
+                radius: 30 + (power * 0.8), // Power influences size visually!
+                side
+            };
+        }
+
+        function createStatBarHTML(value, color) {
+            const percentage = (value / 25) * 100;
+            return `
+                <div class="flex items-center gap-2">
+                    <div class="w-20 font-black text-xs uppercase text-black shrink-0"></div>
+                    <div class="flex-1 brutal-border h-5 bg-[#eee] p-0.5 relative overflow-hidden">
+                        <div class="h-full" style="width: ${percentage}%; background-color: ${color};"></div>
+                    </div>
+                    <span class="text-xs font-black w-6 text-right">${value}</span>
+                </div>
+            `;
+        }
+
+        function renderStatsCard(fighter, index) {
+            document.getElementById(`name-${index}`).textContent = fighter.name;
+            const cardEl = document.getElementById(`card-${index}`);
+            
+            // Adjust individual wrestler colors inside brutal cards
+            const avatarBox = document.getElementById(`avatar-${index}`);
+            avatarBox.style.backgroundColor = fighter.color;
+            avatarBox.textContent = fighter.icon;
+            
+            const statsHTML = `
+                <div class="stat-row flex flex-col">${createStatBarHTML(fighter.power, '#ff2a85')} <span class="text-[9px] -mt-1 uppercase text-gray-500">Power / Strike Force</span></div>
+                <div class="stat-row flex flex-col">${createStatBarHTML(fighter.speedGain, '#39ff14')} <span class="text-[9px] -mt-1 uppercase text-gray-500">Accel / Reaction Rate</span></div>
+                <div class="stat-row flex flex-col">${createStatBarHTML(fighter.topSpeed, '#00f0ff')} <span class="text-[9px] -mt-1 uppercase text-gray-500">Peak Circuit Speed</span></div>
+                <div class="stat-row flex flex-col">${createStatBarHTML(fighter.grapple, '#9d4edd')} <span class="text-[9px] -mt-1 uppercase text-gray-500">Magnetic Grapple Force</span></div>
+                <div class="stat-row flex flex-col">${createStatBarHTML(fighter.endurance, '#ffe135')} <span class="text-[9px] -mt-1 uppercase text-gray-500">Sub-Coolant Stamina</span></div>
+            `;
+            document.getElementById(`stats-${index}`).innerHTML = statsHTML;
+        }
+
+        function goToBetting() {
+            fighter0 = generateSumo('left');
+            fighter1 = generateSumo('right');
+            
+            renderStatsCard(fighter0, 0);
+            renderStatsCard(fighter1, 1);
+            
+            // Reset selection
+            selectedBet = -1;
+            document.getElementById('card-0').className = "brutal-card flex-1 p-5 cursor-pointer bg-white hover:bg-cyan-50 border-black flex flex-col justify-between";
+            document.getElementById('card-1').className = "brutal-card flex-1 p-5 cursor-pointer bg-white hover:bg-pink-50 border-black flex flex-col justify-between";
+            document.getElementById('fight-btn').classList.add('hidden');
+
+            showScreen('betting-screen');
+        }
+
+        function selectFighter(index) {
+            selectedBet = index;
+            playSound('click');
+            
+            // Heavy brutal highlighted border
+            document.getElementById('card-0').className = "brutal-card flex-1 p-5 cursor-pointer bg-white border-black flex flex-col justify-between opacity-60 scale-95";
+            document.getElementById('card-1').className = "brutal-card flex-1 p-5 cursor-pointer bg-white border-black flex flex-col justify-between opacity-60 scale-95";
+            
+            const selected = document.getElementById(`card-${index}`);
+            // Brutalist select theme: diagonal neon border shine
+            selected.className = "brutal-card flex-1 p-5 cursor-pointer bg-[#ffe135] border-black flex flex-col justify-between scale-105 opacity-100 brutal-border-thick";
+            
+            document.getElementById('fight-btn').classList.remove('hidden');
+        }
+
+        // --- STREAMING_CHUNK:Implementing juicy 2D Sumo Battle Physics... ---
+        let battleActive = false;
+        let ringRadius = 160;
+        let ringCenterX = 400;
+        let ringCenterY = 200;
+
+        function startFight() {
+            showScreen('battle-screen');
+            battleActive = true;
+            
+            ringCenterX = bCanvas.width / 2;
+            ringCenterY = bCanvas.height / 2;
+
+            fighter0.x = ringCenterX - 180;
+            fighter0.y = ringCenterY;
+            fighter0.vx = 0;
+            fighter0.vy = 0;
+            fighter0.energy = 100;
+
+            fighter1.x = ringCenterX + 180;
+            fighter1.y = ringCenterY;
+            fighter1.vx = 0;
+            fighter1.vy = 0;
+            fighter1.energy = 100;
+
+            document.getElementById('battle-announcement').textContent = "READY... NOKOTTA!!";
+            setTimeout(() => {
+                document.getElementById('battle-announcement').textContent = "CRUSH!";
+            }, 1000);
+
+            requestAnimationFrame(updateBattle);
+        }
+
+        // Action Slap Strings
+        const smackTexts = ["SLAP!", "CLANG!", "WHACK!", "SMASH!", "ZAP!", "POW!", "BOOM!"];
+
+        function updateBattle() {
+            if (!battleActive) return;
+
+            // Handle AI dynamics
+            [fighter0, fighter1].forEach((f, idx) => {
+                const opponent = idx === 0 ? fighter1 : fighter0;
+                
+                const dx = opponent.x - f.x;
+                const dy = opponent.y - f.y;
+                // Guard division by zero or extreme proximity with a floor of 0.1
+                const dist = Math.hypot(dx, dy) || 0.1;
+
+                // Add aggressive pathing
+                if (f.energy > 12) {
+                    const speedMultiplier = (f.speedGain / 100);
+                    // Accel towards opponent
+                    f.vx += (dx / dist) * speedMultiplier;
+                    f.vy += (dy / dist) * speedMultiplier;
+                } else {
+                    // Exhausted escape or side stepping
+                    f.vx += (-dy / dist) * 0.15; 
+                    f.vy += (dx / dist) * 0.15;
+                }
+
+                // Apply drag friction
+                f.vx *= 0.96;
+                f.vy *= 0.96;
+
+                // Speed limit capping
+                const curSpeed = Math.hypot(f.vx, f.vy);
+                const speedCap = f.topSpeed / 2.8;
+                if (curSpeed > speedCap) {
+                    f.vx = (f.vx / curSpeed) * speedCap;
+                    f.vy = (f.vy / curSpeed) * speedCap;
+                }
+
+                f.x += f.vx;
+                f.y += f.vy;
+
+                // Slowly charge base sub-coolant stamina
+                f.energy = Math.min(100, f.energy + (f.endurance / 80));
+            });
+
+            // Bumper Ring-to-Ring collision calculations
+            const dx = fighter1.x - fighter0.x;
+            const dy = fighter1.y - fighter0.y;
+            const dist = Math.hypot(dx, dy) || 0.1;
+            const minDist = fighter0.radius + fighter1.radius;
+
+            if (dist < minDist) {
+                playSound('hit');
+
+                // Compute impact vector
+                const speed0 = Math.hypot(fighter0.vx, fighter0.vy);
+                const speed1 = Math.hypot(fighter1.vx, fighter1.vy);
+                const combinedSpeed = speed0 + speed1;
+
+                // Screen shake magnitude matches collision velocity!
+                const shakeMagnitude = Math.min(combinedSpeed * 4.5, 20);
+                if (shakeMagnitude > 3) {
+                    const container = document.getElementById('game-container');
+                    container.classList.add('shake');
+                    setTimeout(() => container.classList.remove('shake'), 350);
+                }
+
+                // Push wrestlers apart (spring math)
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                fighter0.x -= nx * overlap * 0.5;
+                fighter0.y -= ny * overlap * 0.5;
+                fighter1.x += nx * overlap * 0.5;
+                fighter1.y += ny * overlap * 0.5;
+
+                // Physics knockback vectors
+                const weightFriction0 = fighter0.energy / 100;
+                const weightFriction1 = fighter1.energy / 100;
+
+                const forceSumo0 = (fighter0.power * 0.3) + (fighter0.grapple * weightFriction0 * 1.5);
+                const forceSumo1 = (fighter1.power * 0.3) + (fighter1.grapple * weightFriction1 * 1.5);
+
+                fighter0.vx -= nx * forceSumo1 * 0.6;
+                fighter0.vy -= ny * forceSumo1 * 0.6;
+                fighter1.vx += nx * forceSumo0 * 0.6;
+                fighter1.vy += ny * forceSumo0 * 0.6;
+
+                // Lose coolant stamina relative to hit
+                fighter0.energy = Math.max(0, fighter0.energy - (25 / fighter0.endurance));
+                fighter1.energy = Math.max(0, fighter1.energy - (25 / fighter1.endurance));
+
+                // Spawn floating Action Text juices
+                const hitX = fighter0.x + nx * fighter0.radius;
+                const hitY = fighter0.y + ny * fighter0.radius;
+                const actionWord = smackTexts[Math.floor(Math.random() * smackTexts.length)];
+                hitVFX.push({
+                    text: actionWord,
+                    x: hitX,
+                    y: hitY,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: -4 - Math.random() * 4,
+                    size: 16 + Math.floor(Math.random() * 15),
+                    life: 1.0,
+                    color: Math.random() > 0.5 ? 'var(--neo-pink)' : 'var(--neo-cyan)'
+                });
+
+                // Spawn spark particles on impact
+                const sparksCount = 10 + Math.floor(combinedSpeed * 5);
+                for (let i = 0; i < sparksCount; i++) {
+                    sparks.push({
+                        x: hitX,
+                        y: hitY,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: (Math.random() - 0.5) * 12,
+                        color: Math.random() > 0.5 ? 'var(--neo-yellow)' : '#ffffff',
+                        life: 1.0,
+                        decay: 0.02 + Math.random() * 0.04
+                    });
+                }
+            }
+
+            // Draw current canvas scene
+            bCtx.fillStyle = '#0a0a0c';
+            bCtx.fillRect(0, 0, bCanvas.width, bCanvas.height);
+
+            // Draw a Neo-Brutalist vector Grid inside arena
+            bCtx.strokeStyle = '#222';
+            bCtx.lineWidth = 1;
+            const gridSize = 40;
+            for (let i = 0; i < bCanvas.width; i += gridSize) {
+                bCtx.beginPath(); bCtx.moveTo(i, 0); bCtx.lineTo(i, bCanvas.height); bCtx.stroke();
+            }
+            for (let j = 0; j < bCanvas.height; j += gridSize) {
+                bCtx.beginPath(); bCtx.moveTo(0, j); bCtx.lineTo(bCanvas.width, j); bCtx.stroke();
+            }
+
+            // Draw Dohyo Ring border
+            ringCenterX = bCanvas.width / 2;
+            ringCenterY = bCanvas.height / 2;
+            ringRadius = Math.max(15, Math.min(bCanvas.width * 0.45, 160));
+
+            // Brutalist Ring Base
+            bCtx.beginPath();
+            bCtx.arc(ringCenterX, ringCenterY, ringRadius, 0, Math.PI * 2);
+            bCtx.fillStyle = '#18181c';
+            bCtx.fill();
+            bCtx.strokeStyle = 'var(--neo-black)';
+            bCtx.lineWidth = 10;
+            bCtx.stroke();
+
+            bCtx.beginPath();
+            bCtx.arc(ringCenterX, ringCenterY, Math.max(1, ringRadius - 10), 0, Math.PI * 2);
+            bCtx.strokeStyle = 'var(--neo-pink)';
+            bCtx.lineWidth = 4;
+            bCtx.stroke();
+
+            // Draw both Sumos
+            [fighter0, fighter1].forEach(f => {
+                // Ghost trailing effect based on speed!
+                const speed = Math.hypot(f.vx, f.vy);
+                if (speed > 1.5) {
+                    bCtx.save();
+                    bCtx.globalAlpha = 0.25;
+                    bCtx.fillStyle = f.color;
+                    bCtx.beginPath();
+                    bCtx.arc(f.x - f.vx * 1.5, f.y - f.vy * 1.5, f.radius, 0, Math.PI * 2);
+                    bCtx.fill();
+                    bCtx.restore();
+                }
+
+                // Render Main Wrestler Body
+                bCtx.save();
+                bCtx.translate(f.x, f.y);
+
+                // SQUASH & STRETCH JUICE: scale dynamically on speed impact!
+                const scaleX = 1 + (f.vx * 0.012);
+                const scaleY = 1 + (f.vy * 0.012);
+                bCtx.scale(scaleX, scaleY);
+
+                bCtx.fillStyle = f.color;
+                bCtx.lineWidth = 6;
+                bCtx.strokeStyle = 'var(--neo-black)';
+
+                bCtx.beginPath();
+                if (f.shape === 'circle') {
+                    bCtx.arc(0, 0, f.radius, 0, Math.PI * 2);
+                } else if (f.shape === 'hexagon') {
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i;
+                        const hx = f.radius * Math.cos(angle);
+                        const hy = f.radius * Math.sin(angle);
+                        if (i === 0) bCtx.moveTo(hx, hy);
+                        else bCtx.lineTo(hx, hy);
+                    }
+                    bCtx.closePath();
+                } else {
+                    // Shield
+                    bCtx.rect(-f.radius, -f.radius, f.radius * 2, f.radius * 2);
+                }
+                bCtx.fill();
+                bCtx.stroke();
+
+                // Draw Internal Core Symbol Character
+                bCtx.fillStyle = 'var(--neo-black)';
+                bCtx.font = `${f.radius * 0.9}px sans-serif`;
+                bCtx.textAlign = 'center';
+                bCtx.textBaseline = 'middle';
+                bCtx.fillText(f.icon, 0, 0);
+
+                bCtx.restore();
+
+                // Draw Coolant Energy Bars on top of characters
+                const barWidth = f.radius * 1.8;
+                const barHeight = 8;
+                const barX = f.x - barWidth / 2;
+                const barY = f.y - f.radius - 20;
+
+                // Brutalist container box
+                bCtx.fillStyle = 'var(--neo-black)';
+                bCtx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+                bCtx.fillStyle = '#ff2a85';
+                bCtx.fillRect(barX, barY, barWidth, barHeight);
+                bCtx.fillStyle = 'var(--neo-green)';
+                bCtx.fillRect(barX, barY, barWidth * (f.energy / 100), barHeight);
+            });
+
+            // Update & Draw Collision Spark Particles
+            sparks.forEach((sp, index) => {
+                bCtx.fillStyle = sp.color;
+                bCtx.fillRect(sp.x, sp.y, 4, 4);
+
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.vy += 0.15; // Gravity pulling down
+                sp.life -= sp.decay;
+
+                if (sp.life <= 0) {
+                    sparks.splice(index, 1);
+                }
+            });
+
+            // Draw Floating JUICE Smack texts
+            hitVFX.forEach((vfx, index) => {
+                bCtx.fillStyle = vfx.color;
+                bCtx.font = `900 ${vfx.size}px 'Unbounded', sans-serif`;
+                bCtx.textAlign = 'center';
+                // Thick brutal shadow for text
+                bCtx.strokeStyle = 'var(--neo-black)';
+                bCtx.lineWidth = 4;
+                bCtx.strokeText(vfx.text, vfx.x, vfx.y);
+                bCtx.fillText(vfx.text, vfx.x, vfx.y);
+
+                vfx.x += vfx.vx;
+                vfx.y += vfx.vy;
+                vfx.vy += 0.12; // slow fall
+                vfx.life -= 0.02;
+
+                if (vfx.life <= 0) {
+                    hitVFX.splice(index, 1);
+                }
+            });
+
+            // --- CHECK FOR RING OUTS ---
+            const dist0 = Math.hypot(fighter0.x - ringCenterX, fighter0.y - ringCenterY);
+            const dist1 = Math.hypot(fighter1.x - ringCenterX, fighter1.y - ringCenterY);
+
+            let winner = null;
+            if (dist0 > ringRadius) {
+                winner = 1; // Fighter B wins
+            } else if (dist1 > ringRadius) {
+                winner = 0; // Fighter A wins
+            }
+
+            if (winner !== null) {
+                battleActive = false;
+                handleBattleOutcome(winner);
+                return;
+            }
+
+            requestAnimationFrame(updateBattle);
+        }
+
+        // --- STREAMING_CHUNK:Handling game state transitions, modals, and consequences... ---
+        function handleBattleOutcome(winningIndex) {
+            const betWon = (selectedBet === winningIndex);
+            const winnerObj = winningIndex === 0 ? fighter0 : fighter1;
+            
+            if (betWon) {
+                playSound('fanfare-win');
+                triggerModal(
+                    "💵 PAYMENT DEFERRED!", 
+                    `Your cyber-sumo unit <strong class="text-xl text-[#00f0ff] bg-black px-2 py-0.5">${winnerObj.name}</strong> dominated the ring and secure-routed the ledger!<br><br>The credit syndicate grants your neural chip temporary reprieve. For now...`, 
+                    "BET AGAIN (PROLONG LIFE)", 
+                    () => {
+                        goToBetting();
+                    }
+                );
+            } else {
+                playSound('fanfare-lose');
+                triggerModal(
+                    "🚨 DEBT FORFEITED!", 
+                    `Your chosen unit failed to stay inside the dohyo boundary.<br><br>The automated loan recovery algorithm demands physical asset liquefaction!`, 
+                    "ENTER SACRIFICE SCREEN 💀", 
+                    () => {
+                        setupPenaltyScreen();
+                        showScreen('penalty-screen');
+                    }
+                );
+            }
+        }
+
+        function setupPenaltyScreen() {
+            // Render list of biological remnants
+            const listUi = document.getElementById('possessions-list-ui');
+            listUi.innerHTML = '';
+            possessions.forEach((p, index) => {
+                const item = document.createElement('button');
+                item.className = `w-full text-left p-4 brutal-border brutal-shadow-sm font-black transition-all duration-100 flex justify-between items-center ${
+                    p.intact 
+                        ? 'bg-white hover:bg-[#ff2a85] hover:text-white cursor-pointer active:translate-x-1 active:translate-y-1 active:shadow-none' 
+                        : 'bg-gray-300 text-gray-500 border-gray-400 shadow-none pointer-events-none line-through'
+                }`;
+                
+                item.innerHTML = p.intact 
+                    ? `<span>${p.name}</span> <span class="bg-black text-white px-2 py-1 text-xs brutal-border">EXPLODE</span>`
+                    : `<span>${p.name}</span> <span class="bg-[#ff2a85] text-white px-2 py-1 text-xs brutal-border">[DESTROYED]</span>`;
+                
+                item.onclick = () => explodePossession(index);
+                listUi.appendChild(item);
+            });
+
+            initHandCanvas();
+            requestAnimationFrame(drawHandLoop);
+        }
+
+        function explodePossession(index) {
+            if (!possessions[index].intact) return;
+            possessions[index].intact = false;
+            playSound('explosion');
+
+            // Flashes the body yellow and red on explosion
+            document.body.style.backgroundColor = 'var(--neo-pink)';
+            setTimeout(() => {
+                document.body.style.backgroundColor = '';
+                updateStatusBars();
+                
+                triggerModal(
+                    "💥 ASSET DETONATED", 
+                    `A micro-charge inside <strong class="text-[#ff2a85]">${possessions[index].name}</strong> was remotely detonated by the credit agency.<br><br>Your net worth continues its downward spiral.`, 
+                    "CONTINUE TO NEXT ROUND", 
+                    () => {
+                        if (activePossessionsCount > 0 || activeFingersCount > 0) {
+                            goToBetting();
+                        }
+                    }
+                );
+            }, 300);
+        }
+
+        // --- STREAMING_CHUNK:Coding cybernetic hand canvas interaction and laser chopper animation... ---
+        let guillotineTargetY = -100;
+        let guillotineCurrentY = -100;
+        let chopperAnimating = false;
+
+        function initHandCanvas() {
+            sparks = [];
+            debris = [];
+            brokenParts = [];
+
+            hCanvas.onmousedown = (e) => {
+                if (chopperAnimating) return;
+
+                const rect = hCanvas.getBoundingClientRect();
+                const scaleX = hCanvas.width / rect.width;
+                const scaleY = hCanvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
+                // Check click intersection with intact finger joints
+                fingers.forEach((f, idx) => {
+                    if (!f.intact) return;
+                    const d = Math.hypot(clickX - f.x, clickY - f.y);
+                    if (d < f.r + 15) {
+                        animateGuillotineSlice(idx);
+                    }
+                });
+            };
+        }
+
+        function animateGuillotineSlice(index) {
+            chopperAnimating = true;
+            playSound('laser');
+
+            const blade = document.getElementById('laser-guillotine');
+            // Trigger visual HTML blade drop juice
+            blade.style.transform = `translateY(160px)`;
+            
+            setTimeout(() => {
+                // Slice trigger after short blade travel delay
+                chopFinger(index);
+                blade.style.transform = `translateY(0px)`;
+                chopperAnimating = false;
+            }, 300);
+        }
+
+        function chopFinger(index) {
+            fingers[index].intact = false;
+            playSound('explosion');
+
+            const originX = fingers[index].x;
+            const originY = fingers[index].y;
+
+            // Massive fountains of neon hydraulic fluids and sparks
+            for (let i = 0; i < 90; i++) {
+                sparks.push({
+                    x: originX,
+                    y: originY,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: (Math.random() - 0.8) * 16 - 6,
+                    color: Math.random() > 0.4 ? 'var(--neo-green)' : 'var(--neo-pink)',
+                    life: 1.0,
+                    decay: 0.01 + Math.random() * 0.02
+                });
+            }
+
+            // High juice physics flying metal chunk
+            brokenParts.push({
+                x: fingers[index].segmentX,
+                y: fingers[index].segmentY,
+                vx: (Math.random() - 0.5) * 10,
+                vy: -12 - Math.random() * 8,
+                angle: 0,
+                vAngle: (Math.random() - 0.5) * 0.6,
+                name: fingers[index].name
+            });
+
+            // Electric buzz sound loops
+            for (let s = 0; s < 12; s++) {
+                setTimeout(() => playSound('spark'), s * 45);
+            }
+
+            setTimeout(() => {
+                updateStatusBars();
+                triggerModal(
+                    "🦾 FINGER AMPUTATED", 
+                    `A precise high-frequency laser bolt severed your prosthetic <strong class="text-[#00f0ff]">${fingers[index].name}</strong>.<br><br>The unit was recycled for precious metals.`, 
+                    "CONTINUE TO NEXT ROUND", 
+                    () => {
+                        if (activePossessionsCount > 0 || activeFingersCount > 0) {
+                            goToBetting();
+                        }
+                    }
+                );
+            }, 1000);
+        }
+
+        function drawHandLoop() {
+            hCtx.fillStyle = '#0f0f11';
+            hCtx.fillRect(0, 0, hCanvas.width, hCanvas.height);
+
+            // Brutalist motherboard grid trace background
+            hCtx.strokeStyle = '#222';
+            hCtx.lineWidth = 1;
+            for (let x = 0; x < hCanvas.width; x += 25) {
+                hCtx.beginPath(); hCtx.moveTo(x, 0); hCtx.lineTo(x, hCanvas.height); hCtx.stroke();
+            }
+
+            // Draw Metal Cybernetic Wrist & Base palm
+            hCtx.strokeStyle = 'var(--neo-black)';
+            hCtx.lineWidth = 5;
+            hCtx.fillStyle = '#2d2d34';
+            
+            hCtx.beginPath();
+            hCtx.moveTo(60, 160);
+            hCtx.lineTo(260, 150);
+            hCtx.lineTo(230, 260);
+            hCtx.lineTo(90, 270);
+            hCtx.closePath();
+            hCtx.fill();
+            hCtx.stroke();
+
+            // Solder connections decoration lines
+            hCtx.strokeStyle = 'var(--neo-green)';
+            hCtx.lineWidth = 2;
+            hCtx.beginPath();
+            hCtx.moveTo(160, 260);
+            hCtx.lineTo(160, 200);
+            hCtx.lineTo(110, 180);
+            hCtx.moveTo(160, 200);
+            hCtx.lineTo(210, 180);
+            hCtx.stroke();
+
+            // Draw copper microchips on board
+            hCtx.fillStyle = 'var(--neo-black)';
+            hCtx.fillRect(145, 205, 30, 30);
+            hCtx.fillStyle = 'var(--neo-yellow)';
+            hCtx.fillRect(150, 210, 20, 20);
+
+            // Draw interactive Finger connectors
+            fingers.forEach((f) => {
+                if (f.intact) {
+                    // Finger bone linkage
+                    hCtx.strokeStyle = '#555';
+                    hCtx.lineWidth = 10;
+                    hCtx.beginPath();
+                    hCtx.moveTo(f.x, 160);
+                    hCtx.lineTo(f.x, f.y);
+                    hCtx.stroke();
+
+                    // Green target activation node
+                    hCtx.fillStyle = 'var(--neo-green)';
+                    hCtx.beginPath();
+                    hCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                    hCtx.fill();
+                    hCtx.strokeStyle = 'var(--neo-black)';
+                    hCtx.lineWidth = 4;
+                    hCtx.stroke();
+
+                    // Interactive target label
+                    hCtx.fillStyle = 'var(--neo-black)';
+                    hCtx.font = "900 8px 'Space Grotesk'";
+                    hCtx.textAlign = 'center';
+                    hCtx.fillText("CHOP", f.x, f.y + 3);
+                } else {
+                    // Severed smoking wire end node
+                    hCtx.fillStyle = '#220011';
+                    hCtx.beginPath();
+                    hCtx.arc(f.x, 160, 10, 0, Math.PI * 2);
+                    hCtx.fill();
+                    hCtx.strokeStyle = 'var(--neo-pink)';
+                    hCtx.lineWidth = 3;
+                    hCtx.stroke();
+
+                    // Mini randomized spark spray
+                    if (Math.random() > 0.85) {
+                        for (let j = 0; j < 3; j++) {
+                            sparks.push({
+                                x: f.x,
+                                y: 160,
+                                vx: (Math.random() - 0.5) * 6,
+                                vy: (Math.random() - 0.5) * 6,
+                                color: 'var(--neo-yellow)',
+                                life: 0.5,
+                                decay: 0.05
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Flying severed segment physical simulation
+            brokenParts.forEach((part, idx) => {
+                hCtx.save();
+                hCtx.translate(part.x, part.y);
+                hCtx.rotate(part.angle);
+                
+                hCtx.fillStyle = '#666';
+                hCtx.fillRect(-6, -18, 12, 36);
+                hCtx.strokeStyle = 'var(--neo-black)';
+                hCtx.lineWidth = 3;
+                hCtx.strokeRect(-6, -18, 12, 36);
+
+                hCtx.fillStyle = 'var(--neo-pink)';
+                hCtx.beginPath();
+                hCtx.arc(0, -18, 10, 0, Math.PI * 2);
+                hCtx.fill();
+                hCtx.stroke();
+
+                hCtx.restore();
+
+                part.x += part.vx;
+                part.y += part.vy;
+                part.vy += 0.8; // Heavy gravity pull
+                part.angle += part.vAngle;
+            });
+
+            // Draw Spark Particles on hand canvas
+            sparks.forEach((sp, idx) => {
+                hCtx.fillStyle = sp.color;
+                hCtx.fillRect(sp.x, sp.y, 4, 4);
+
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.vy += 0.25; 
+                sp.life -= sp.decay;
+
+                if (sp.life <= 0) {
+                    sparks.splice(idx, 1);
+                }
+            });
+
+            if (document.getElementById('penalty-screen').classList.contains('active')) {
+                requestAnimationFrame(drawHandLoop);
+            }
+        }
+
+        // --- GAME OVER SYSTEM ---
+        function gameOver() {
+            showScreen('gameover-screen');
+            playSound('explosion');
+
+            let finalSummary = "";
+            if (activePossessionsCount === 0 && activeFingersCount === 0) {
+                finalSummary = `
+                    You are physically disarmed and completely destitute.<br><br>
+                    The Steel Sharks strip your biological components and throw you out onto the neon-slick asphalt. Game over.
+                `;
+            } else if (activePossessionsCount === 0) {
+                finalSummary = `
+                    You preserved your fingers but lost all earthly possessions.<br><br>
+                    You sit in a completely barren metal room, typing with cybernetic precision. Still, you survived.
+                `;
+            } else if (activeFingersCount === 0) {
+                finalSummary = `
+                    You saved your retro toaster but lost your entire cybernetic grip.<br><br>
+                    Typing on keypads is now an interesting challenge. Keep your pride intact.
+                `;
+            }
+
+            document.getElementById('gameover-text').innerHTML = `
+                <p class="text-xl mb-4 text-center font-extrabold tracking-wide uppercase">TOTAL ASSET LIQUIDATION</p>
+                <p class="leading-relaxed mb-4">${finalSummary}</p>
+                <p class="border-t-2 border-black pt-3 text-center text-xs text-white uppercase font-black">
+                    SURVIVED UNTIL SYSTEM CRASH
+                </p>
+            `;
+        }
+
+        function restartGame() {
+            possessions.forEach(p => p.intact = true);
+            fingers.forEach(f => f.intact = true);
+            updateStatusBars();
+            showScreen('intro-screen');
+        }
+
+        // Run updates on setup
+        updateStatusBars();
+    </script>
+</body>
+</html>
