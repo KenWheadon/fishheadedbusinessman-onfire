@@ -252,7 +252,17 @@ class GameManager {
    * @private
    */
   _updateActiveComponents(dt) {
+    const activeScreenMap = {
+      'START': 'start',
+      'PLAYING': 'playing',
+      'GAMEOVER': 'end'
+    };
+    const activeScreen = activeScreenMap[this._state];
+
     for (const [name, component] of Object.entries(this._components)) {
+      if (name === 'start' || name === 'playing' || name === 'end') {
+        if (name !== activeScreen) continue;
+      }
       if (typeof component.update === 'function') {
         component.update(dt);
       }
@@ -292,7 +302,17 @@ class GameManager {
    * @private
    */
   _drawActiveComponents(ctx) {
+    const activeScreenMap = {
+      'START': 'start',
+      'PLAYING': 'playing',
+      'GAMEOVER': 'end'
+    };
+    const activeScreen = activeScreenMap[this._state];
+
     for (const [name, component] of Object.entries(this._components)) {
+      if (name === 'start' || name === 'playing' || name === 'end') {
+        if (name !== activeScreen) continue;
+      }
       if (typeof component.draw !== 'function') continue;
 
       const bounds = this._layout[name] ?? { x: 0, y: 0 };
@@ -348,11 +368,23 @@ class GameManager {
         }
         break;
       }
-      case 'PLAYING':
+      case 'PLAYING': {
+        const mainComp = this._components['playing'];
+        // The components might need a reset if restarting
+        if (mainComp && typeof mainComp.reset === 'function') {
+           mainComp.reset();
+        }
         break;
-
-      case 'GAMEOVER':
+      }
+      case 'GAMEOVER': {
+        const endComp = this._components['end'];
+        if (endComp && typeof endComp.reset === 'function') {
+           endComp.reset();
+        }
+        // Force intro progress to 0 if it has one
+        if (endComp) endComp.introProgress = 0;
         break;
+      }
     }
   }
 
@@ -480,10 +512,22 @@ class GameManager {
       return; // Block other components
     }
 
+    const activeScreenMap = {
+      'START': 'start',
+      'PLAYING': 'playing',
+      'GAMEOVER': 'end'
+    };
+    const activeScreen = activeScreenMap[this._state];
+
     // Route to every component whose layout bounds contain the hit point.
     // Components clip themselves, so overlapping regions go to both.
     for (const [name, component] of Object.entries(this._components)) {
       if (name === 'achievements' || name === 'settings' || name === 'help' || name === 'credits') continue; // Already handled above
+      
+      if (name === 'start' || name === 'playing' || name === 'end') {
+        if (name !== activeScreen) continue;
+      }
+      
       if (typeof component[handlerName] !== 'function') continue;
 
       const bounds = this._layout[name] ?? { x: 0, y: 0, w: this._width, h: this._height };

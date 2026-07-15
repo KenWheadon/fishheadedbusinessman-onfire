@@ -15,9 +15,9 @@
     }
     canvas {
       display: block;
-      /* Scale canvas CSS size while keeping logical 800×600 pixels */
-      width: min(800px, 100vw);
-      aspect-ratio: 800 / 600;
+      /* Scale canvas CSS size while keeping logical 1280x720 pixels */
+      width: min(1280px, 100vw);
+      aspect-ratio: 1280 / 720;
       image-rendering: pixelated;
     }
   </style>
@@ -43,6 +43,13 @@
   <script src="settings/SettingsPopup.js"></script>
   <script src="credits/CreditsPopup.js"></script>
   <script src="help/HelpCarousel.js"></script>
+  
+  <script src="debt/DebtComponent.js"></script>
+  <script src="chars/chars.js"></script>
+  <script src="carrot/carrot.js"></script>
+  <script src="cards/cardGame.js"></script>
+  <script src="MainScreen.js"></script>
+  <script src="end/EndScreenComponent.js"></script>
 
   <!-- 3. Orchestrator -->
   <script src="GameManager.js"></script>
@@ -50,8 +57,8 @@
   <!-- 4. Bootstrap -->
   <script>
     // ── Canvas dimensions ──────────────────────────────────────────────────
-    const W = 800;
-    const H = 600;
+    const W = 1280;
+    const H = 720;
 
     // ── Layout: each component gets its slice of the canvas ───────────────
     //   During LOADING the GameLoader fills the whole canvas.
@@ -63,6 +70,8 @@
       settings:     { x: (W - 460) / 2, y: (H - 400) / 2, w: 460, h: 400 },
       credits:      { x: 0,   y: 0, w: W, h: H },
       help:         { x: 0,   y: 0, w: W, h: H },
+      playing:      { x: 0,   y: 0, w: W, h: H },
+      end:          { x: 0,   y: 0, w: W, h: H },
     };
 
     // ── Instantiate modular components ────────────────────────────────────
@@ -111,6 +120,20 @@
       height: LAYOUT.help.h,
     });
 
+    const mainScreen = new MainScreen({
+      width:  LAYOUT.playing.w,
+      height: LAYOUT.playing.h,
+      onGameOver: () => gm._transitionTo('GAMEOVER'),
+    });
+
+    const endScreen = new EndScreenComponent({
+      width:  LAYOUT.end.w,
+      height: LAYOUT.end.h,
+      onMainMenu: () => gm._transitionTo('START'),
+      onSettings: () => settingsPopup.show(),
+      onCredits: () => creditsPopup.show(),
+    });
+
     // ── Wire up GameManager ────────────────────────────────────────────────
     const gm = new GameManager({
       canvasId: 'gameCanvas',
@@ -121,6 +144,8 @@
 
       components: {
         start:        startScreen,
+        playing:      mainScreen,
+        end:          endScreen,
         settings:     settingsPopup,
         achievements: achievementSystem,
         credits:      creditsPopup,
