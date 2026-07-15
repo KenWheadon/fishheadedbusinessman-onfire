@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fish-Headed Businessman on Fire</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0e0e12;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas {
+      display: block;
+      /* Scale canvas CSS size while keeping logical 800×600 pixels */
+      width: min(800px, 100vw);
+      aspect-ratio: 800 / 600;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!--
+    Load order matters:
+      1. AssetManager  – must be global before any component references it
+      2. Component files (GameLoader, StartScreen, AchievementSystem, …)
+      3. GameManager   – references the components
+      4. This bootstrap script
+  -->
+
+  <!-- 1. Asset pipeline -->
+  <script src="AssetManager.js"></script>
+
+  <!-- 2. Screen components -->
+  <script src="loading/loading.js"></script>
+  <script src="start/StartScreen.js"></script>
+  <script src="tracker/achievements.js"></script>
+  <script src="settings/SettingsPopup.js"></script>
+  <script src="credits/CreditsPopup.js"></script>
+  <script src="help/HelpCarousel.js"></script>
+
+  <!-- 3. Orchestrator -->
+  <script src="GameManager.js"></script>
+
+  <!-- 4. Bootstrap -->
+  <script>
+    // ── Canvas dimensions ──────────────────────────────────────────────────
+    const W = 800;
+    const H = 600;
+
+    // ── Layout: each component gets its slice of the canvas ───────────────
+    //   During LOADING the GameLoader fills the whole canvas.
+    //   The achievements panel dashboard is hidden. StartScreen and AchievementSystem
+    //   cover the full canvas, while SettingsPopup is centered.
+    const LAYOUT = {
+      start:        { x: 0,   y: 0, w: W, h: H },
+      achievements: { x: 0,   y: 0, w: W, h: H },
+      settings:     { x: (W - 460) / 2, y: (H - 400) / 2, w: 460, h: 400 },
+      credits:      { x: 0,   y: 0, w: W, h: H },
+      help:         { x: 0,   y: 0, w: W, h: H },
+    };
+
+    // ── Instantiate modular components ────────────────────────────────────
+    const settingsPopup = new SettingsPopup({
+      width:  LAYOUT.settings.w,
+      height: LAYOUT.settings.h,
+    }, {
+      onAchievements: () => {
+        achievementSystem.openCatalog();
+      },
+      onHelp: () => {
+        helpCarousel.show();
+      },
+      onCredits: () => {
+        creditsPopup.show();
+      },
+      onClose: () => {
+        console.log('Settings Closed!');
+      },
+      onVolumeChange: (type, value) => {
+        console.log(`Volume changed [${type}]: ${value}`);
+      }
+    });
+
+    const startScreen = new StartScreen({
+      width:  LAYOUT.start.w,
+      height: LAYOUT.start.h,
+      onPlay:     () => gm.transitionToPlaying(),   // calls into GameManager
+      onSettings: () => {
+        settingsPopup.show();
+      },
+    });
+
+    const achievementSystem = new AchievementSystem({
+      width:  LAYOUT.achievements.w,
+      height: LAYOUT.achievements.h,
+    });
+
+    const creditsPopup = new CreditsPopup({
+      width:  LAYOUT.credits.w,
+      height: LAYOUT.credits.h,
+    });
+
+    const helpCarousel = new HelpCarousel({
+      width:  LAYOUT.help.w,
+      height: LAYOUT.help.h,
+    });
+
+    // ── Wire up GameManager ────────────────────────────────────────────────
+    const gm = new GameManager({
+      canvasId: 'gameCanvas',
+      width:    W,
+      height:   H,
+
+      assets:   AssetManager.MANIFEST,
+
+      components: {
+        start:        startScreen,
+        settings:     settingsPopup,
+        achievements: achievementSystem,
+        credits:      creditsPopup,
+        help:         helpCarousel,
+      },
+      layout: LAYOUT,
+
+      // Achievement hook: bridges GameManager events into the AchievementSystem
+      onAchievementTriggered: (key, data) => {
+        console.log(`[Achievement Hook] "${key}"`, data ?? '');
+        achievementSystem.unlockAchievement(key);
+      },
+
+      loaderConfig: {
+        // Any overrides forwarded to new GameLoader(config)
+      },
+    });
+
+    // Expose a clean transition helper used by StartScreen.onPlay above
+    gm.transitionToPlaying = () => gm._transitionTo('PLAYING');
+
+    // ── Go! ────────────────────────────────────────────────────────────────
+    gm.init();
+  </script>
+</body>
+</html>

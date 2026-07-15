@@ -185,6 +185,7 @@ class AchievementSystem {
    * Component Input Engine Hook (MouseMove Interaction Handler)
    */
   handleMouseMove(localX, localY) {
+    if (this.catalogTransition < 0.01) return;
     this.mouseLocalX = localX;
     this.mouseLocalY = localY;
   }
@@ -193,6 +194,7 @@ class AchievementSystem {
    * Component Input Engine Hook (Click Interaction Handler)
    */
   handleMouseClick(localX, localY) {
+    if (this.catalogTransition < 0.01) return false;
     // Intercept hitboxes in reverse order (drawn on top down processing)
     for (let i = this.hitboxes.length - 1; i >= 0; i--) {
       const box = this.hitboxes[i];
@@ -265,9 +267,8 @@ class AchievementSystem {
     // Reset hitboxes layer pass
     this.hitboxes = [];
 
-    if (this.catalogTransition < 0.01) {
-      this.drawDashboardView(ctx);
-    } else {
+    // Only draw the catalog overlay if it is transitions/open
+    if (this.catalogTransition >= 0.01) {
       this.drawCatalogOverlayView(ctx);
     }
 

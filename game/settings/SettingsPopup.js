@@ -198,7 +198,7 @@ class SettingsPopup {
         if (this.state === 'OFFSCREEN') return;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(x, y, this.width, this.height);
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         ctx.save();
         ctx.translate(x + this.width / 2, y + this.height / 2);
