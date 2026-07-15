@@ -1,15 +1,8 @@
 class DebtComponent {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        if (!this.canvas) {
-            console.error(`Canvas element with id "${canvasId}" not found.`);
-            return;
-        }
-        this.ctx = this.canvas.getContext('2d');
-        
-        // Base internal resolution maintaining a sleek 21:9 aspect ratio
-        this.canvas.width = 840;
-        this.canvas.height = 360;
+    constructor(config = {}) {
+        // Configuration & boundaries strictly respected
+        this.width = config.width || 840;
+        this.height = config.height || 360;
 
         // Core State variables
         this.initialDebt = 300000;
@@ -20,16 +13,38 @@ class DebtComponent {
         // Particle & Animation tracking
         this.particles = [];
         this.confettiTimer = 0;
-        this.lastTime = 0;
 
-        // Start the animation loop
-        requestAnimationFrame((timestamp) => this.loop(timestamp));
+        // "Juice" Upgrades: Spring Animation & Floating Combat Text
+        this.textScale = 1.0;
+        this.textScaleTarget = 1.0;
+        this.textScaleVelocity = 0.0;
+        this.springK = 220;      // Spring Stiffness
+        this.springDamping = 10; // Dampening factor
+        this.floatingTexts = []; // Array of floating payment indicators
+
+        // Mouse Hover Tracking (Local space)
+        this.isHoveringButton = false;
     }
 
     pay() {
         if (this.state !== 'active') return;
 
         this.debt -= 25000;
+        
+        // Trigger visual "impact" bounce by compressing the scale
+        this.textScale = 0.75;
+        this.textScaleVelocity = 0;
+
+        // Spawn floating indicator ("-$25k") near the payment region
+        this.floatingTexts.push({
+            text: '-$25,000',
+            x: this.width / 2 + (Math.random() * 80 - 40),
+            y: this.height / 2 + 15,
+            vy: -110, // speed going upwards (pixels/sec)
+            opacity: 1.0,
+            color: '#22c55e'
+        });
+
         if (this.debt <= 0) {
             this.debt = 0;
             this.triggerWin();
@@ -47,31 +62,34 @@ class DebtComponent {
         this.visualDebt = this.initialDebt; 
         this.state = 'active';
         this.particles = [];
+        this.floatingTexts = [];
         this.confettiTimer = 0;
+        this.textScale = 1.0;
+        this.textScaleVelocity = 0.0;
     }
 
     triggerWin() {
         this.state = 'won';
-        this.confettiTimer = 180; 
+        this.confettiTimer = 180; // Total duration ticks for generating confetti
     }
 
     // Spawn falling blood/red drops from the top
     spawnRedParticle() {
         this.particles.push({
-            x: Math.random() * this.canvas.width,
+            x: Math.random() * this.width,
             y: -10,
-            speed: 2 + Math.random() * 4,
+            speed: 2 + Math.random() * 4, // Multiplied by ticks in update()
             length: 10 + Math.random() * 20,
             width: 1.5 + Math.random() * 2,
             opacity: 0.3 + Math.random() * 0.7
         });
     }
 
-    // Spawn confetti exploding from the bottom corners
+    // Spawn confetti exploding from bottom corners
     spawnConfetti() {
         const colors = ['#FFC107', '#FF5722', '#E91E63', '#9C27B0', '#3F51B5', '#00BCD4', '#4CAF50'];
-        this.particles.push(this.createConfettiPiece(0, this.canvas.height, 45, colors));
-        this.particles.push(this.createConfettiPiece(this.canvas.width, this.canvas.height, 135, colors));
+        this.particles.push(this.createConfettiPiece(0, this.height, 45, colors));
+        this.particles.push(this.createConfettiPiece(this.width, this.height, 135, colors));
     }
 
     createConfettiPiece(x, y, baseAngle, colors) {
@@ -92,60 +110,136 @@ class DebtComponent {
         };
     }
 
-    update() {
-        // Smoothly animate the visible debt value down
-        if (this.visualDebt > this.debt) {
-            const difference = this.visualDebt - this.debt;
-            const step = Math.ceil(difference * 0.12);
-            this.visualDebt -= step;
-        }
+    // Standard local input handlers
+    handleMouseMove(localX, localY) {
+        // Track whether pointer is over interactive center zone
+        const centerX = this.width / 2;
+        const centerY = this.height / 2 + 15;
+        const hoverRadius = 130;
+        
+        const dx = localX - centerX;
+        const dy = localY - centerY;
+        this.isHoveringButton = (dx * dx + dy * dy) < hoverRadius * hoverRadius;
+    }
 
-        // Handle Lost State logic
-        if (this.state === 'lost') {
-            if (this.particles.length < 100 && Math.random() < 0.4) {
-                this.spawnRedParticle();
-            }
-            this.particles.forEach((p, index) => {
-                p.y += p.speed;
-                if (p.y > this.canvas.height) this.particles.splice(index, 1);
-            });
-        }
+    handleMouseClick(localX, localY) {
+        if (this.state !== 'active') return;
 
-        // Handle Won State logic
-        if (this.state === 'won') {
-            if (this.confettiTimer > 0) {
-                this.spawnConfetti();
-                this.confettiTimer--;
-            }
-            this.particles.forEach((p, index) => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += p.gravity;
-                p.rotation += p.rotationSpeed;
-                if (this.confettiTimer <= 0) p.opacity -= 0.01; 
-
-                if (p.y > this.canvas.height || p.opacity <= 0) {
-                    this.particles.splice(index, 1);
-                }
-            });
+        // If clicking within active range, register a payment internally
+        const centerX = this.width / 2;
+        const centerY = this.height / 2 + 15;
+        const hoverRadius = 130;
+        
+        const dx = localX - centerX;
+        const dy = localY - centerY;
+        
+        if (dx * dx + dy * dy < hoverRadius * hoverRadius) {
+            this.pay();
         }
     }
 
-    draw() {
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+    update(dt) {
+        // Safeguard against background tabs or extreme frame drops (cap delta)
+        const safeDt = Math.min(dt, 0.1);
+        const ticks = safeDt * 60; // Standardize to standard 60 FPS reference multiplier
 
-        // Clear Background
+        // Animate visual debt deduction
+        if (this.visualDebt > this.debt) {
+            const difference = this.visualDebt - this.debt;
+            // Frame-rate independent visual smoothing
+            const step = difference * (1 - Math.pow(1 - 0.12, ticks));
+            if (difference < 1) {
+                this.visualDebt = this.debt;
+            } else {
+                this.visualDebt -= Math.max(1, Math.ceil(step));
+            }
+        }
+
+        // Spring Dampening physics update for scale pop effect
+        const scaleDiff = this.textScaleTarget - this.textScale;
+        const springForce = scaleDiff * this.springK;
+        this.textScaleVelocity += springForce * safeDt;
+        this.textScaleVelocity *= Math.exp(-this.springDamping * safeDt);
+        this.textScale += this.textScaleVelocity * safeDt;
+
+        // Update floating texts (using true delta-time)
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.y += ft.vy * safeDt;
+            ft.opacity -= 1.3 * safeDt; // Fades out in < 1 second
+            if (ft.opacity <= 0) {
+                this.floatingTexts.splice(i, 1);
+            }
+        }
+
+        // State Machine Update loops
+        if (this.state === 'lost') {
+            const spawnRate = 1 - Math.pow(1 - 0.4, ticks);
+            if (this.particles.length < 100 && Math.random() < spawnRate) {
+                this.spawnRedParticle();
+            }
+            
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                const p = this.particles[i];
+                p.y += p.speed * ticks;
+                if (p.y > this.height) {
+                    this.particles.splice(i, 1);
+                }
+            }
+        }
+
+        if (this.state === 'won') {
+            if (this.confettiTimer > 0) {
+                this.confettiTimer -= ticks;
+                
+                let spawnCount = Math.floor(ticks);
+                if (Math.random() < (ticks % 1)) spawnCount++;
+                for (let i = 0; i < spawnCount; i++) {
+                    this.spawnConfetti();
+                }
+            }
+            
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                const p = this.particles[i];
+                p.x += p.vx * ticks;
+                p.y += p.vy * ticks;
+                p.vy += p.gravity * ticks;
+                p.rotation += p.rotationSpeed * ticks;
+                
+                if (this.confettiTimer <= 0) {
+                    p.opacity -= 0.015 * ticks; 
+                }
+
+                if (p.y > this.height || p.opacity <= 0) {
+                    this.particles.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    draw(ctx, x, y) {
+        const w = this.width;
+        const h = this.height;
+
+        ctx.save();
+        // Shift drawing coordinates to match outer host alignment
+        ctx.translate(x, y);
+
+        // Crop contextual layout rendering strict to boundary configurations
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        // Clear local component backdrop
         ctx.fillStyle = '#11141a';
         ctx.fillRect(0, 0, w, h);
 
-        // Draw background elements
+        // Draw light background skull relative to shift coordinate
         if (this.state === 'lost') {
-            this.drawLightSkull(w / 2, h / 2 - 15);
+            this.drawLightSkull(ctx, w / 2, h / 2 - 15);
         }
 
-        // Standard Debt Rendering
+        // Localized standard text outputs
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -153,11 +247,27 @@ class DebtComponent {
         ctx.font = '16px "Courier New", Courier, monospace';
         ctx.fillText("CURRENT OUTSTANDING DEBT", w / 2, h / 2 - 35);
 
+        // Debt Value Text utilizing the scale spring bounce effect
+        ctx.save();
+        ctx.translate(w / 2, h / 2 + 15);
+        ctx.scale(this.textScale, this.textScale);
+
         ctx.fillStyle = this.visualDebt > 0 ? '#ef4444' : '#22c55e';
         ctx.font = 'bold 48px Arial, sans-serif';
-        ctx.fillText(`$${Math.round(this.visualDebt).toLocaleString()}`, w / 2, h / 2 + 15);
+        ctx.fillText(`$${Math.round(this.visualDebt).toLocaleString()}`, 0, 0);
+        ctx.restore();
 
-        // Overlays & Particles
+        // Floating Juiced indicators
+        this.floatingTexts.forEach(ft => {
+            ctx.save();
+            ctx.fillStyle = ft.color;
+            ctx.globalAlpha = Math.max(0, ft.opacity);
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.fillText(ft.text, ft.x, ft.y);
+            ctx.restore();
+        });
+
+        // Overlay & Particles
         if (this.state === 'lost') {
             // Draw Falling Blood Drops
             this.particles.forEach(p => {
@@ -204,18 +314,17 @@ class DebtComponent {
                 ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
                 ctx.restore();
             });
-            ctx.globalAlpha = 1.0; 
         }
+
+        ctx.restore();
     }
 
-    drawLightSkull(x, y) {
-        const ctx = this.ctx;
+    drawLightSkull(ctx, x, y) {
         ctx.save();
         ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
         ctx.lineWidth = 4;
 
-        // Scaled down skull to match the thinner aspect ratio (Radius 50 instead of 70)
         const r = 50; 
 
         ctx.beginPath();
@@ -248,11 +357,5 @@ class DebtComponent {
             ctx.stroke();
         }
         ctx.restore();
-    }
-
-    loop(timestamp) {
-        this.update();
-        this.draw();
-        requestAnimationFrame((timestamp) => this.loop(timestamp));
     }
 }

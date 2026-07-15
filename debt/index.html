@@ -19,11 +19,11 @@
             box-sizing: border-box;
         }
 
-        /* Thinner, Sleeker 21:9 Aspect Ratio Container */
+        /* Responsive layout block mimicking a layout item */
         .game-component-wrapper {
             width: 100%;
             max-width: 800px;
-            aspect-ratio: 21 / 9; /* Adjusted for wider format and smaller height profile */
+            aspect-ratio: 21 / 9;
             background-color: #11141a;
             border: 3px solid #334155;
             border-radius: 8px;
@@ -55,6 +55,7 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
+            user-select: none;
         }
 
         button:hover {
@@ -81,7 +82,6 @@
 </head>
 <body>
 
-    <!-- Container updated to 21:9 ratio wrapper -->
     <div class="game-component-wrapper">
         <canvas id="debtCanvas"></canvas>
     </div>
@@ -95,7 +95,69 @@
     <!-- Include Component Logic -->
     <script src="DebtComponent.js"></script>
     <script>
-        const gameDebt = new DebtComponent('debtCanvas');
+        const canvas = document.getElementById('debtCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Internal rendering resolution
+        const COMPONENT_WIDTH = 840;
+        const COMPONENT_HEIGHT = 360;
+
+        // Set fixed buffer resolution
+        canvas.width = COMPONENT_WIDTH;
+        canvas.height = COMPONENT_HEIGHT;
+
+        // Initialize decoupled game module
+        const gameDebt = new DebtComponent({
+            width: COMPONENT_WIDTH,
+            height: COMPONENT_HEIGHT
+        });
+
+        // Translate global screen coordinates to component space bounds
+        function getLocalCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        // Input Observers
+        canvas.addEventListener('mousemove', (e) => {
+            const coords = getLocalCoordinates(e);
+            gameDebt.handleMouseMove(coords.x, coords.y);
+            
+            // Dynamic UI Feedback (Changes pointer style when hovering text box)
+            canvas.style.cursor = gameDebt.isHoveringButton ? 'pointer' : 'default';
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const coords = getLocalCoordinates(e);
+            gameDebt.handleMouseClick(coords.x, coords.y);
+        });
+
+        // Setup decoupled game loop orchestrator
+        let lastTime = performance.now();
+
+        function orchestrator(now) {
+            const dt = (now - lastTime) / 1000; // Calculate accurate delta time in seconds
+            lastTime = now;
+
+            // Clear entire screen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update state engine & render
+            gameDebt.update(dt);
+            gameDebt.draw(ctx, 0, 0); // Rendered cleanly at offset 0,0
+
+            requestAnimationFrame(orchestrator);
+        }
+
+        requestAnimationFrame((timestamp) => {
+            lastTime = timestamp;
+            requestAnimationFrame(orchestrator);
+        });
     </script>
 </body>
 </html>
