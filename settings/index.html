@@ -40,16 +40,33 @@
         </div>
     </div>
 
-    <!-- Only loading the popup file for isolation -->
+    <!-- Loading the modular decoupled component -->
     <script src="SettingsPopup.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 1. Initialize the Settings Popup by itself
-        const settingsPopup = new SettingsPopup('gameCanvas', {
+        // Layout Configuration Properties (Simulating flex/block alignment)
+        const blockLayout = {
+            x: 170,
+            y: 100,
+            width: 460,
+            height: 400
+        };
+
+        // Global mouse state tracker for continuous sliders
+        let isMouseDown = false;
+
+        // Initialize the modular UI Block with layout metrics and callbacks
+        const settingsPopup = new SettingsPopup({
+            width: blockLayout.width,
+            height: blockLayout.height
+        }, {
             onAchievements: () => {
                 console.log('%c🏆 Achievements Clicked!', 'color: #FF9800; font-weight: bold;');
+            },
+            onHelp: () => {
+                console.log('%cℹ️ Help Clicked!', 'color: #4CAF50; font-weight: bold;');
             },
             onCredits: () => {
                 console.log('%c🎬 Credits Clicked!', 'color: #2196F3; font-weight: bold;');
@@ -62,33 +79,38 @@
             }
         });
 
-        // 2. Open it immediately on load
+        // Open the popup immediately on load
         settingsPopup.show();
 
-        // 3. Isolated Render Loop
-        function loop() {
-            // Clear the canvas with a grid pattern so you can easily judge alignment
+        // Precision Timing Engine Loop
+        let lastTime = performance.now();
+
+        function loop(timestamp) {
+            // Calculate actual frame-rate independent delta time in seconds
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // Clear the canvas viewport
             ctx.fillStyle = '#1e1e1e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             drawGridBackground();
 
-            // Update and draw the popup if it's active or animating
+            // Run updates & drawing steps within structural layout conditions
             if (!settingsPopup.isoffscreen()) {
-                settingsPopup.update();
-                settingsPopup.draw();
+                settingsPopup.update(dt);
+                settingsPopup.draw(ctx, blockLayout.x, blockLayout.y);
             } else {
-                // If the popup is closed, draw a friendly prompt to reopen it
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.font = '20px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Click anywhere on the canvas to pop settings back open!', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Click inside the dashed layout boundary to reopen settings!', canvas.width / 2, canvas.height / 2);
             }
 
             requestAnimationFrame(loop);
         }
 
-        // Helper to draw a subtle alignment grid
+        // Helper to draw reference grid alignment lines and layout container block
         function drawGridBackground() {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
@@ -106,17 +128,58 @@
                 ctx.lineTo(canvas.width, y);
                 ctx.stroke();
             }
+
+            // Render visual block container boundary helper
+            ctx.strokeStyle = 'rgba(33, 150, 243, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(blockLayout.x, blockLayout.y, blockLayout.width, blockLayout.height);
+            ctx.setLineDash([]);
         }
 
-        // 4. Click-to-reopen handler
-        canvas.addEventListener('click', () => {
+        // Transform global canvas screen space to localized component layout space
+        function getLocalCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = e.clientX - rect.left;
+            const canvasY = e.clientY - rect.top;
+
+            return {
+                x: canvasX - blockLayout.x,
+                y: canvasY - blockLayout.y
+            };
+        }
+
+        // Pointer event listeners routing local coordinates to the component
+        canvas.addEventListener('mousemove', (e) => {
+            const local = getLocalCoordinates(e);
+            settingsPopup.handleMouseMove(local.x, local.y, isMouseDown);
+            canvas.style.cursor = settingsPopup.getCursorStyle();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            const local = getLocalCoordinates(e);
+
             if (settingsPopup.isoffscreen()) {
-                settingsPopup.show();
+                // Intercept layout bounds to reopen component if clicked within layout container
+                if (local.x >= 0 && local.x <= blockLayout.width && local.y >= 0 && local.y <= blockLayout.height) {
+                    settingsPopup.show();
+                }
+            } else {
+                settingsPopup.handleMouseDown(local.x, local.y);
             }
         });
 
-        // Fire up the loop
-        loop();
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            settingsPopup.handleMouseUp();
+        });
+
+        // Initialize Timing Engine
+        requestAnimationFrame((timestamp) => {
+            lastTime = timestamp;
+            requestAnimationFrame(loop);
+        });
     </script>
 </body>
 </html>
