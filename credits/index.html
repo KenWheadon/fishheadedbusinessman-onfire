@@ -5,26 +5,209 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Credits Integration</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: white; font-family: sans-serif; }
-        #game-ui { padding: 20px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            background-color: #111; 
+            color: #fff; 
+            font-family: system-ui, sans-serif; 
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #layout-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        #sidebar {
+            width: 250px;
+            background: #1e1e24;
+            padding: 20px;
+            border-right: 2px solid #2d2d35;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        #viewport-container {
+            flex-grow: 1;
+            position: relative;
+            background: #121214;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #2980b9; }
+        .info { font-size: 12px; color: #888; line-height: 1.4; }
     </style>
 </head>
 <body>
-    <div id="game-ui">
-        <h2>Main Game Engine</h2>
-        <button id="btn-credits">Roll Credits</button>
+
+    <div id="layout-container">
+        <!-- Dashboard Sidebar -->
+        <div id="sidebar">
+            <h3>Dashboard Panels</h3>
+            <p class="info">Click the button below to toggle the completely self-contained modular canvas component.</p>
+            <button id="btn-credits">Roll Credits</button>
+            <hr style="border-color: #2d2d35; margin: 10px 0;">
+            <div class="info">
+                <strong>Local Box Workspace:</strong><br>
+                <span id="coords-debug">Move mouse over box...</span>
+            </div>
+        </div>
+
+        <!-- Canvas Viewport -->
+        <div id="viewport-container">
+            <canvas id="app-canvas"></canvas>
+        </div>
     </div>
 
     <script src="CreditsPopup.js"></script>
     <script>
-        // Data is now baked into the class, so we just instantiate it!
-        const creditsUI = new CreditsPopup();
-        creditsUI.mount('game-ui');
+        // --- 1. SECURE ASSET MANAGER (Fixed Security Origin / unique origin errors) ---
+        const AssetManager = {
+            assets: {},
+            get(key) { 
+                // Returns the image object if it's ready, or null to trigger safe procedural rendering
+                return this.assets[key] || null; 
+            },
+            async init() {
+                const keys = ["images/kenwheadon.png", "images/janedoe.png", "images/terminal.png"];
+                
+                // Fire off image preloading requests safely
+                keys.forEach(key => {
+                    const img = new Image();
+                    img.src = key;
+                    // Do not use toDataURL() or local cross-origin operations to prevent local file security blocks
+                    this.assets[key] = img;
+                });
+                return Promise.resolve();
+            }
+        };
+
+        // --- 2. ENGINE CANVAS INITIALIZATION ---
+        const canvas = document.getElementById('app-canvas');
+        const ctx = canvas.getContext('2d');
+        const debugSpan = document.getElementById('coords-debug');
+
+        function resizeCanvas() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            updateLayoutBlock();
+        }
+
+        // --- 3. DYNAMIC LAYOUT CONFIGURATION ---
+        let popupBlock = { x: 0, y: 0, width: 0, height: 0 };
+
+        function updateLayoutBlock() {
+            const padW = Math.max(40, canvas.width * 0.1);
+            const padH = Math.max(40, canvas.height * 0.1);
+            
+            popupBlock.width = Math.min(800, canvas.width - padW);
+            popupBlock.height = Math.min(600, canvas.height - padH);
+            popupBlock.x = (canvas.width - popupBlock.width) / 2;
+            popupBlock.y = (canvas.height - popupBlock.height) / 2;
+
+            if (creditsUI) {
+                creditsUI.resize(popupBlock.width, popupBlock.height);
+            }
+        }
+
+        // --- 4. COMPONENT MOUNTING ---
+        const creditsUI = new CreditsPopup({
+            width: 800,
+            height: 600
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        AssetManager.init().then(() => {
+            resizeCanvas();
+            requestAnimationFrame(tick);
+        });
+
+        // --- 5. COORD TRANSLATOR & INPUT HANDLERS (Upgraded for high response) ---
+        function getLocalCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = e.clientX - rect.left;
+            const canvasY = e.clientY - rect.top;
+            
+            const localX = canvasX - popupBlock.x;
+            const localY = canvasY - popupBlock.y;
+            return { localX, localY };
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const { localX, localY } = getLocalCoords(e);
+            creditsUI.handleMouseMove(localX, localY);
+            canvas.style.cursor = creditsUI.cursor || 'default';
+            debugSpan.innerText = `X: ${Math.round(localX)}, Y: ${Math.round(localY)}`;
+        });
+
+        // Switched from 'click' to 'mousedown' to guarantee immediate interaction registration 
+        canvas.addEventListener('mousedown', (e) => {
+            const { localX, localY } = getLocalCoords(e);
+            creditsUI.handleMouseClick(localX, localY);
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            creditsUI.handleMouseWheel(e.deltaY);
+        }, { passive: true });
+
+        window.addEventListener('keydown', (e) => {
+            creditsUI.handleKeyDown(e.key);
+        });
 
         document.getElementById('btn-credits').addEventListener('click', () => {
-            creditsUI.show();
+            if (creditsUI.isVisible) {
+                creditsUI.hide();
+            } else {
+                creditsUI.show();
+            }
         });
+
+        // --- 6. UNIFIED MAIN RENDER LOOP ---
+        let lastTime = performance.now();
+
+        function tick(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            creditsUI.update(dt);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw mockup viewport background lines
+            ctx.strokeStyle = '#232329';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            
+            // Draw Component Bounds Frame
+            ctx.strokeStyle = creditsUI.isVisible ? '#3498db' : '#333';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(popupBlock.x, popupBlock.y, popupBlock.width, popupBlock.height);
+
+            creditsUI.draw(ctx, popupBlock.x, popupBlock.y);
+            requestAnimationFrame(tick);
+        }
     </script>
 </body>
 </html>
