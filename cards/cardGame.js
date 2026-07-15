@@ -1,6 +1,6 @@
-// ==========================================
-// CONFETTI PHYSICS ENGINE
-// ==========================================
+// ============================================================================
+// CONFETTI PHYSICS ENGINE (MODULAR & COMPONENT-BOUND)
+// ============================================================================
 class ConfettiParticle {
   constructor(startX, startY) {
     this.x = startX;
@@ -26,17 +26,24 @@ class ConfettiParticle {
     this.life = Math.random() * 60 + 80;
   }
 
-  update() {
-    this.vx *= this.drag;
-    this.vy += this.gravity;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.rotation += this.rotationSpeed;
-    this.life--;
+  /**
+   * Updates particle physics using standardized delta-time stepping.
+   * @param {number} dt Delta time in seconds.
+   */
+  update(dt) {
+    // Standardize delta time to a base nominal frame (60 FPS)
+    const t = dt !== undefined ? dt * 60 : 1;
+
+    this.vx *= Math.pow(this.drag, t);
+    this.vy += this.gravity * t;
+    this.x += this.vx * t;
+    this.y += this.vy * t;
+    this.rotation += this.rotationSpeed * t;
+    this.life -= t;
 
     // Smooth opacity fading
     if (this.life < 30) {
-      this.opacity = this.life / 30;
+      this.opacity = Math.max(0, this.life / 30);
     }
   }
 
@@ -51,21 +58,24 @@ class ConfettiParticle {
   }
 }
 
-// ==========================================
-// VANILLA JS ES6 COMPONENT CLASS
-// ==========================================
+// ============================================================================
+// MODULAR & SELF-CONTAINED GAME COMPONENT
+// ============================================================================
 class CardGame {
-  constructor(canvasId) {
-    this.canvas = document.getElementById(canvasId);
-    this.ctx = this.canvas.getContext('2d');
+  constructor(config = {}) {
+    // 1. Structural Boundaries (no direct DOM elements referenced)
+    this.width = config.width || 800;
+    this.height = config.height || 450;
 
-    // Target internal drawing resolution representing 16:9 ratio
+    // Target logical internal resolution representing 16:9 gameplay aspect ratio
     this.baseWidth = 800;
     this.baseHeight = 450;
-    this.canvas.width = this.baseWidth;
-    this.canvas.height = this.baseHeight;
 
-    // Configuration
+    // Calculate dynamic scaling factors
+    this.scaleX = this.width / this.baseWidth;
+    this.scaleY = this.height / this.baseHeight;
+
+    // Layout configuration (base-coordinate relative)
     this.cardWidth = 100;
     this.cardHeight = 150;
     this.cardY = 150;
@@ -88,19 +98,11 @@ class CardGame {
 
     this.bgDust = [];
     this.initBgDust();
-
     this.init();
-    
-    this.boundClick = this.handleClick.bind(this);
-    this.boundMouseMove = this.handleMouseMove.bind(this);
-    this.canvas.addEventListener('mousedown', this.boundClick);
-    this.canvas.addEventListener('mousemove', this.boundMouseMove);
-
-    this.destroyed = false;
-    this.loop();
   }
 
   initBgDust() {
+    this.bgDust = [];
     for (let i = 0; i < 20; i++) {
       this.bgDust.push({
         x: Math.random() * this.baseWidth,
@@ -171,31 +173,31 @@ class CardGame {
     });
   }
 
-  getMousePos(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.baseWidth / rect.width;
-    const scaleY = this.baseHeight / rect.height;
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
-    };
-  }
+  // ==========================================
+  // LOCALIZED INPUT ENTRYPOINTS
+  // ==========================================
 
-  handleMouseMove(e) {
-    if (this.state !== 'playing') {
-      this.canvas.style.cursor = 'default';
-      return;
-    }
+  /**
+   * Evaluates local position coordinates on mouse hover.
+   * Coordinate translation is offloaded to the caller.
+   * @param {number} localX Local canvas X coordinate (0 to component width)
+   * @param {number} localY Local canvas Y coordinate (0 to component height)
+   * @returns {boolean} True if hovering over an interactive element.
+   */
+  handleMouseMove(localX, localY) {
+    if (this.state !== 'playing') return false;
 
-    const mouse = this.getMousePos(e);
+    // Normalize incoming local coordinates back to baseline 800x450 scale
+    const mouseX = localX / this.scaleX;
+    const mouseY = localY / this.scaleY;
     let anyHovered = false;
 
     this.cards.forEach(card => {
       const cardYOffset = card.currentY - card.hoverOffset;
-      const inside = mouse.x >= card.currentX && 
-                     mouse.x <= card.currentX + card.width &&
-                     mouse.y >= cardYOffset && 
-                     mouse.y <= cardYOffset + card.height;
+      const inside = mouseX >= card.currentX && 
+                     mouseX <= card.currentX + card.width &&
+                     mouseY >= cardYOffset && 
+                     mouseY <= cardYOffset + card.height;
 
       if (inside && card.flipTarget === 0) {
         card.isHovered = true;
@@ -205,20 +207,24 @@ class CardGame {
       }
     });
 
-    this.canvas.style.cursor = anyHovered ? 'pointer' : 'default';
+    return anyHovered;
   }
 
-  handleClick(e) {
+  /**
+   * Evaluates local click actions within translated component space.
+   */
+  handleMouseClick(localX, localY) {
     if (this.state !== 'playing') return;
 
-    const mouse = this.getMousePos(e);
+    const mouseX = localX / this.scaleX;
+    const mouseY = localY / this.scaleY;
 
     this.cards.forEach(card => {
       const cardYOffset = card.currentY - card.hoverOffset;
-      const inside = mouse.x >= card.currentX && 
-                     mouse.x <= card.currentX + card.width &&
-                     mouse.y >= cardYOffset && 
-                     mouse.y <= cardYOffset + card.height;
+      const inside = mouseX >= card.currentX && 
+                     mouseX <= card.currentX + card.width &&
+                     mouseY >= cardYOffset && 
+                     mouseY <= cardYOffset + card.height;
 
       if (inside && card.flipTarget === 0) {
         card.flipTarget = 1;
@@ -227,13 +233,24 @@ class CardGame {
     });
   }
 
-  update() {
+  // ==========================================
+  // ENGINE LOOPS (STATE & RENDER SEPARATED)
+  // ==========================================
+
+  /**
+   * Frame-rate independent physics engine pipeline.
+   * @param {number} dt Elapsed frame delta time in seconds.
+   */
+  update(dt) {
+    // Standardize delta time step multiplier (1.0 = normal speed at 60 FPS)
+    const t = dt !== undefined ? dt * 60 : 1;
+
     if (this.shakeTimer > 0) {
-      this.shakeTimer--;
+      this.shakeTimer -= t;
     }
 
     this.bgDust.forEach(dust => {
-      dust.y -= dust.speed;
+      dust.y -= dust.speed * t;
       if (dust.y < -5) {
         dust.y = this.baseHeight + 5;
         dust.x = Math.random() * this.baseWidth;
@@ -241,11 +258,12 @@ class CardGame {
     });
 
     this.cards.forEach(card => {
-      card.currentX += (card.targetX - card.currentX) * 0.12;
-      card.currentY += (card.targetY - card.currentY) * 0.12;
+      // Precise frame-rate independent interpolation
+      card.currentX += (card.targetX - card.currentX) * (1 - Math.pow(1 - 0.12, t));
+      card.currentY += (card.targetY - card.currentY) * (1 - Math.pow(1 - 0.12, t));
 
       if (card.flipProgress !== card.flipTarget) {
-        const step = 0.07;
+        const step = 0.07 * t;
         if (card.flipProgress < card.flipTarget) {
           card.flipProgress = Math.min(card.flipTarget, card.flipProgress + step);
         } else {
@@ -254,7 +272,7 @@ class CardGame {
       }
 
       const targetHover = card.isHovered ? 12 : 0;
-      card.hoverOffset += (targetHover - card.hoverOffset) * 0.15;
+      card.hoverOffset += (targetHover - card.hoverOffset) * (1 - Math.pow(1 - 0.15, t));
 
       if (card.flipTarget === 1 && card.flipProgress === 1 && !card.wasChecked) {
         card.wasChecked = true;
@@ -306,9 +324,10 @@ class CardGame {
     }
 
     if (this.state === 'won' && this.confettiTimer > 0) {
-      this.confettiTimer--;
+      this.confettiTimer -= t;
       if (this.confettiTimer > 30) {
-        for (let i = 0; i < 3; i++) {
+        const count = Math.round(3 * t);
+        for (let i = 0; i < count; i++) {
           const src = this.winningSourcePoints[Math.floor(Math.random() * this.winningSourcePoints.length)];
           this.particles.push(new ConfettiParticle(src.x, src.y));
         }
@@ -317,7 +336,7 @@ class CardGame {
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.update();
+      p.update(dt);
       if (p.life <= 0 || p.y > this.baseHeight + 15) {
         this.particles.splice(i, 1);
       }
@@ -357,239 +376,247 @@ class CardGame {
     }
   }
 
-  render() {
-    this.ctx.clearRect(0, 0, this.baseWidth, this.baseHeight);
-    this.ctx.save();
+  /**
+   * Renders the game component relative to target coordinates.
+   * @param {CanvasRenderingContext2D} ctx Render target drawing context.
+   * @param {number} x Left offset boundary position.
+   * @param {number} y Top offset boundary position.
+   */
+  draw(ctx, x, y) {
+    ctx.save();
+    
+    // Shift the matrix coordinate grid to target block space
+    ctx.translate(x, y);
+
+    // Enforce component boundary bounds clipping to prevent particle leakage
+    ctx.beginPath();
+    ctx.rect(0, 0, this.width, this.height);
+    ctx.clip();
+
+    // Dynamically scale base gameplay workspace layout into actual block dimensions
+    ctx.scale(this.scaleX, this.scaleY);
 
     if (this.shakeTimer > 0) {
       const dx = (Math.random() - 0.5) * this.shakeIntensity;
       const dy = (Math.random() - 0.5) * this.shakeIntensity;
-      this.ctx.translate(dx, dy);
+      ctx.translate(dx, dy);
     }
 
-    const grad = this.ctx.createRadialGradient(
-      this.baseWidth/2, this.baseHeight/2, 50, 
-      this.baseWidth/2, this.baseHeight/2, this.baseWidth
+    // Local background render
+    const grad = ctx.createRadialGradient(
+      this.baseWidth / 2, this.baseHeight / 2, 50, 
+      this.baseWidth / 2, this.baseHeight / 2, this.baseWidth
     );
     grad.addColorStop(0, '#1e1b4b');
     grad.addColorStop(1, '#090d16');
-    this.ctx.fillStyle = grad;
-    this.ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
 
-    this.ctx.fillStyle = '#f8fafc';
+    ctx.fillStyle = '#f8fafc';
     this.bgDust.forEach(dust => {
-      this.ctx.globalAlpha = dust.alpha;
-      this.ctx.beginPath();
-      this.ctx.arc(dust.x, dust.y, dust.size, 0, Math.PI * 2);
-      this.ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = dust.alpha;
+      ctx.beginPath();
+      ctx.arc(dust.x, dust.y, dust.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     });
-    this.ctx.globalAlpha = 1.0;
 
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    this.ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
     for (let i = 0; i < this.baseWidth; i += 40) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(i, 0);
-      this.ctx.lineTo(i, this.baseHeight);
-      this.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, this.baseHeight);
+      ctx.stroke();
     }
 
     this.cards.forEach(card => {
-      this.drawCard(card);
+      this.drawCard(ctx, card);
     });
 
     if (this.isGameOver) {
-      this.drawStatusOverlay();
+      this.drawStatusOverlay(ctx);
     }
 
-    this.particles.forEach(p => p.draw(this.ctx));
+    this.particles.forEach(p => p.draw(ctx));
 
-    this.ctx.restore();
+    ctx.restore();
   }
 
-  drawCard(card) {
-    this.ctx.save();
+  drawCard(ctx, card) {
+    ctx.save();
 
     const cardYOffset = card.currentY - card.hoverOffset;
-    this.ctx.translate(card.currentX + card.width / 2, cardYOffset + card.height / 2);
+    ctx.translate(card.currentX + card.width / 2, cardYOffset + card.height / 2);
 
     const scaleX = Math.abs(Math.cos(card.flipProgress * Math.PI));
-    this.ctx.scale(scaleX, 1);
+    ctx.scale(scaleX, 1);
 
     if (card.isHovered) {
-      this.ctx.shadowColor = 'rgba(251, 191, 36, 0.5)';
-      this.ctx.shadowBlur = 18;
+      ctx.shadowColor = 'rgba(251, 191, 36, 0.5)';
+      ctx.shadowBlur = 18;
     }
 
     if (card.flipProgress < 0.5) {
-      this.drawCardBack(-card.width / 2, -card.height / 2, card.width, card.height);
+      this.drawCardBack(ctx, -card.width / 2, -card.height / 2, card.width, card.height);
     } else {
-      this.drawCardFront(-card.width / 2, -card.height / 2, card.width, card.height, card.faceValue);
+      this.drawCardFront(ctx, -card.width / 2, -card.height / 2, card.width, card.height, card.faceValue);
     }
 
-    this.ctx.restore();
+    ctx.restore();
   }
 
-  drawCardBack(x, y, w, h) {
-    this.ctx.fillStyle = '#111827';
-    this.ctx.strokeStyle = '#fbbf24';
-    this.ctx.lineWidth = 4;
-    this.ctx.beginPath();
-    this.ctx.roundRect(x, y, w, h, 12);
-    this.ctx.fill();
-    this.ctx.stroke();
+  drawCardBack(ctx, x, y, w, h) {
+    ctx.fillStyle = '#111827';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
 
-    this.ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.roundRect(x + 8, y + 8, w - 16, h - 16, 8);
-    this.ctx.stroke();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x + 8, y + 8, w - 16, h - 16, 8);
+    ctx.stroke();
 
-    this.ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
-    this.ctx.beginPath();
-    this.ctx.arc(x + w / 2, y + h / 2, 22, 0, Math.PI * 2);
-    this.ctx.stroke();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + h / 2, 22, 0, Math.PI * 2);
+    ctx.stroke();
 
-    this.ctx.beginPath();
-    this.ctx.moveTo(x + w / 2 - 28, y + h / 2);
-    this.ctx.lineTo(x + w / 2 + 28, y + h / 2);
-    this.ctx.moveTo(x + w / 2, y + h / 2 - 28);
-    this.ctx.lineTo(x + w / 2, y + h / 2 + 28);
-    this.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 - 28, y + h / 2);
+    ctx.lineTo(x + w / 2 + 28, y + h / 2);
+    ctx.moveTo(x + w / 2, y + h / 2 - 28);
+    ctx.lineTo(x + w / 2, y + h / 2 + 28);
+    ctx.stroke();
   }
 
-  drawCardFront(x, y, w, h, val) {
-    this.ctx.fillStyle = '#f8fafc';
-    this.ctx.strokeStyle = '#334155';
-    this.ctx.lineWidth = 4;
-    this.ctx.beginPath();
-    this.ctx.roundRect(x, y, w, h, 12);
-    this.ctx.fill();
-    this.ctx.stroke();
+  drawCardFront(ctx, x, y, w, h, val) {
+    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
 
-    this.ctx.strokeStyle = '#cbd5e1';
-    this.ctx.lineWidth = 1.5;
-    this.ctx.beginPath();
-    this.ctx.roundRect(x + 8, y + 8, w - 16, h - 16, 8);
-    this.ctx.stroke();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x + 8, y + 8, w - 16, h - 16, 8);
+    ctx.stroke();
 
-    this.drawVectorIcon(x + w / 2, y + h / 2, val);
+    this.drawVectorIcon(ctx, x + w / 2, y + h / 2, val);
   }
 
-  drawVectorIcon(cx, cy, value) {
-    this.ctx.save();
-    this.ctx.translate(cx, cy);
+  drawVectorIcon(ctx, cx, cy, value) {
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Asset Manager Hooks (Alternative to inline drawing if image resources are desired):
+    // const customImg = AssetManager.get(value);
+    // if (customImg) { ctx.drawImage(customImg, -w/2, -h/2); return; }
 
     if (value === 'star') {
-      this.ctx.fillStyle = '#f59e0b';
-      this.ctx.strokeStyle = '#b45309';
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
+      ctx.fillStyle = '#f59e0b';
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
       const spikes = 5;
       const outerR = 26;
       const innerR = 11;
       let rot = (Math.PI / 2) * 3;
       const step = Math.PI / spikes;
 
-      this.ctx.moveTo(0, -outerR);
+      ctx.moveTo(0, -outerR);
       for (let i = 0; i < spikes; i++) {
-        this.ctx.lineTo(Math.cos(rot) * outerR, Math.sin(rot) * outerR);
+        ctx.lineTo(Math.cos(rot) * outerR, Math.sin(rot) * outerR);
         rot += step;
-        this.ctx.lineTo(Math.cos(rot) * innerR, Math.sin(rot) * innerR);
+        ctx.lineTo(Math.cos(rot) * innerR, Math.sin(rot) * innerR);
         rot += step;
       }
-      this.ctx.closePath();
-      this.ctx.fill();
-      this.ctx.stroke();
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
     } 
     else if (value === 'heart') {
-      this.ctx.fillStyle = '#ef4444';
-      this.ctx.strokeStyle = '#b91c1c';
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, -8);
-      this.ctx.bezierCurveTo(-15, -24, -30, -5, 0, 22);
-      this.ctx.bezierCurveTo(30, -5, 15, -24, 0, -8);
-      this.ctx.closePath();
-      this.ctx.fill();
-      this.ctx.stroke();
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.bezierCurveTo(-15, -24, -30, -5, 0, 22);
+      ctx.bezierCurveTo(30, -5, 15, -24, 0, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
     } 
     else if (value === 'skull') {
-      this.ctx.fillStyle = '#334155';
-      this.ctx.strokeStyle = '#0f172a';
-      this.ctx.lineWidth = 2;
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
 
-      this.ctx.beginPath();
-      this.ctx.arc(0, -6, 18, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, -6, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
 
-      this.ctx.beginPath();
-      this.ctx.roundRect(-10, 5, 20, 14, 4);
-      this.ctx.fill();
-      this.ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(-10, 5, 20, 14, 4);
+      ctx.fill();
+      ctx.stroke();
 
-      this.ctx.fillStyle = '#334155';
-      this.ctx.beginPath();
-      this.ctx.rect(-9, 0, 18, 10);
-      this.ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.rect(-9, 0, 18, 10);
+      ctx.fill();
 
-      this.ctx.fillStyle = '#f8fafc';
-      this.ctx.beginPath();
-      this.ctx.arc(-6, -5, 5, 0, Math.PI * 2);
-      this.ctx.arc(6, -5, 5, 0, Math.PI * 2);
-      this.ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(-6, -5, 5, 0, Math.PI * 2);
+      ctx.arc(6, -5, 5, 0, Math.PI * 2);
+      ctx.fill();
 
-      this.ctx.fillStyle = '#0f172a';
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, 2);
-      this.ctx.lineTo(-3, 6);
-      this.ctx.lineTo(3, 6);
-      this.ctx.closePath();
-      this.ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(0, 2);
+      ctx.lineTo(-3, 6);
+      ctx.lineTo(3, 6);
+      ctx.closePath();
+      ctx.fill();
 
-      this.ctx.strokeStyle = '#f8fafc';
-      this.ctx.lineWidth = 1.5;
-      this.ctx.beginPath();
-      this.ctx.moveTo(-4, 11); this.ctx.lineTo(-4, 16);
-      this.ctx.moveTo(0, 11);  this.ctx.lineTo(0, 16);
-      this.ctx.moveTo(4, 11);  this.ctx.lineTo(4, 16);
-      this.ctx.stroke();
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-4, 11); ctx.lineTo(-4, 16);
+      ctx.moveTo(0, 11);  ctx.lineTo(0, 16);
+      ctx.moveTo(4, 11);  ctx.lineTo(4, 16);
+      ctx.stroke();
     }
 
-    this.ctx.restore();
+    ctx.restore();
   }
 
-  drawStatusOverlay() {
-    this.ctx.save();
-    this.ctx.fillStyle = 'rgba(11, 15, 25, 0.4)';
-    this.ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
+  drawStatusOverlay(ctx) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(11, 15, 25, 0.4)';
+    ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
 
-    this.ctx.font = '900 36px system-ui';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
+    ctx.font = '900 36px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     if (this.hasWon) {
-      this.ctx.fillStyle = '#fbbf24';
-      this.ctx.fillText('MATCH COMPLETED!', this.baseWidth / 2, 50);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('MATCH COMPLETED!', this.baseWidth / 2, 50);
     } else {
-      this.ctx.fillStyle = '#ef4444';
-      this.ctx.fillText('SKULL UNCOVERED!', this.baseWidth / 2, 50);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('SKULL UNCOVERED!', this.baseWidth / 2, 50);
     }
-    this.ctx.restore();
-  }
-
-  loop() {
-    if (this.destroyed) return;
-    this.update();
-    this.render();
-    this.animationFrameId = requestAnimationFrame(this.loop.bind(this));
-  }
-
-  destroy() {
-    this.destroyed = true;
-    cancelAnimationFrame(this.animationFrameId);
-    this.canvas.removeEventListener('mousedown', this.boundClick);
-    this.canvas.removeEventListener('mousemove', this.boundMouseMove);
+    ctx.restore();
   }
 }

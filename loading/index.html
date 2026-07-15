@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Game Loading Screen Component</title>
+  <title>Modular Game Loading Screen Component</title>
   <style>
     body {
       margin: 0;
@@ -19,10 +19,23 @@
       overflow: hidden;
     }
 
-    /* Dev control panel styling */
+    /* Container layout mimicking a flex item box block */
+    #canvas-container {
+      border: 3px dashed #3c3c4a;
+      border-radius: 16px;
+      padding: 10px;
+      background: #16161e;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+
+    canvas {
+      display: block;
+      border-radius: 8px;
+      background: #000;
+    }
+
     #test-panel {
-      position: absolute;
-      bottom: 40px;
+      margin-top: 30px;
       background: #1c1c24;
       border: 2px solid #3c3c4a;
       border-radius: 12px;
@@ -32,7 +45,6 @@
       gap: 12px;
       align-items: center;
       justify-content: center;
-      z-index: 9999;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
@@ -76,7 +88,6 @@
       background: #df5c5c;
     }
 
-    /* Real-time status display */
     .status-tracker {
       font-size: 14px;
       background: #111;
@@ -93,9 +104,12 @@
 </head>
 <body>
 
-  <!-- The Loading Screen will inject itself here -->
+  <!-- Bounded Flex Mock Container Layout Box -->
+  <div id="canvas-container">
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+  </div>
 
-  <!-- Interactive Test Panel -->
+  <!-- Interactive Control Panel Matrix -->
   <div id="test-panel">
     <div class="status-tracker">
       API Check -> loader.isOnScreen(): <span id="api-status" class="status-val">true</span>
@@ -112,29 +126,80 @@
 
   <script src="loading.js"></script>
   <script>
-    // Initialize loading screen
-    const loader = new GameLoader('images/logo.png');
+    // Global Preloaded Mock Asset Manager Hook Integration
+    const AssetManager = {
+      assets: {},
+      get(key) { return this.assets[key] || null; }
+    };
 
-    // Button event handlers
-    function startLoading() {
-      loader.start();
-    }
+    // Main Canvas Viewport Definitions
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-    function setLoading(percent) {
-      loader.setProgress(percent);
-    }
+    // Instantiate decoupled layout block
+    const blockWidth = 600;
+    const blockHeight = 400;
+    const loader = new GameLoader({ width: blockWidth, height: blockHeight });
 
-    function resetLoading() {
-      loader.reset();
-    }
+    // Center positioning parameters within global main scene context
+    const offsetX = 0;
+    const offsetY = 0;
 
-    // Monitor the isOnScreen API in real-time
-    const apiStatusDisplay = document.getElementById('api-status');
-    setInterval(() => {
+    // Standardized Input Coordinate Redirection Map Loops
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const globalX = e.clientX - rect.left;
+      const globalY = e.clientY - rect.top;
+
+      // Translate coordinates directly to block space relative positions
+      const localX = globalX - offsetX;
+      const localY = globalY - offsetY;
+      loader.handleMouseMove(localX, localY);
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const globalX = e.clientX - rect.left;
+      const globalY = e.clientY - rect.top;
+
+      const localX = globalX - offsetX;
+      const localY = globalY - offsetY;
+      loader.handleMouseClick(localX, localY);
+    });
+
+    // Control Panel Trigger Interfaces
+    function startLoading() { loader.start(); }
+    function setLoading(percent) { loader.setProgress(percent); }
+    function resetLoading() { loader.reset(); }
+
+    // Unified Engine Execution Loop
+    let lastTime = performance.now();
+
+    function engineLoop(currentTime) {
+      // Delta calculation in standard seconds
+      let dt = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+
+      // Protect execution spikes on frame drops/tab backgrounding
+      if (dt > 0.1) dt = 0.1;
+
+      // Main Cycle Logic / Graphic Passes
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      loader.update(dt);
+      loader.draw(ctx, offsetX, offsetY);
+
+      // System telemetry monitoring update ticks
       const active = loader.isOnScreen();
+      const apiStatusDisplay = document.getElementById('api-status');
       apiStatusDisplay.textContent = active ? "TRUE (Visible)" : "FALSE (Off-screen)";
       apiStatusDisplay.style.color = active ? "#e5c158" : "#ff5555";
-    }, 100);
+
+      requestAnimationFrame(engineLoop);
+    }
+
+    // Fire off main engine thread initialization
+    requestAnimationFrame(engineLoop);
   </script>
 </body>
 </html>

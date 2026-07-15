@@ -144,75 +144,10 @@
   <!-- Import the separated JS component -->
   <script src="./cardGame.js"></script>
   
-  <!-- External Controller, Routing and UI Bridge -->
+  <!-- Implementation and UI Bridge -->
   <script>
-    const canvas = document.getElementById('cardGameCanvas');
-    const ctx = canvas.getContext('2d');
+    const game = new CardGame('cardGameCanvas');
 
-    // Establish sizing constraints
-    function resizeCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-    }
-    resizeCanvas();
-
-    // Instantiate modular component using standard block dimension bounds
-    const game = new CardGame({ width: canvas.width, height: canvas.height });
-
-    // Ensure resizing handles dynamic width/height constraints
-    window.addEventListener('resize', () => {
-      resizeCanvas();
-      game.width = canvas.width;
-      game.height = canvas.height;
-      game.scaleX = game.width / game.baseWidth;
-      game.scaleY = game.height / game.baseHeight;
-    });
-
-    // Helper: Translate event offset space to localized client coordinates
-    function getLocalCoords(e) {
-      const rect = canvas.getBoundingClientRect();
-      return {
-        localX: e.clientX - rect.left,
-        localY: e.clientY - rect.top
-      };
-    }
-
-    // Input router
-    canvas.addEventListener('mousemove', (e) => {
-      const { localX, localY } = getLocalCoords(e);
-      const isHovering = game.handleMouseMove(localX, localY);
-      canvas.style.cursor = isHovering ? 'pointer' : 'default';
-    });
-
-    canvas.addEventListener('mousedown', (e) => {
-      const { localX, localY } = getLocalCoords(e);
-      game.handleMouseClick(localX, localY);
-    });
-
-    // Trigger Game Loop with precision high-res timestamp
-    let lastTime = performance.now();
-
-    function renderLoop(now) {
-      const dt = (now - lastTime) / 1000; // Delta time in seconds
-      lastTime = now;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Execute decoupled update and render sequence (Offset positioned at 0, 0)
-      game.update(dt);
-      game.draw(ctx, 0, 0);
-
-      requestAnimationFrame(renderLoop);
-    }
-    
-    // Seed initial timer and launch render thread
-    requestAnimationFrame((timestamp) => {
-      lastTime = timestamp;
-      requestAnimationFrame(renderLoop);
-    });
-
-    // UI State Monitors
     const resetBtn = document.getElementById('resetBtn');
     const gameEndVal = document.getElementById('gameEndVal');
     const didWinVal = document.getElementById('didWinVal');
