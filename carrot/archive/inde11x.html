@@ -37,6 +37,7 @@
       border: 1px solid #2d2d3d;
     }
 
+    /* Target Game Container: Simulated Flex/Grid layout block context */
     #canvas-holder {
       position: relative;
       background: #0d0d11;
@@ -131,10 +132,12 @@
   <h1>Modular Carrot Cutter Widget</h1>
 
   <div id="workspace">
+    <!-- Parent owned layout Canvas container -->
     <div id="canvas-holder">
       <canvas id="main-canvas" width="800" height="600"></canvas>
     </div>
 
+    <!-- Sidebar UI elements and layout configuration -->
     <div id="sidebar">
       <div class="card">
         <div class="card-title">Live Controls</div>
@@ -157,10 +160,11 @@
     </div>
   </div>
 
+  <!-- Include the decoupled carrot.js component script -->
   <script src="carrot.js"></script>
   
   <script>
-    // 1. Dynamic Asset Manager Setup
+    // 1. Decoupled Global Asset Pipeline Setup
     const AssetManager = {
       assets: {},
       get(key) {
@@ -169,37 +173,38 @@
       load(key, src) {
         const img = new Image();
         img.src = src;
-        img.onload = () => console.log(`Asset "${key}" loaded successfully.`);
-        img.onerror = () => console.warn(`Asset "${key}" failed to load. Drawing fallback graphics.`);
+        img.onload = () => console.log(`Asset "${key}" preloaded successfully.`);
+        img.onerror = () => console.warn(`Failed to preload "${key}", utilizing procedural fallback.`);
         this.assets[key] = img;
         return img;
       }
     };
 
-    // Preload base compost and all 5 distinct top graphics
-    AssetManager.load('base', 'images/carrot-base.png');
-    AssetManager.load('top1', 'images/carrot-1.png');
-    AssetManager.load('top2', 'images/carrot-2.png');
-    AssetManager.load('top3', 'images/carrot-3.png');
-    AssetManager.load('top4', 'images/carrot-4.png');
-    AssetManager.load('top5', 'images/carrot-5.png');
+    // Preload required assets (fallback to procedural rendering occurs gracefully if paths fail)
+    AssetManager.load('hub', 'images/image1.png');
+    AssetManager.load('bottom', 'images/carrot-bottom.png');
+    AssetManager.load('top', 'images/carrot-top.png');
 
+    // 2. Initialize parent canvas context
     const canvas = document.getElementById('main-canvas');
     const ctx = canvas.getContext('2d');
 
+    // UI elements references
     const cutBtn = document.getElementById('cut-btn');
     const resetBtn = document.getElementById('reset-btn');
     const countSpan = document.getElementById('count');
     const localXSpan = document.getElementById('local-x');
     const localYSpan = document.getElementById('local-y');
 
+    // 3. Define offset block metrics to demonstrate offset-space drawing and clipping
     const widgetConfig = {
-      offsetX: 50,    
+      offsetX: 50,    // Top-left margins relative to parent canvas
       offsetY: 50,
-      width: 700,     
+      width: 700,     // Confined widget bounds (respects container margins)
       height: 500
     };
 
+    // Instantiate game component strictly with a dimensional config object
     const gameComponent = new CarrotCutter({
       width: widgetConfig.width,
       height: widgetConfig.height
@@ -209,17 +214,20 @@
       countSpan.textContent = gameComponent.checkCut();
     };
 
+    // 4. Standard coordinate translations to local component coordinates
     const getLocalCoords = (e) => {
       const rect = canvas.getBoundingClientRect();
       const parentX = e.clientX - rect.left;
       const parentY = e.clientY - rect.top;
       
+      // Map global parent space to relative local layout box space
       const localX = parentX - widgetConfig.offsetX;
       const localY = parentY - widgetConfig.offsetY;
       
       return { localX, localY };
     };
 
+    // Capture and translate mouse coordinates
     canvas.addEventListener('mousemove', (e) => {
       const { localX, localY } = getLocalCoords(e);
       localXSpan.textContent = Math.round(localX);
@@ -243,21 +251,27 @@
       updateDisplay();
     });
 
+    // 5. Parent-driven Game Loop with Delta-time calculations
     let lastTime = performance.now();
 
     function gameLoop(currentTime) {
       const elapsed = currentTime - lastTime;
       lastTime = currentTime;
 
+      // Normalized dt (1 unit = 16.67ms)
       const dt = elapsed / 16.667;
 
+      // Component updates physics/logic 
       gameComponent.update(dt);
 
+      // Clean Parent Canvas Context Layer
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // --- Draw Environment Background Layer ---
       ctx.fillStyle = '#1e1e26';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // --- Draw Host Layout Bounds & Guide Lines ---
       ctx.strokeStyle = '#e67e22';
       ctx.lineWidth = 1;
       ctx.setLineDash([6, 4]);
@@ -267,18 +281,20 @@
         widgetConfig.width + 4, 
         widgetConfig.height + 4
       );
-      ctx.setLineDash([]); 
+      ctx.setLineDash([]); // Reset dash
 
+      // Decorative layout description text
       ctx.fillStyle = '#64748b';
       ctx.font = '10px monospace';
       ctx.fillText(`LAYOUT PARENT BLOCK AT: (X:${widgetConfig.offsetX}, Y:${widgetConfig.offsetY})`, 10, 24);
 
-      // Draw the component layer
+      // --- Draw Modular Component Layer at target layout coordinates ---
       gameComponent.draw(ctx, widgetConfig.offsetX, widgetConfig.offsetY);
 
       requestAnimationFrame(gameLoop);
     }
 
+    // Initialize display and trigger timing loop
     updateDisplay();
     requestAnimationFrame(gameLoop);
   </script>

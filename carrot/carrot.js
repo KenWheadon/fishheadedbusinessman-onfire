@@ -1,8 +1,5 @@
 /**
- * CarrotCutter - Highly Polished, Modular HTML5 Canvas Game Component
- * 
- * Designed to act as a self-contained layout "block" rendered relative to parent-provided offsets.
- * Strictly decoupled from DOM creation, timers, event listeners, and direct image loaders.
+ * CarrotCutter - Adjusted for customizable base image size and multi-top alignment offsets.
  */
 class CarrotCutter {
   /**
@@ -14,20 +11,32 @@ class CarrotCutter {
     this.width = width;
     this.height = height;
 
-    // Component Local coordinates (tucked in the bottom-left relative corner)
-    this.nodeX = 60;
-    this.nodeY = this.height - 60;
-    
-    // Stubby and "Nubby" carrot dimensions
-    this.carrotTotalLength = 110;  
-    this.carrotWidth = 36;         
-    this.carrotBottomLength = 50;  
-    this.hubRadius = 26;           
+    // --- EASY-ADJUST LAYOUT DASHBOARD ---
+    this.layout = {
+      // 1. ANCHOR NODE (The center pivot point where carrots fan out)
+      nodeX: 60,
+      nodeY: this.height - 60,
+
+      // 2. BASE IMAGE (carrot-base.png)
+      baseX: 0,                  // Local X position
+      baseY: this.height - 90,  // Local Y position
+      baseWidth: 100,            // Scaled render width
+      baseHeight: 90,           // Scaled render height
+
+      // 3. CARROT TOPS (carrot-1.png -> carrot-5.png)
+      topLength: 60,             // Render length of the carrot top
+      topWidth: 36,              // Render thickness of the carrot top
+      topPivotOffset: 50,        // Pixel distance from anchor to where the top graphic starts
+      topOffsetY: 0,             // Fine-tune vertical offset along rotation axis
+
+      // 4. INTERACTION DETECTOR
+      hubRadius: 26              // Hover and click radius
+    };
 
     // Physics constants
-    this.gravity = 0.55;           // Standard gravity (scaled relative to normalized dt)
-    this.bounce = 0.65;            // Bounciness off relative walls/floor
-    this.friction = 0.98;          // Floor rolling friction
+    this.gravity = 0.55;           
+    this.bounce = 0.65;            
+    this.friction = 0.98;          
 
     // Juice Effects State
     this.screenShake = 0;
@@ -36,21 +45,26 @@ class CarrotCutter {
     this.particles = [];
     this.isHubHovered = false;
 
-    // Instantiate 5 carrots fanned from left-most (-80 deg) to right-most (-10 deg)
+    // Instantiate 5 carrots fanned from left-most to right-most
     this.carrots = [];
     const leftMostAngle = -80 * Math.PI / 180;
     const rightMostAngle = -10 * Math.PI / 180;
     
     for (let i = 0; i < 5; i++) {
       const angle = leftMostAngle + (rightMostAngle - leftMostAngle) * (i / 4);
-      this.carrots.push({ angle: angle, isCut: false });
+      const topAssetKey = `top${i + 1}`;
+      
+      this.carrots.push({ 
+        angle: angle, 
+        isCut: false,
+        topAsset: topAssetKey,
+        index: i
+      });
     }
   }
 
   /**
    * Safely retrieves preloaded assets from a decoupled global AssetManager.
-   * Falls back gracefully to beautiful procedural graphics if assets are missing.
-   * @param {string} key - The asset identifier
    */
   getAsset(key) {
     if (typeof AssetManager !== 'undefined' && typeof AssetManager.get === 'function') {
@@ -70,7 +84,7 @@ class CarrotCutter {
   }
 
   /**
-   * Cut the next available carrot (starting from the left-most)
+   * Cut the next available carrot
    */
   cut() {
     const targetIdx = this.carrots.findIndex(c => !c.isCut);
@@ -79,14 +93,12 @@ class CarrotCutter {
     const carrot = this.carrots[targetIdx];
     carrot.isCut = true;
 
-    // Trigger local vertical screen shake
     this.screenShake = 16;
 
-    // Local coordinates cut point
-    const midX = this.nodeX + Math.cos(carrot.angle) * this.carrotBottomLength;
-    const midY = this.nodeY + Math.sin(carrot.angle) * this.carrotBottomLength;
+    // Synchronize physics cut point directly to the configured top layout offsets
+    const midX = this.layout.nodeX + Math.cos(carrot.angle) * this.layout.topPivotOffset;
+    const midY = this.layout.nodeY + Math.sin(carrot.angle) * this.layout.topPivotOffset;
 
-    // Spawn shockwave ring
     this.shockwaves.push({
       x: midX,
       y: midY,
@@ -95,13 +107,10 @@ class CarrotCutter {
       alpha: 1.0
     });
 
-    // Calculate spawn position for the flying tip
-    const topPartLength = this.carrotTotalLength - this.carrotBottomLength;
-    const spawnDist = this.carrotBottomLength + topPartLength / 2;
-    const spawnX = this.nodeX + Math.cos(carrot.angle) * spawnDist;
-    const spawnY = this.nodeY + Math.sin(carrot.angle) * spawnDist;
+    const spawnDist = this.layout.topPivotOffset + this.layout.topLength / 2;
+    const spawnX = this.layout.nodeX + Math.cos(carrot.angle) * spawnDist;
+    const spawnY = this.layout.nodeY + Math.sin(carrot.angle) * spawnDist;
 
-    // Upward pop velocities
     const vx = 1.5 + Math.random() * 4.5;
     const vy = -18 - Math.random() * 7;
 
@@ -112,11 +121,12 @@ class CarrotCutter {
       vy: vy,
       angle: carrot.angle,
       va: (Math.random() > 0.5 ? 1 : -1) * (0.3 + Math.random() * 0.3),
-      r: this.carrotWidth / 2, 
-      length: topPartLength
+      r: this.layout.topWidth / 2, 
+      length: this.layout.topLength,
+      topAsset: carrot.topAsset, 
+      index: carrot.index
     });
 
-    // Upward fountain particles
     const particleCount = 40; 
     for (let i = 0; i < particleCount; i++) {
       const pAngle = -Math.PI / 2 + (Math.random() - 0.5) * 1.0; 
@@ -136,9 +146,6 @@ class CarrotCutter {
     }
   }
 
-  /**
-   * Resets the game state
-   */
   reset() {
     this.carrots.forEach(c => c.isCut = false);
     this.flyingTops = [];
@@ -147,60 +154,41 @@ class CarrotCutter {
     this.screenShake = 0;
   }
 
-  /**
-   * Adjust internal dimensions dynamically without resetting active gameplay properties
-   */
   resize(width, height) {
+    const deltaY = height - this.height;
     this.width = width;
     this.height = height;
-    this.nodeX = 60;
-    this.nodeY = this.height - 60;
+    
+    // Smoothly shift vertical positions so user alignments don't break during resizing
+    this.layout.nodeY += deltaY;
+    this.layout.baseY += deltaY;
   }
 
-  /**
-   * Localized Event Handler: Track pointer position mapping
-   * @param {number} localX - X coordinate relative to the component's top-left corner
-   * @param {number} localY - Y coordinate relative to the component's top-left corner
-   */
   handleMouseMove(localX, localY) {
-    // Add polished interactive feedback by tracking hover states over the anchor hub
-    const dx = localX - this.nodeX;
-    const dy = localY - this.nodeY;
+    const dx = localX - this.layout.nodeX;
+    const dy = localY - this.layout.nodeY;
     const distance = Math.hypot(dx, dy);
-    this.isHubHovered = distance <= this.hubRadius;
+    this.isHubHovered = distance <= this.layout.hubRadius;
   }
 
-  /**
-   * Localized Event Handler: Click interactions scaled to local component space
-   * @param {number} localX - X coordinate relative to the component's top-left corner
-   * @param {number} localY - Y coordinate relative to the component's top-left corner
-   */
   handleMouseClick(localX, localY) {
-    // Click within the component boundary checks out
     if (localX >= 0 && localX <= this.width && localY >= 0 && localY <= this.height) {
-      const dx = localX - this.nodeX;
-      const dy = localY - this.nodeY;
-      const clickedHub = Math.hypot(dx, dy) <= this.hubRadius;
+      const dx = localX - this.layout.nodeX;
+      const dy = localY - this.layout.nodeY;
+      const clickedHub = Math.hypot(dx, dy) <= this.layout.hubRadius;
       
-      // Cut next carrot if clicking the component area or the central anchor hub
       if (clickedHub || localY < this.height) {
         this.cut();
       }
     }
   }
 
-  /**
-   * Update all physics, spring simulations, and particle lifetimes using dt
-   * @param {number} dt - Delta time multiplier (normalized where 1 unit = 16.67ms)
-   */
   update(dt = 1) {
-    // 1. Decay Screen Shake
     if (this.screenShake > 0) {
       this.screenShake *= Math.pow(0.86, dt);
       if (this.screenShake < 0.2) this.screenShake = 0;
     }
 
-    // 2. Update Shockwaves
     for (let i = this.shockwaves.length - 1; i >= 0; i--) {
       const s = this.shockwaves[i];
       s.radius += (s.maxRadius - s.radius) * (1 - Math.pow(1 - 0.18, dt));
@@ -210,21 +198,18 @@ class CarrotCutter {
       }
     }
 
-    // 3. Update Flying Tops (Constrained perfectly inside relative bounds)
     for (let top of this.flyingTops) {
       top.vy += this.gravity * dt;
       top.x += top.vx * dt;
       top.y += top.vy * dt;
       top.angle += top.va * dt;
 
-      // Top Ceiling Bounce
       if (top.y < top.r) {
         top.y = top.r;
         top.vy = -top.vy * this.bounce;
         top.va *= -0.8; 
       }
 
-      // Floor Bounce & Roll relative to configured height
       if (top.y > this.height - top.r) {
         top.y = this.height - top.r;
         top.vy = -top.vy * this.bounce;
@@ -235,13 +220,11 @@ class CarrotCutter {
         if (Math.abs(top.vx) < 0.1) top.vx = 0;
       }
 
-      // Left Wall Bounce
       if (top.x < top.r) {
         top.x = top.r;
         top.vx = -top.vx * this.bounce;
         top.va = -top.va * this.bounce;
       }
-      // Right Wall Bounce relative to configured width
       if (top.x > this.width - top.r) {
         top.x = this.width - top.r;
         top.vx = -top.vx * this.bounce;
@@ -249,7 +232,6 @@ class CarrotCutter {
       }
     }
 
-    // 4. Update Splash Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.vy += this.gravity * 0.55 * dt;
@@ -258,7 +240,6 @@ class CarrotCutter {
       p.rotation += p.vRot * dt;
       p.alpha -= p.decay * dt;
 
-      // Particles bounce off floor
       if (p.y > this.height - p.size) {
         p.y = this.height - p.size;
         p.vy = -p.vy * 0.3;
@@ -271,29 +252,16 @@ class CarrotCutter {
     }
   }
 
-  /**
-   * Render component offset relative to (x, y) coordinates on provided canvas context.
-   * @param {CanvasRenderingContext2D} ctx - Target canvas rendering context
-   * @param {number} x - Drawing offset X
-   * @param {number} y - Drawing offset Y
-   */
   draw(ctx, x, y) {
     ctx.save();
-    
-    // Translate coordinates to position the component block
     ctx.translate(x, y);
 
-    // Strictly enforce layout clipping bounds
     ctx.beginPath();
     ctx.rect(0, 0, this.width, this.height);
     ctx.clip();
 
-    // Fetch Preloaded Assets
-    const imgHub = this.getAsset('hub');
-    const imgBottom = this.getAsset('bottom');
-    const imgTop = this.getAsset('top');
+    const imgBase = this.getAsset('base');
 
-    // Localized Screen Shake translation (confined within clipping mask)
     if (this.screenShake > 0) {
       const dx = (Math.random() - 0.5) * (this.screenShake * 0.4);
       const dy = (Math.random() - 0.5) * this.screenShake; 
@@ -312,83 +280,107 @@ class CarrotCutter {
       ctx.restore();
     });
 
-    // 2. Draw Static Carrots
-    this.carrots.forEach((carrot) => {
-      ctx.save();
-      ctx.translate(this.nodeX, this.nodeY);
-      ctx.rotate(carrot.angle);
+    // 2. Draw Combined Non-Moving Base Graphic (with custom scale and positioning parameters)
+    if (imgBase) {
+      ctx.drawImage(imgBase, this.layout.baseX, this.layout.baseY, this.layout.baseWidth, this.layout.baseHeight);
+    } else {
+      // Procedural Fallback bottom hubs
+      this.carrots.forEach((carrot) => {
+        ctx.save();
+        ctx.translate(this.layout.nodeX, this.layout.nodeY);
+        ctx.rotate(carrot.angle);
 
-      // Bottom Nub
-      if (imgBottom) {
-        ctx.drawImage(imgBottom, 0, -this.carrotWidth / 2, this.carrotBottomLength, this.carrotWidth);
-      } else {
-        // Procedural Fallback
         ctx.fillStyle = '#ff6b00';
         ctx.beginPath();
-        ctx.moveTo(0, -this.carrotWidth / 2);
-        ctx.lineTo(this.carrotBottomLength, -this.carrotWidth * 0.45);
-        ctx.lineTo(this.carrotBottomLength, this.carrotWidth * 0.45);
-        ctx.lineTo(0, this.carrotWidth / 2);
+        ctx.moveTo(0, -this.layout.topWidth / 2);
+        ctx.lineTo(this.layout.topPivotOffset, -this.layout.topWidth * 0.45);
+        ctx.lineTo(this.layout.topPivotOffset, this.layout.topWidth * 0.45);
+        ctx.lineTo(0, this.layout.topWidth / 2);
         ctx.closePath();
         ctx.fill();
         
         ctx.strokeStyle = '#e65c00';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(this.carrotBottomLength * 0.4, -this.carrotWidth * 0.4);
-        ctx.lineTo(this.carrotBottomLength * 0.4, this.carrotWidth * 0.4);
+        ctx.moveTo(this.layout.topPivotOffset * 0.4, -this.layout.topWidth * 0.4);
+        ctx.lineTo(this.layout.topPivotOffset * 0.4, this.layout.topWidth * 0.4);
         ctx.stroke();
-      }
+        ctx.restore();
+      });
 
-      // Top Nub (only drawn if uncut)
+      // Procedural Hub Center Fallback
+      ctx.save();
+      ctx.fillStyle = this.isHubHovered ? '#34495e' : '#2c3e50';
+      ctx.beginPath();
+      ctx.arc(this.layout.nodeX, this.layout.nodeY, this.layout.hubRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = this.isHubHovered ? '#f39c12' : '#bdc3c7';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Draw Static Tops (Aligned dynamically via topPivotOffset and topOffsetY)
+    this.carrots.forEach((carrot) => {
       if (!carrot.isCut) {
-        const topLength = this.carrotTotalLength - this.carrotBottomLength;
+        ctx.save();
+        ctx.translate(this.layout.nodeX, this.layout.nodeY);
+        ctx.rotate(carrot.angle);
+
+        const imgTop = this.getAsset(carrot.topAsset);
+
         if (imgTop) {
-          ctx.drawImage(imgTop, this.carrotBottomLength, -this.carrotWidth / 2, topLength, this.carrotWidth);
+          ctx.drawImage(
+            imgTop, 
+            this.layout.topPivotOffset, 
+            -this.layout.topWidth / 2 + this.layout.topOffsetY, 
+            this.layout.topLength, 
+            this.layout.topWidth
+          );
         } else {
           // Procedural Fallback
-          ctx.fillStyle = '#ff7a18';
+          ctx.fillStyle = `hsl(${14 + carrot.index * 3}, 100%, 48%)`;
           ctx.beginPath();
-          ctx.moveTo(this.carrotBottomLength, -this.carrotWidth * 0.45);
-          ctx.lineTo(this.carrotTotalLength - 12, -this.carrotWidth * 0.25);
-          ctx.lineTo(this.carrotTotalLength, 0);
-          ctx.lineTo(this.carrotTotalLength - 12, this.carrotWidth * 0.25);
-          ctx.lineTo(this.carrotBottomLength, this.carrotWidth * 0.45);
+          ctx.moveTo(this.layout.topPivotOffset, -this.layout.topWidth * 0.45);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength - 12, -this.layout.topWidth * 0.25);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength, 0);
+          ctx.lineTo(this.layout.topPivotOffset + this.layout.topLength - 12, this.layout.topWidth * 0.25);
+          ctx.lineTo(this.layout.topPivotOffset, this.layout.topWidth * 0.45);
           ctx.closePath();
           ctx.fill();
 
-          // Green Leaves
           ctx.fillStyle = '#27ae60';
           ctx.beginPath();
-          ctx.arc(this.carrotTotalLength + 3, -5, 7, 0, Math.PI * 2);
-          ctx.arc(this.carrotTotalLength + 5, 5, 6, 0, Math.PI * 2);
-          ctx.arc(this.carrotTotalLength, 0, 5, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength + 3, -5, 7, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength + 5, 5, 6, 0, Math.PI * 2);
+          ctx.arc(this.layout.topPivotOffset + this.layout.topLength, 0, 5, 0, Math.PI * 2);
           ctx.fill();
         }
+        ctx.restore();
       }
-      ctx.restore();
     });
 
-    // 3. Draw Flying Tops
+    // 4. Draw Flying Cut Tops (Maintains visual continuity during separation physics)
     this.flyingTops.forEach((top) => {
       ctx.save();
       ctx.translate(top.x, top.y);
       ctx.rotate(top.angle);
 
       const drawX = -top.length / 2;
-      const drawY = -this.carrotWidth / 2;
+      const drawY = -this.layout.topWidth / 2 + this.layout.topOffsetY;
+      const imgTop = this.getAsset(top.topAsset);
 
       if (imgTop) {
-        ctx.drawImage(imgTop, drawX, drawY, top.length, this.carrotWidth);
+        ctx.drawImage(imgTop, drawX, drawY, top.length, this.layout.topWidth);
       } else {
-        // Procedural Fallback
-        ctx.fillStyle = '#ff7a18';
+        // Fallback
+        ctx.fillStyle = `hsl(${14 + top.index * 3}, 100%, 48%)`;
         ctx.beginPath();
-        ctx.moveTo(drawX, -this.carrotWidth * 0.45);
-        ctx.lineTo(top.length / 2 - 12, -this.carrotWidth * 0.25);
+        ctx.moveTo(drawX, -this.layout.topWidth * 0.45);
+        ctx.lineTo(top.length / 2 - 12, -this.layout.topWidth * 0.25);
         ctx.lineTo(top.length / 2, 0);
-        ctx.lineTo(top.length / 2 - 12, this.carrotWidth * 0.25);
-        ctx.lineTo(drawX, this.carrotWidth * 0.45);
+        ctx.lineTo(top.length / 2 - 12, this.layout.topWidth * 0.25);
+        ctx.lineTo(drawX, this.layout.topWidth * 0.45);
         ctx.closePath();
         ctx.fill();
 
@@ -402,7 +394,7 @@ class CarrotCutter {
       ctx.restore();
     });
 
-    // 4. Draw Splash Particles
+    // 5. Draw Splash Particles
     this.particles.forEach((p) => {
       ctx.save();
       ctx.globalAlpha = p.alpha;
@@ -413,27 +405,17 @@ class CarrotCutter {
       ctx.restore();
     });
 
-    // 5. Draw Central Anchor Hub
-    ctx.save();
-    if (imgHub) {
-      // Glow and visual feedback on hover state
-      if (this.isHubHovered) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = '#e67e22';
-      }
-      ctx.drawImage(imgHub, this.nodeX - this.hubRadius, this.nodeY - this.hubRadius, this.hubRadius * 2, this.hubRadius * 2);
-    } else {
-      // Procedural Fallback
-      ctx.fillStyle = this.isHubHovered ? '#34495e' : '#2c3e50';
+    // 6. Draw Interactive hover glow ring
+    if (this.isHubHovered) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(230, 126, 34, 0.6)';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(this.nodeX, this.nodeY, this.hubRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = this.isHubHovered ? '#f39c12' : '#bdc3c7';
-      ctx.lineWidth = 3;
+      ctx.arc(this.layout.nodeX, this.layout.nodeY, this.layout.hubRadius + 4, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
-    ctx.restore();
 
-    ctx.restore(); // Restore context back to global state
+    ctx.restore(); 
   }
 }
