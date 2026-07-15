@@ -1,6 +1,6 @@
 /**
  * CarrotCutter - Enhanced for individual top hand-placement and dynamic aspect-ratio mapping.
- * Upgraded with mid-flight pivot centering and early, ultra-smooth ground settling.
+ * Upgraded with mid-flight pivot centering, ground settling, and dynamic unlock/lock targets.
  */
 class CarrotCutter {
   /**
@@ -45,12 +45,16 @@ class CarrotCutter {
     this.bounce = 0.65;            
     this.friction = 0.98;          
 
-    // Juice Effects State
+    // Juice Effects & Interaction States
     this.screenShake = 0;
     this.shockwaves = [];
     this.flyingTops = [];
     this.particles = [];
     this.isHubHovered = false;
+    
+    // Interaction Lock-out & Selection State
+    this.isLocked = true; 
+    this.hoveredCarrotIndex = -1;
 
     // Instantiate 5 carrots mapped to the individual configuration table
     this.carrots = [];
@@ -89,14 +93,28 @@ class CarrotCutter {
   }
 
   /**
-   * Cut the next available carrot
+   * Unlocks the component so a carrot can be selected and cut
    */
-  cut() {
-    const targetIdx = this.carrots.findIndex(c => !c.isCut);
-    if (targetIdx === -1) return; 
+  unlock() {
+    this.isLocked = false;
+  }
+
+  /**
+   * Cut a specific targeted carrot index
+   * @param {number} targetIdx 
+   */
+  cut(targetIdx) {
+    if (this.isLocked) return;
+    if (targetIdx === undefined || targetIdx < 0 || targetIdx >= this.carrots.length) return;
 
     const carrot = this.carrots[targetIdx];
+    if (carrot.isCut) return;
+
     carrot.isCut = true;
+
+    // Force-lock selection again until next button prompt
+    this.isLocked = true;
+    this.hoveredCarrotIndex = -1;
 
     this.screenShake = 16;
 
@@ -180,6 +198,8 @@ class CarrotCutter {
     this.particles = [];
     this.shockwaves = [];
     this.screenShake = 0;
+    this.isLocked = true;
+    this.hoveredCarrotIndex = -1;
   }
 
   resize(width, height) {
@@ -193,20 +213,90 @@ class CarrotCutter {
   }
 
   handleMouseMove(localX, localY) {
+    // Hub hovering is deactivated if the layout is locked
+    if (this.isLocked) {
+      this.isHubHovered = false;
+      this.hoveredCarrotIndex = -1;
+      return;
+    }
+
     const dx = localX - this.layout.nodeX;
     const dy = localY - this.layout.nodeY;
     const distance = Math.hypot(dx, dy);
     this.isHubHovered = distance <= this.layout.hubRadius;
+
+    // Check click bounding boxes for all active, uncut carrots
+    this.hoveredCarrotIndex = -1;
+    for (let i = 0; i < this.carrots.length; i++) {
+      const carrot = this.carrots[i];
+      if (carrot.isCut) continue;
+
+      const config = this.layout.tops[carrot.index];
+      const angle = (config.angleDeg * Math.PI) / 180;
+
+      // Transform coordinate local space to carrot local axis (reverse translation & rotation)
+      const cosVal = Math.cos(-angle);
+      const sinVal = Math.sin(-angle);
+      const rx = dx * cosVal - dy * sinVal;
+      const ry = dx * sinVal + dy * cosVal;
+
+      const imgTop = this.getAsset(carrot.topAsset);
+      let aspect = 1.667;
+      if (imgTop && imgTop.naturalWidth) {
+        aspect = imgTop.naturalWidth / imgTop.naturalHeight;
+      }
+      const length = this.layout.topLength * config.scale;
+      const width = length / aspect;
+
+      const minX = config.pivotOffset;
+      const maxX = config.pivotOffset + length;
+      const minY = -width / 2 + config.offsetY;
+      const maxY = width / 2 + config.offsetY;
+
+      if (rx >= minX && rx <= maxX && ry >= minY && ry <= maxY) {
+        this.hoveredCarrotIndex = i;
+        break;
+      }
+    }
   }
 
   handleMouseClick(localX, localY) {
+    if (this.isLocked) return;
+
     if (localX >= 0 && localX <= this.width && localY >= 0 && localY <= this.height) {
-      const dx = localX - this.layout.nodeX;
-      const dy = localY - this.layout.nodeY;
-      const clickedHub = Math.hypot(dx, dy) <= this.layout.hubRadius;
-      
-      if (clickedHub || localY < this.height) {
-        this.cut();
+      // Direct carrot click check
+      for (let i = 0; i < this.carrots.length; i++) {
+        const carrot = this.carrots[i];
+        if (carrot.isCut) continue;
+
+        const config = this.layout.tops[carrot.index];
+        const angle = (config.angleDeg * Math.PI) / 180;
+
+        const dx = localX - this.layout.nodeX;
+        const dy = localY - this.layout.nodeY;
+
+        const cosVal = Math.cos(-angle);
+        const sinVal = Math.sin(-angle);
+        const rx = dx * cosVal - dy * sinVal;
+        const ry = dx * sinVal + dy * cosVal;
+
+        const imgTop = this.getAsset(carrot.topAsset);
+        let aspect = 1.667;
+        if (imgTop && imgTop.naturalWidth) {
+          aspect = imgTop.naturalWidth / imgTop.naturalHeight;
+        }
+        const length = this.layout.topLength * config.scale;
+        const width = length / aspect;
+
+        const minX = config.pivotOffset;
+        const maxX = config.pivotOffset + length;
+        const minY = -width / 2 + config.offsetY;
+        const maxY = width / 2 + config.offsetY;
+
+        if (rx >= minX && rx <= maxX && ry >= minY && ry <= maxY) {
+          this.cut(i);
+          break;
+        }
       }
     }
   }
@@ -459,6 +549,13 @@ class CarrotCutter {
 
         const length = this.layout.topLength * config.scale;
         const width = length / aspect;
+
+        // Apply a glowing outline if unlocked and being hovered over
+        const isHovered = this.hoveredCarrotIndex === carrot.index;
+        if (isHovered) {
+          ctx.shadowColor = 'rgba(46, 204, 113, 0.95)';
+          ctx.shadowBlur = 18;
+        }
 
         if (imgTop) {
           ctx.drawImage(

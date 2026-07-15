@@ -92,11 +92,28 @@
       border-bottom: 4px solid #d35400;
       border-radius: 6px;
       cursor: pointer;
-      transition: all 0.1s ease;
+      transition: all 0.15s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+    }
+
+    button#cut-btn {
+      background: #e67e22;
+      border-bottom-color: #d35400;
+    }
+    
+    button#cut-btn.unlocked {
+      background: #2ecc71 !important;
+      border-bottom-color: #27ae60 !important;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
 
     button:hover {
@@ -138,7 +155,7 @@
     <div id="sidebar">
       <div class="card">
         <div class="card-title">Live Controls</div>
-        <button id="cut-btn" style="width: 100%; margin-bottom: 10px;">🔪 CUT CARROT</button>
+        <button id="cut-btn" style="width: 100%; margin-bottom: 10px;">🔓 UNLOCK CARROT CUT</button>
         <button id="reset-btn" style="width: 100%;">🔄 RESET COMPONENT</button>
       </div>
 
@@ -207,6 +224,14 @@
 
     const updateDisplay = () => {
       countSpan.textContent = gameComponent.checkCut();
+      
+      if (gameComponent.isLocked) {
+        cutBtn.textContent = "🔓 UNLOCK CARROT CUT";
+        cutBtn.classList.remove('unlocked');
+      } else {
+        cutBtn.textContent = "✨ SELECT A CARROT TO CUT";
+        cutBtn.classList.add('unlocked');
+      }
     };
 
     const getLocalCoords = (e) => {
@@ -230,11 +255,11 @@
     canvas.addEventListener('click', (e) => {
       const { localX, localY } = getLocalCoords(e);
       gameComponent.handleMouseClick(localX, localY);
-      updateDisplay();
+      updateDisplay(); 
     });
 
     cutBtn.addEventListener('click', () => {
-      gameComponent.cut();
+      gameComponent.unlock();
       updateDisplay();
     });
 
