@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Achievement System Demonstration</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1a1a1d;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-container {
+      text-align: center;
+      border: 4px solid #4e4e50;
+      padding: 40px;
+      border-radius: 12px;
+      background: #252529;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #e5c158;
+    }
+
+    .btn-game {
+      background: #e5c158;
+      border: none;
+      color: #111;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px;
+      transition: transform 0.1s, background-color 0.2s;
+    }
+
+    .btn-game:hover {
+      background: #f3d375;
+      transform: translateY(-2px);
+    }
+
+    .btn-game:active {
+      transform: translateY(1px);
+    }
+
+    .dev-panel {
+      margin-top: 30px;
+      padding: 15px;
+      border: 1px dashed #4e4e50;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <h1>Super Cool Game</h1>
+    <p>Play the game and unlock epic milestones!</p>
+    
+    <button id="pause-btn" class="btn-game">⏸️ Pause & Achievements</button>
+
+    <div class="dev-panel">
+      <h3>Developer Simulation Panel</h3>
+      <button onclick="unlockDemo('made it')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "made it" Unlock</button>
+      <button onclick="unlockDemo('friends')" class="btn-game" style="background:#4e4e50; color:white;">Simulate: "friends" Unlock</button>
+      <button onclick="resetDemo()" class="btn-game" style="background:#c94c4c; color:white;">Reset Saved Progress</button>
+    </div>
+  </div>
+
+  <!-- Loaded as standard script to bypass local file system CORS limits -->
+  <script src="achievements.js"></script>
+  <script>
+    // Initialize the system
+    const achievements = new AchievementSystem();
+
+    // Hook up the pause button to open the overlay
+    document.getElementById('pause-btn').addEventListener('click', () => {
+      achievements.openCatalog();
+    });
+
+    // Helper functions for the simulation buttons
+    function unlockDemo(title) {
+      achievements.unlockAchievement(title);
+    }
+
+    function resetDemo() {
+      achievements.clearProgress();
+    }
+  </script>
+</body>
+</html>
