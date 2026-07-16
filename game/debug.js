@@ -80,6 +80,25 @@ class DebugMenu {
       }
     });
 
+    this.addButton('Cut Carrot', () => {
+      const playing = this.gm._components.playing;
+      if (playing && playing.carrot && playing.carrotRight) {
+        // Try left side first
+        const leftUncut = playing.carrot.carrots.filter(c => !c.isCut);
+        if (leftUncut.length > 0) {
+            playing.carrot.isLocked = false;
+            playing.carrot.cut(leftUncut[0].index);
+            return;
+        }
+        // Then right side
+        const rightUncut = playing.carrotRight.carrots.filter(c => !c.isCut);
+        if (rightUncut.length > 0) {
+            playing.carrotRight.isLocked = false;
+            playing.carrotRight.cut(rightUncut[0].index);
+        }
+      }
+    });
+
     document.body.appendChild(this.container);
   }
 

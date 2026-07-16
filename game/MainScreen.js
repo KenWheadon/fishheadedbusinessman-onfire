@@ -24,6 +24,7 @@ class MainScreen {
         this.carrotRight.layout.baseY = 600; 
         this.cardGame = new CardGame({ width: 760, height: 360 }); 
         this.popup = new GamePopup({ width: 500, height: 250 });
+        this.carrotLoss = new CarrotLoss({ width: this.width, height: this.height });
 
         // Force Chars components to lock initial inputs until popup is accepted
         this.chars.locked = true;
@@ -97,6 +98,8 @@ class MainScreen {
             }
         }
         this.popup.update(safeDt);
+        const cutCarrots = 10 - (this.carrot.checkCut() + this.carrotRight.checkCut());
+        this.carrotLoss.update(safeDt, cutCarrots);
 
         // Core Game Flow Timing & State Updates
         let targetCharsY = 110;
@@ -344,8 +347,13 @@ class MainScreen {
     }
 
     draw(ctx) {
+        ctx.save();
+        if (this.carrotLoss && (this.carrotLoss.shakeX !== 0 || this.carrotLoss.shakeY !== 0)) {
+            ctx.translate(this.carrotLoss.shakeX, this.carrotLoss.shakeY);
+        }
+
         ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.fillRect(-50, -50, this.width + 100, this.height + 100);
 
         // Draw components according to active state layers
         const drawOrder = ['cardGame', 'chars', 'debt', 'carrot', 'carrotRight'];
@@ -387,6 +395,12 @@ class MainScreen {
             const py = (this.height - this.popup.height) / 2;
             this.popup.draw(ctx, px, py);
         }
+
+        if (this.carrotLoss) {
+            this.carrotLoss.draw(ctx);
+        }
+
+        ctx.restore();
     }
 
     _routeInput(methodName, x, y) {
