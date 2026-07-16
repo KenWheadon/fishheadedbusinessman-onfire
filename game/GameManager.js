@@ -108,6 +108,8 @@ class GameManager {
      */
     this.onAchievementTriggered = config.onAchievementTriggered || null;
 
+    this.onAssetsLoaded = config.onAssetsLoaded || null;
+
     // ── Input routing state ──────────────────────────────────
     this._boundMouseMove  = this._onMouseMove.bind(this);
     this._boundMouseDown  = this._onMouseDown.bind(this);
