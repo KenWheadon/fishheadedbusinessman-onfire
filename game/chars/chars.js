@@ -210,10 +210,14 @@ class Chars {
     target.isDying = true;
     target.hovered = false;
 
+    if (typeof AssetManager !== 'undefined') {
+      target.image = AssetManager.get(`char-${target.id}-burnt`) || target.image;
+    }
+
     // Slower, floatier physical launch vector mechanics
     const direction = Math.random() > 0.5 ? 1 : -1;
     target.vx = direction * (Math.random() * 3.5 + 4.5); 
-    target.vy = -Math.random() * 6 - 8;                 
+    target.vy = -Math.random() * 15 - 15;                 
     target.va = direction * (Math.random() * 0.05 + 0.03); 
     target.scale = 1.0;
 
@@ -261,6 +265,10 @@ class Chars {
       char.dialogueIndex = 0;
       char.hovered = false; 
       char.isWaitingForBoom = false; 
+
+      if (typeof AssetManager !== 'undefined') {
+        char.image = AssetManager.get(`char-${char.id}`) || char.image;
+      }
     });
   }
 
@@ -365,11 +373,34 @@ class Chars {
       } else if (char.isDying) {
         char.x += char.vx * frames;
         char.y += char.vy * frames;
-        char.vy += 0.22 * frames; 
+        char.vy += 0.45 * frames; // slightly stronger gravity
         char.angle += char.va * frames; 
-        char.scale = Math.max(0.1, char.scale - 0.0035 * frames);
 
-        if (char.y > this.height + 300) { char.isDying = false; }
+        // Bounce off walls
+        const radius = 60;
+        if (char.x < radius) { 
+          char.x = radius; 
+          char.vx *= -0.6; 
+        }
+        if (char.x > this.width - radius) { 
+          char.x = this.width - radius; 
+          char.vx *= -0.6; 
+        }
+
+        // Bounce off floor and settle
+        const floorY = this.height - 80;
+        if (char.y > floorY) {
+          char.y = floorY;
+          if (char.vy > 3) {
+            char.vy *= -0.45; // Bounce vertical
+            char.vx *= 0.8;   // Friction horizontal
+            char.va *= 0.8;   // Spin friction
+          } else {
+            char.vy = 0;
+            char.vx *= 0.5;   // Slide friction
+            char.va *= 0.5;
+          }
+        }
       }
     });
 

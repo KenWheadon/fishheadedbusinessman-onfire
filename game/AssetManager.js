@@ -53,11 +53,16 @@ class SimpleAssetManager {
       { key: 'headshot-3', src: 'images/headshot-3.jpg' },
       { key: 'headshot-4', src: 'images/headshot-4.jpg' },
       { key: 'headshot-5', src: 'images/headshot-5.jpg' },
+      { key: 'char-1-burnt', src: 'images/char-1-burnt.webp' },
+      { key: 'char-2-burnt', src: 'images/char-2-burnt.webp' },
+      { key: 'char-3-burnt', src: 'images/char-3-burnt.webp' },
+      { key: 'char-4-burnt', src: 'images/char-4-burnt.webp' },
+      { key: 'char-5-burnt', src: 'images/char-5-burnt.webp' },
 
       // 4. Credits assets
-      { key: 'images/kenwheadon.png', src: 'images/kenwheadon.png' },
-      { key: 'images/janedoe.png', src: 'images/janedoe.png' },
-      { key: 'images/terminal.png', src: 'images/terminal.png' },
+      { key: 'kenwheadon', src: 'images/kenwheadon.png' },
+      { key: 'jessyjeankafka', src: 'images/jessyjeankafka.jpg' },
+      { key: 'terminal', src: 'images/terminal.jpg' },
 
       // 5. Achievements/Tracker assets
       { key: 'madeit.webp', src: 'images/madeit.webp' },

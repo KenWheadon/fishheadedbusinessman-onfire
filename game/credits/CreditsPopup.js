@@ -12,23 +12,23 @@ class CreditsPopup {
         this.credits = [
             {
                 name: "Ken Wheadon",
-                image: "images/kenwheadon.png",
+                image: "kenwheadon",
                 title: "Founder",
                 roles: ["Dev", "PM", "UI/UX", "Graphics", "QA"],
                 flavor: "Nothing quite like a game about fingers and exploding dudes to get you going!"
             },
             {
-                name: "Jane Doe",
-                image: "images/janedoe.png",
-                title: "Audio Director",
-                roles: ["SFX", "Composer"],
-                flavor: "I made the exploding dudes sound appropriately squishy."
+                name: "Jessy Jean-Kafka",
+                image: "jessyjeankafka",
+                title: "QA",
+                roles: ["QA, Brainstorming"],
+                flavor: "I fuel the game by looking, playing and giving feedback."
             },
             {
-                name: "System Terminal",
-                image: "images/terminal.png",
-                title: "Server Admin",
-                roles: ["DevOps", "Backend"],
+                name: "AI",
+                image: "terminal",
+                title: "Assistant",
+                roles: ["Code, Assets, Backend"],
                 flavor: "01001000 01100101 01101100 01110000"
             }
         ];
@@ -43,10 +43,10 @@ class CreditsPopup {
         this.anim = {
             alpha: 0, targetAlpha: 0,
             scale: 0, targetScale: 0, scaleVel: 0,
-            
+
             // Scroll Physics
             scrollY: 0, targetScrollY: 0, maxScroll: 0,
-            
+
             // Interaction
             closeRot: 0, targetCloseRot: 0, closeScale: 1,
             cardHovers: Array(this.credits.length).fill(0)
@@ -72,7 +72,7 @@ class CreditsPopup {
         this.dims.h = Math.min(600, this.height * 0.9);
 
         const contentHeight = this.credits.length * (this.cardHeight + this.cardGap);
-        const visibleHeight = this.dims.h - 140; 
+        const visibleHeight = this.dims.h - 140;
         this.anim.maxScroll = Math.max(0, contentHeight - visibleHeight);
         this.anim.targetScrollY = Math.max(0, Math.min(this.anim.targetScrollY, this.anim.maxScroll));
     }
@@ -99,12 +99,12 @@ class CreditsPopup {
             const factor = 1 - Math.exp(-speed * dt * 60);
             return current + (target - current) * Math.min(1, Math.max(0, factor));
         };
-        
+
         this.anim.alpha = lerpdt(this.anim.alpha, this.anim.targetAlpha, 0.15);
         this.anim.scrollY = lerpdt(this.anim.scrollY, this.anim.targetScrollY, 0.15);
-        
+
         // Dynamic spring simulation scaled to delta time
-        const stiffness = 0.2 * 60; 
+        const stiffness = 0.2 * 60;
         const friction = Math.pow(0.7, dt * 60);
         this.anim.scaleVel += (this.anim.targetScale - this.anim.scale) * stiffness * dt;
         this.anim.scaleVel *= friction;
@@ -112,19 +112,19 @@ class CreditsPopup {
 
         this.anim.closeRot = lerpdt(this.anim.closeRot, this.anim.targetCloseRot, 0.2);
         this.anim.closeScale = lerpdt(this.anim.closeScale, 1, 0.2);
-        
+
         this._processHover(lerpdt);
     }
 
     _processHover(lerpdt) {
         if (!this.isVisible || this.anim.scale < 0.9) return;
-        
+
         this.cursor = 'default';
         const tx = this.mouse.tx;
         const ty = this.mouse.ty;
 
         this.anim.targetCloseRot = 0;
-        
+
         if (this._isHit(tx, ty, this.hitboxes.close)) {
             this.cursor = 'pointer';
             this.anim.targetCloseRot = Math.PI / 2;
@@ -149,7 +149,7 @@ class CreditsPopup {
     handleMouseMove(localX, localY) {
         this.mouse.x = localX;
         this.mouse.y = localY;
-        
+
         // Map local coordinate inputs relative to popup's centered transformation matrix
         this.mouse.tx = (localX - this.width / 2) / Math.max(0.001, this.anim.scale);
         this.mouse.ty = (localY - this.height / 2) / Math.max(0.001, this.anim.scale);
@@ -157,9 +157,9 @@ class CreditsPopup {
 
     handleMouseClick(localX, localY) {
         this.handleMouseMove(localX, localY);
-        
+
         if (!this.isVisible || this.anim.scale < 0.9) return false;
-        
+
         if (this._isHit(this.mouse.tx, this.mouse.ty, this.hitboxes.close)) {
             this.anim.closeScale = 0.6;
             this.hide();
@@ -170,7 +170,7 @@ class CreditsPopup {
 
     handleMouseWheel(deltaY) {
         if (!this.isVisible) return;
-        this.anim.targetScrollY += deltaY * 0.8; 
+        this.anim.targetScrollY += deltaY * 0.8;
         this.anim.targetScrollY = Math.max(0, Math.min(this.anim.targetScrollY, this.anim.maxScroll));
     }
 
@@ -198,7 +198,7 @@ class CreditsPopup {
         const bh = this.dims.h;
 
         ctx.save();
-        
+
         // Strict boundary containment: clips drawing operations to protect external layout space
         ctx.beginPath();
         ctx.rect(x, y, this.width, this.height);
@@ -234,12 +234,12 @@ class CreditsPopup {
         const closeSize = 30;
         const closeX = bw / 2 - 45;
         const closeY = -bh / 2 + 15;
-        
+
         ctx.save();
         ctx.translate(closeX + closeSize / 2, closeY + closeSize / 2);
         ctx.rotate(this.anim.closeRot);
         ctx.scale(this.anim.closeScale, this.anim.closeScale);
-        
+
         ctx.fillStyle = '#e74c3c';
         ctx.beginPath();
         ctx.roundRect(-closeSize / 2, -closeSize / 2, closeSize, closeSize, 5);
@@ -248,7 +248,7 @@ class CreditsPopup {
         ctx.font = '20px Arial';
         ctx.fillText('+', 0, 2);
         ctx.restore();
-        
+
         this.hitboxes.close = { x: closeX, y: closeY, w: closeSize, h: closeSize };
 
         const contentY = -bh / 2 + 80;
@@ -262,7 +262,7 @@ class CreditsPopup {
         ctx.roundRect(listX - 10, contentY, listWidth + 20, clipHeight, 10);
         ctx.clip();
 
-        this.hitboxes.cards = []; 
+        this.hitboxes.cards = [];
 
         for (let i = 0; i < this.credits.length; i++) {
             const cardY = contentY + (i * (this.cardHeight + this.cardGap)) - this.anim.scrollY;
@@ -277,13 +277,13 @@ class CreditsPopup {
             const hoverAmt = this.anim.cardHovers[i];
 
             ctx.save();
-            ctx.translate(0, -hoverAmt * 5); 
-            
+            ctx.translate(0, -hoverAmt * 5);
+
             ctx.fillStyle = `rgba(${52 + hoverAmt * 10}, ${73 + hoverAmt * 10}, ${94 + hoverAmt * 15}, 1)`;
             ctx.beginPath();
             ctx.roundRect(listX, cardY, listWidth, this.cardHeight, 10);
             ctx.fill();
-            
+
             if (hoverAmt > 0.01) {
                 ctx.strokeStyle = `rgba(52, 152, 219, ${hoverAmt})`;
                 ctx.lineWidth = 2;
@@ -295,12 +295,12 @@ class CreditsPopup {
             const imgSize = 120;
             const imgX = listX + 20;
             const imgY = cardY + 20;
-            
+
             ctx.fillStyle = '#2c3e50';
             ctx.beginPath();
             ctx.roundRect(imgX, imgY, imgSize, imgSize, 8);
             ctx.fill();
-            ctx.clip(); 
+            ctx.clip();
 
             // SAFE ASSET FALLBACK: Discovers preloaded assets securely without running afoul of file:// security origins
             const img = (typeof AssetManager !== 'undefined') ? AssetManager.get(data.image) : null;
@@ -316,11 +316,11 @@ class CreditsPopup {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(data.name.charAt(0), imgX + imgSize / 2, imgY + imgSize / 2);
             }
-            ctx.restore(); 
+            ctx.restore();
 
             // --- TEXT CONFIGURATION (Clean structural tracking preventing overlap blocks) ---
             const textX = listX + 160;
-            let textY = cardY + 22 - (hoverAmt * 5); 
+            let textY = cardY + 22 - (hoverAmt * 5);
 
             // 1. Name Profile
             ctx.fillStyle = '#ecf0f1';
@@ -331,10 +331,10 @@ class CreditsPopup {
 
             // 2. Job Title
             textY += 28;
-            ctx.fillStyle = '#3498db'; 
+            ctx.fillStyle = '#3498db';
             ctx.font = 'bold 15px Arial';
             ctx.fillText(data.title, textX, textY);
-            
+
             // 3. Developer Roles (Isolate completely on separate grid row layer)
             textY += 20;
             ctx.fillStyle = '#bdc3c7';
@@ -344,7 +344,7 @@ class CreditsPopup {
             // 4. Flavor Wrapped Quote
             textY += 26;
             ctx.fillStyle = '#95a5a6';
-            ctx.font = 'italic 14px Arial'; 
+            ctx.font = 'italic 14px Arial';
             const maxTextWidth = listWidth - 180;
             this._wrapText(ctx, `"${data.flavor}"`, textX, textY, maxTextWidth, 18, false);
         }
@@ -358,7 +358,7 @@ class CreditsPopup {
         const words = text.split(' ');
         let line = '';
         let currentY = y;
-        
+
         const currentFont = ctx.font;
         if (isItalic) ctx.font = 'italic ' + currentFont;
 
@@ -374,7 +374,7 @@ class CreditsPopup {
             }
         }
         ctx.fillText(line, x, currentY);
-        
+
         if (isItalic) ctx.font = currentFont;
     }
 }

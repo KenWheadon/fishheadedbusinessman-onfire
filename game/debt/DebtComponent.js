@@ -3,8 +3,8 @@ class DebtComponent {
         this.width = config.width || 840;
         this.height = config.height || 360;
 
-        // Core State variables (Updated to 400K)
-        this.initialDebt = 400000;
+        // Core State variables
+        this.initialDebt = 1000000;
         this.debt = this.initialDebt;
         this.visualDebt = this.initialDebt; 
         this.state = 'active'; // 'active', 'won', 'lost'
@@ -25,18 +25,18 @@ class DebtComponent {
         this.isHoveringButton = false;
     }
 
-    pay() {
+    pay(amount = 25000) {
         if (this.state !== 'active') return;
 
-        this.debt -= 25000;
+        this.debt -= amount;
         
         // Trigger visual "impact" bounce by compressing the scale
         this.textScale = 0.75;
         this.textScaleVelocity = 0;
 
-        // Spawn floating indicator ("-$25k") near the payment region
+        // Spawn floating indicator near the payment region
         this.floatingTexts.push({
-            text: '-$25,000',
+            text: `-$${amount.toLocaleString()}`,
             x: this.width / 2 + (Math.random() * 80 - 40),
             y: this.height / 2 + 15,
             vy: -110, // speed going upwards (pixels/sec)

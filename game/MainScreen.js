@@ -170,7 +170,18 @@ class MainScreen {
                     this._cardRoundOutcomeHandled = true;
                     
                     if (this.cardGame.didWin()) {
-                        this.debt.pay();
+                        const totalChars = this.chars.characters.length;
+                        const aliveChars = this.chars.characters.filter(c => c.alive).length;
+                        const deadCount = totalChars - aliveChars;
+                        
+                        let payoffAmount = 10000;
+                        if (deadCount === 1) payoffAmount = 15000;
+                        else if (deadCount === 2) payoffAmount = 25000;
+                        else if (deadCount === 3) payoffAmount = 40000;
+                        else if (deadCount === 4) payoffAmount = 60000;
+                        else if (deadCount >= 5) payoffAmount = 80000;
+
+                        this.debt.pay(payoffAmount);
                         if (this.debt.debt <= 0) {
                             this.gameState = 'WIN_SEQUENCE';
                             this.stateTimer = 1.2; // Slide characters back down
