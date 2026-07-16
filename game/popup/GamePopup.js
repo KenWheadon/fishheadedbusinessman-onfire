@@ -44,9 +44,12 @@ class GamePopup {
     show(message, preloadedImage, callback = null) {
         this.message = message;
         this.image = preloadedImage;
-        this.callback = callback;
+        this.callback = (typeof callback === 'function') ? callback : null;
         this.isOpen = true;
         this.isTransitioning = true;
+        this.btnHovered = false;
+        this.btnScale = 1;
+        this.btnTargetScale = 1;
 
         // Trigger entrance targets
         this.targetScale = 1;
@@ -54,6 +57,8 @@ class GamePopup {
     }
 
     close() {
+        if (!this.isOpen && this.targetScale === 0) return;
+        this.isOpen = false;
         this.isTransitioning = true;
         this.targetScale = 0;
         this.targetYOffset = 80; // Slide down out of view
@@ -72,6 +77,7 @@ class GamePopup {
         this.velScale += force * step;
         this.velScale *= Math.pow(this.springDamping, step);
         this.scale += this.velScale * step;
+        if (this.scale < 0) this.scale = 0;
 
         // Smoothly interpolate Y Offset & Opacity
         this.yOffset += (this.targetYOffset - this.yOffset) * (1 - Math.pow(1 - 0.15, step));
@@ -84,7 +90,9 @@ class GamePopup {
         this.btnScale += (this.btnTargetScale - this.btnScale) * (1 - Math.pow(1 - 0.25, step));
 
         // Handle closure callback cleanly when exit transition is complete
-        if (!this.isOpen && this.scale < 0.01 && this.isTransitioning) {
+        if (!this.isOpen && this.scale <= 0.01 && this.isTransitioning) {
+            this.scale = 0;
+            this.opacity = 0;
             this.isTransitioning = false;
             if (this.callback) {
                 const cb = this.callback;
@@ -210,32 +218,42 @@ class GamePopup {
     /**
      * Localized Input Listeners: coordinates mapped directly inside component frame bounds.
      */
+    _mapToPopupSpace(localX, localY) {
+        const scale = Math.max(this.scale, 0.01);
+        const centerX = this.width / 2;
+        const centerY = this.height / 2 + this.yOffset;
+
+        return {
+            x: (localX - centerX) / scale + this.width / 2,
+            y: (localY - centerY) / scale + this.height / 2
+        };
+    }
+
+    _isInsideButton(x, y) {
+        return (
+            x >= this.btnX &&
+            x <= this.btnX + this.btnWidth &&
+            y >= this.btnY &&
+            y <= this.btnY + this.btnHeight
+        );
+    }
+
     handleMouseMove(localX, localY) {
-        if (!this.isOpen || this.scale < 0.8) {
+        if (!this.isOpen) {
             this.btnHovered = false;
             return;
         }
 
-        // Check boundary maps of internal component space
-        this.btnHovered = (
-            localX >= this.btnX &&
-            localX <= this.btnX + this.btnWidth &&
-            localY >= this.btnY &&
-            localY <= this.btnY + this.btnHeight
-        );
+        const pos = this._mapToPopupSpace(localX, localY);
+        this.btnHovered = this._isInsideButton(pos.x, pos.y);
     }
 
     handleMouseClick(localX, localY) {
-        if (!this.isOpen || this.scale < 0.8) return;
+        if (!this.isOpen) return;
 
-        if (
-            localX >= this.btnX &&
-            localX <= this.btnX + this.btnWidth &&
-            localY >= this.btnY &&
-            localY <= this.btnY + this.btnHeight
-        ) {
+        const pos = this._mapToPopupSpace(localX, localY);
+        if (this._isInsideButton(pos.x, pos.y)) {
             this.btnScale = 0.8; // Squash visual confirmation feedback
-            this.isOpen = false;
             this.close();
         }
     }

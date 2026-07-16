@@ -161,6 +161,14 @@ class GameManager {
         this._loader?.setProgress(normalisedPct * 100);
       },
       () => {
+        if (typeof this.onAssetsLoaded === 'function') {
+          try {
+            this.onAssetsLoaded();
+          } catch (e) {
+            console.warn('[GameManager] onAssetsLoaded threw:', e);
+          }
+        }
+
         // Wait for the loader's own exit animation to finish before switching
         this._waitForLoaderExit(() => {
           this._transitionTo('START');

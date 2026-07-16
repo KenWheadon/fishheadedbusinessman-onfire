@@ -37,7 +37,22 @@ class HelpCarousel {
             dots: []
         };
 
-        this.fillerText = "Welcome to the game manual. This is filler text designed to demonstrate the canvas-based text wrapping capability. Use the left and right arrows, or the dots below, to navigate through the pages. Each page alternates the layout of the text and the accompanying image to keep the design visually engaging.";
+        // Dynamic 5-Page Basic Instructions Mapping
+        this.pageTitles = [
+            "The Objective",
+            "The Cards",
+            "Paying Debt",
+            "The Penalty",
+            "Win or Lose"
+        ];
+
+        this.pageInstructions = [
+            "Your main objective is to completely pay off your outstanding debt before you run out of carrots.",
+            "Point at the face-down cards to hover over them, and click to reveal their hidden symbols.",
+            "Successfully finding a matching pair will immediately pay down a portion of your total debt.",
+            "If you uncover a skull, you must choose to either sacrifice a character or cut off a precious carrot to keep playing.",
+            "Clearing the entire debt guarantees a win, while losing your last carrot results in instant defeat."
+        ];
     }
 
     /**
@@ -334,13 +349,17 @@ class HelpCarousel {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
+        // Dynamically pull title based on active page
+        const pageTitle = this.pageTitles[pageNum - 1] || `Page ${pageNum}`;
         ctx.font = 'bold 24px Arial';
         ctx.fillStyle = '#00d8d6';
-        ctx.fillText(`Page ${pageNum} Instructions`, textX, contentY);
+        ctx.fillText(pageTitle, textX, contentY);
 
+        // Dynamically pull 1-sentence basic instruction
+        const pageText = this.pageInstructions[pageNum - 1] || "";
         ctx.font = '16px Arial';
         ctx.fillStyle = '#d2dae2';
-        this._wrapText(ctx, this.fillerText, textX, contentY + 45, contentW, 22);
+        this._wrapText(ctx, pageText, textX, contentY + 45, contentW, 22);
     }
 
     _wrapText(ctx, text, x, y, maxWidth, lineHeight) {

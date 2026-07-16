@@ -98,10 +98,21 @@
       }
     });
 
+    let playRequested = false;
+
     const startScreen = new StartScreen({
       width:  LAYOUT.start.w,
       height: LAYOUT.start.h,
-      onPlay:     () => gm.transitionToPlaying(),   // calls into GameManager
+      onPlay:     () => {
+        if (mainScreen) {
+          if (typeof mainScreen.reset === 'function') {
+            mainScreen.reset();
+          }
+          gm.transitionToPlaying();
+        } else {
+          playRequested = true;
+        }
+      },
       onSettings: () => {
         settingsPopup.show();
       },
@@ -125,7 +136,9 @@
     const mainScreen = new MainScreen({
       width:  LAYOUT.playing.w,
       height: LAYOUT.playing.h,
-      onGameOver: () => gm._transitionTo('GAMEOVER'),
+      onGameOver: () => {
+        if (gm) gm._transitionTo('GAMEOVER');
+      },
     });
 
     const endScreen = new EndScreenComponent({
@@ -159,6 +172,28 @@
       onAchievementTriggered: (key, data) => {
         console.log(`[Achievement Hook] "${key}"`, data ?? '');
         achievementSystem.unlockAchievement(key);
+      },
+
+      onAssetsLoaded: () => {
+        if (!mainScreen) {
+          mainScreen = new MainScreen({
+            width:  LAYOUT.playing.w,
+            height: LAYOUT.playing.h,
+            onGameOver: () => gm._transitionTo('GAMEOVER'),
+          });
+        }
+
+        if (typeof mainScreen.reset === 'function') {
+          mainScreen.reset();
+        }
+
+        gm._components.playing = mainScreen;
+        gm._layout.playing = { ...LAYOUT.playing };
+
+        if (playRequested) {
+          gm.transitionToPlaying();
+          playRequested = false;
+        }
       },
 
       loaderConfig: {

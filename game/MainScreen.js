@@ -131,7 +131,15 @@ class MainScreen {
                         this.cardGame.reset();
                         this._cardRoundOutcomeHandled = false;
                     });
+                    this.gameState = 'INTRO_POPUP_WAIT';
                 }
+                break;
+                
+            case 'INTRO_POPUP_WAIT':
+                targetCharsY = -50;
+                targetCharsScale = 0.5;
+                targetBottomY = 550;
+                targetCardGameScale = 1.0;
                 break;
 
             case 'PLAYING':
