@@ -236,6 +236,7 @@
   <script src="MainScreen.js"></script>
 
   <script src="end/EndScreenComponent.js"></script>
+  <script src="debug.js"></script>
 
   <!-- 3. Orchestrator -->
   <script src="GameManager.js"></script>
@@ -357,7 +358,12 @@
           mainScreen = new MainScreen({
             width:  LAYOUT.playing.w,
             height: LAYOUT.playing.h,
-            onGameOver: () => gm._transitionTo('GAMEOVER'),
+            onGameOver: (isWin) => {
+              if (endScreen && typeof endScreen.setWinState === 'function') {
+                endScreen.setWinState(isWin);
+              }
+              gm._transitionTo('GAMEOVER');
+            },
           });
         }
 
@@ -384,6 +390,11 @@
 
     // ── Go! ────────────────────────────────────────────────────────────────
     gm.init();
+    
+    // Initialize debug menu if active
+    if (typeof DebugMenu !== 'undefined') {
+      new DebugMenu(gm, endScreen);
+    }
   </script>
 </body>
 </html>

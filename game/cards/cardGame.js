@@ -84,10 +84,10 @@ class CardGame {
     // State Engines
     this.cards = [];
     this.particles = [];
-    this.isGameOver = false;
+    this.isGameOver = true;
     this.hasWon = false;
-    
-    this.state = 'playing'; 
+
+    this.state = 'playing';
     this.resetPhase = 'idle';
 
     this.shakeTimer = 0;
@@ -136,7 +136,7 @@ class CardGame {
         hoverOffset: 0
       });
     }
-    
+
     this.state = 'resetting';
     this.resetPhase = 'dealing';
   }
@@ -194,10 +194,10 @@ class CardGame {
 
     this.cards.forEach(card => {
       const cardYOffset = card.currentY - card.hoverOffset;
-      const inside = mouseX >= card.currentX && 
-                     mouseX <= card.currentX + card.width &&
-                     mouseY >= cardYOffset && 
-                     mouseY <= cardYOffset + card.height;
+      const inside = mouseX >= card.currentX &&
+        mouseX <= card.currentX + card.width &&
+        mouseY >= cardYOffset &&
+        mouseY <= cardYOffset + card.height;
 
       if (inside && card.flipTarget === 0) {
         card.isHovered = true;
@@ -221,10 +221,10 @@ class CardGame {
 
     this.cards.forEach(card => {
       const cardYOffset = card.currentY - card.hoverOffset;
-      const inside = mouseX >= card.currentX && 
-                     mouseX <= card.currentX + card.width &&
-                     mouseY >= cardYOffset && 
-                     mouseY <= cardYOffset + card.height;
+      const inside = mouseX >= card.currentX &&
+        mouseX <= card.currentX + card.width &&
+        mouseY >= cardYOffset &&
+        mouseY <= cardYOffset + card.height;
 
       if (inside && card.flipTarget === 0) {
         card.flipTarget = 1;
@@ -290,10 +290,10 @@ class CardGame {
             card.targetY = 150 - i * 2;
           });
         }
-      } 
+      }
       else if (this.resetPhase === 'gathering') {
-        const allGathered = this.cards.every(c => 
-          Math.abs(c.currentX - c.targetX) < 1 && 
+        const allGathered = this.cards.every(c =>
+          Math.abs(c.currentX - c.targetX) < 1 &&
           Math.abs(c.currentY - c.targetY) < 1
         );
         if (allGathered) {
@@ -306,10 +306,10 @@ class CardGame {
           });
           this.resetPhase = 'dealing';
         }
-      } 
+      }
       else if (this.resetPhase === 'dealing') {
-        const allDealt = this.cards.every(c => 
-          Math.abs(c.currentX - c.targetX) < 0.5 && 
+        const allDealt = this.cards.every(c =>
+          Math.abs(c.currentX - c.targetX) < 0.5 &&
           Math.abs(c.currentY - c.targetY) < 0.5
         );
         if (allDealt) {
@@ -352,9 +352,9 @@ class CardGame {
       return;
     }
 
-    const matchingCard = this.cards.find(c => 
-      c !== newlyFlippedCard && 
-      c.flipTarget === 1 && 
+    const matchingCard = this.cards.find(c =>
+      c !== newlyFlippedCard &&
+      c.flipTarget === 1 &&
       c.faceValue === newlyFlippedCard.faceValue
     );
 
@@ -384,7 +384,7 @@ class CardGame {
    */
   draw(ctx, x, y) {
     ctx.save();
-    
+
     // Shift the matrix coordinate grid to target block space
     ctx.translate(x, y);
 
@@ -404,7 +404,7 @@ class CardGame {
 
     // Local background render
     const grad = ctx.createRadialGradient(
-      this.baseWidth / 2, this.baseHeight / 2, 50, 
+      this.baseWidth / 2, this.baseHeight / 2, 50,
       this.baseWidth / 2, this.baseHeight / 2, this.baseWidth
     );
     grad.addColorStop(0, '#1e1b4b');
@@ -542,7 +542,7 @@ class CardGame {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    } 
+    }
     else if (value === 'heart') {
       ctx.fillStyle = '#ef4444';
       ctx.strokeStyle = '#b91c1c';
@@ -554,7 +554,7 @@ class CardGame {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    } 
+    }
     else if (value === 'skull') {
       ctx.fillStyle = '#334155';
       ctx.strokeStyle = '#0f172a';
@@ -593,8 +593,8 @@ class CardGame {
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(-4, 11); ctx.lineTo(-4, 16);
-      ctx.moveTo(0, 11);  ctx.lineTo(0, 16);
-      ctx.moveTo(4, 11);  ctx.lineTo(4, 16);
+      ctx.moveTo(0, 11); ctx.lineTo(0, 16);
+      ctx.moveTo(4, 11); ctx.lineTo(4, 16);
       ctx.stroke();
     }
 

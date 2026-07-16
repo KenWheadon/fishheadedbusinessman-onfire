@@ -9,9 +9,14 @@ class EndScreenComponent {
         
         // Internal State & Juice
         this.introProgress = 0; // Animates from 0 to 1
+        this.isWin = true; // Added state for win/loss
         this.buttons = [];
         
         this._buildLayout();
+    }
+
+    setWinState(isWin) {
+        this.isWin = isWin;
     }
 
     _buildLayout() {
@@ -32,7 +37,7 @@ class EndScreenComponent {
     update(dt) {
         // Intro animation lerp
         if (this.introProgress < 1) {
-            this.introProgress += dt * 0.002; // Adjust speed here
+            this.introProgress += dt * 1.5; // dt is in seconds, multiplier of 1.5 means it takes 0.66s
             if (this.introProgress > 1) this.introProgress = 1;
         }
 
@@ -63,11 +68,16 @@ class EndScreenComponent {
 
         // Draw Title (Slides down slightly based on introProgress)
         const titleY = (this.height / 2 - 100) - (20 * (1 - this.introProgress));
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.introProgress})`;
+        
+        // Dynamically style and text for Win vs Loss
+        ctx.fillStyle = this.isWin 
+            ? `rgba(255, 255, 255, ${this.introProgress})` 
+            : `rgba(231, 76, 60, ${this.introProgress})`;
         ctx.font = 'bold 48px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('STAGE CLEARED', this.width / 2, titleY);
+        const titleText = this.isWin ? 'STAGE CLEARED' : 'GAME OVER';
+        ctx.fillText(titleText, this.width / 2, titleY);
 
         // Draw Buttons
         ctx.font = '20px sans-serif';

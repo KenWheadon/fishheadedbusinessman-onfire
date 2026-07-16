@@ -279,7 +279,7 @@ class MainScreen {
 
                 this._winTimer -= safeDt;
                 if (this._winTimer <= 0) {
-                    this.onGameOver(); // Complete win
+                    this.onGameOver(true); // Complete win
                 }
                 break;
 
@@ -293,7 +293,7 @@ class MainScreen {
 
                 this.stateTimer -= safeDt;
                 if (this.stateTimer <= 0) {
-                    this.onGameOver(); // Transition to end screen with a loss
+                    this.onGameOver(false); // Transition to end screen with a loss
                 }
                 break;
         }
@@ -318,7 +318,8 @@ class MainScreen {
 
             ctx.save();
             if (key === 'chars') {
-                ctx.translate(0, this.charsY);
+                const charsX = (this.width - this.width * this.charsScale) / 2;
+                ctx.translate(charsX, this.charsY);
                 ctx.scale(this.charsScale, this.charsScale);
             } else if (key === 'carrot') {
                 ctx.translate(0, this.bottomY - 550);
@@ -383,7 +384,7 @@ class MainScreen {
             let scaleY = 1;
 
             if (key === 'chars') {
-                bx = 0;
+                bx = (this.width - this.width * this.charsScale) / 2;
                 by = this.charsY;
                 scaleX = this.charsScale;
                 scaleY = this.charsScale;
