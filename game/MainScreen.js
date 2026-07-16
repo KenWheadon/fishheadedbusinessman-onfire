@@ -3,6 +3,9 @@ class MainScreen {
         this.width = config.width || 1280;
         this.height = config.height || 720;
         this.onGameOver = config.onGameOver || (() => {});
+        this.onSettings = config.onSettings || (() => {});
+
+        this.settingsBtn = { x: this.width - 120, y: 20, w: 100, h: 40, hovered: false };
 
         // 1. Sub-component Setup
         this.debt = new DebtComponent({ width: 340, height: 140 });
@@ -305,6 +308,32 @@ class MainScreen {
         this.cardGameScale += (targetCardGameScale - this.cardGameScale) * lerpFactor;
     }
 
+    _drawSettingsButton(ctx) {
+        ctx.save();
+        ctx.translate(this.settingsBtn.x, this.settingsBtn.y);
+        
+        ctx.fillStyle = this.settingsBtn.hovered ? '#334155' : '#1e293b';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(0, 0, this.settingsBtn.w, this.settingsBtn.h, 8);
+        } else {
+            ctx.rect(0, 0, this.settingsBtn.w, this.settingsBtn.h);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('SETTINGS', this.settingsBtn.w / 2, this.settingsBtn.h / 2);
+        
+        ctx.restore();
+    }
+
     draw(ctx) {
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, this.width, this.height);
@@ -340,6 +369,9 @@ class MainScreen {
             ctx.restore();
         }
 
+        // Draw Settings Button
+        this._drawSettingsButton(ctx);
+
         // Render Popup modal in standard layout center
         if (this.popup.isOpen || this.popup.isTransitioning) {
             const px = (this.width - this.popup.width) / 2;
@@ -355,6 +387,18 @@ class MainScreen {
             const py = (this.height - this.popup.height) / 2;
             if (typeof this.popup[methodName] === 'function') {
                 this.popup[methodName](x - px, y - py);
+            }
+            return;
+        }
+
+        // Settings Button Hit Test
+        const isSettingsHit = (x >= this.settingsBtn.x && x <= this.settingsBtn.x + this.settingsBtn.w && 
+                               y >= this.settingsBtn.y && y <= this.settingsBtn.y + this.settingsBtn.h);
+        if (methodName === 'handleMouseMove') {
+            this.settingsBtn.hovered = isSettingsHit;
+        } else if ((methodName === 'handleMouseUp' || methodName === 'handleMouseClick' || methodName === 'handleMouseDown') && isSettingsHit) {
+            if (methodName === 'handleMouseClick' || methodName === 'handleMouseUp') {
+                this.onSettings();
             }
             return;
         }
