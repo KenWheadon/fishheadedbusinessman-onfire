@@ -305,7 +305,7 @@ class MainScreen {
         ctx.fillRect(0, 0, this.width, this.height);
 
         // Draw components according to active state layers
-        const drawOrder = ['cardGame', 'carrot', 'debt', 'chars'];
+        const drawOrder = ['cardGame', 'chars', 'debt', 'carrot'];
         for (const key of drawOrder) {
             const entry = this.layout[key];
             if (!entry) continue;
