@@ -1,11 +1,10 @@
 class DebtComponent {
     constructor(config = {}) {
-        // Configuration & boundaries strictly respected
         this.width = config.width || 840;
         this.height = config.height || 360;
 
-        // Core State variables
-        this.initialDebt = 300000;
+        // Core State variables (Updated to 400K)
+        this.initialDebt = 400000;
         this.debt = this.initialDebt;
         this.visualDebt = this.initialDebt; 
         this.state = 'active'; // 'active', 'won', 'lost'
@@ -112,7 +111,6 @@ class DebtComponent {
 
     // Standard local input handlers
     handleMouseMove(localX, localY) {
-        // Track whether pointer is over interactive center zone
         const centerX = this.width / 2;
         const centerY = this.height / 2 + 15;
         const hoverRadius = 130;
@@ -125,7 +123,6 @@ class DebtComponent {
     handleMouseClick(localX, localY) {
         if (this.state !== 'active') return;
 
-        // If clicking within active range, register a payment internally
         const centerX = this.width / 2;
         const centerY = this.height / 2 + 15;
         const hoverRadius = 130;
@@ -139,14 +136,11 @@ class DebtComponent {
     }
 
     update(dt) {
-        // Safeguard against background tabs or extreme frame drops (cap delta)
         const safeDt = Math.min(dt, 0.1);
-        const ticks = safeDt * 60; // Standardize to standard 60 FPS reference multiplier
+        const ticks = safeDt * 60;
 
-        // Animate visual debt deduction
         if (this.visualDebt > this.debt) {
             const difference = this.visualDebt - this.debt;
-            // Frame-rate independent visual smoothing
             const step = difference * (1 - Math.pow(1 - 0.12, ticks));
             if (difference < 1) {
                 this.visualDebt = this.debt;
@@ -155,24 +149,21 @@ class DebtComponent {
             }
         }
 
-        // Spring Dampening physics update for scale pop effect
         const scaleDiff = this.textScaleTarget - this.textScale;
         const springForce = scaleDiff * this.springK;
         this.textScaleVelocity += springForce * safeDt;
         this.textScaleVelocity *= Math.exp(-this.springDamping * safeDt);
         this.textScale += this.textScaleVelocity * safeDt;
 
-        // Update floating texts (using true delta-time)
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
             const ft = this.floatingTexts[i];
             ft.y += ft.vy * safeDt;
-            ft.opacity -= 1.3 * safeDt; // Fades out in < 1 second
+            ft.opacity -= 1.3 * safeDt;
             if (ft.opacity <= 0) {
                 this.floatingTexts.splice(i, 1);
             }
         }
 
-        // State Machine Update loops
         if (this.state === 'lost') {
             const spawnRate = 1 - Math.pow(1 - 0.4, ticks);
             if (this.particles.length < 100 && Math.random() < spawnRate) {
@@ -191,7 +182,6 @@ class DebtComponent {
         if (this.state === 'won') {
             if (this.confettiTimer > 0) {
                 this.confettiTimer -= ticks;
-                
                 let spawnCount = Math.floor(ticks);
                 if (Math.random() < (ticks % 1)) spawnCount++;
                 for (let i = 0; i < spawnCount; i++) {
@@ -222,24 +212,19 @@ class DebtComponent {
         const h = this.height;
 
         ctx.save();
-        // Shift drawing coordinates to match outer host alignment
         ctx.translate(x, y);
 
-        // Crop contextual layout rendering strict to boundary configurations
         ctx.beginPath();
         ctx.rect(0, 0, w, h);
         ctx.clip();
 
-        // Clear local component backdrop
         ctx.fillStyle = '#11141a';
         ctx.fillRect(0, 0, w, h);
 
-        // Draw light background skull relative to shift coordinate
         if (this.state === 'lost') {
             this.drawLightSkull(ctx, w / 2, h / 2 - 15);
         }
 
-        // Localized standard text outputs
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -247,7 +232,6 @@ class DebtComponent {
         ctx.font = '16px "Courier New", Courier, monospace';
         ctx.fillText("CURRENT OUTSTANDING DEBT", w / 2, h / 2 - 35);
 
-        // Debt Value Text utilizing the scale spring bounce effect
         ctx.save();
         ctx.translate(w / 2, h / 2 + 15);
         ctx.scale(this.textScale, this.textScale);
@@ -257,7 +241,6 @@ class DebtComponent {
         ctx.fillText(`$${Math.round(this.visualDebt).toLocaleString()}`, 0, 0);
         ctx.restore();
 
-        // Floating Juiced indicators
         this.floatingTexts.forEach(ft => {
             ctx.save();
             ctx.fillStyle = ft.color;
@@ -267,9 +250,7 @@ class DebtComponent {
             ctx.restore();
         });
 
-        // Overlay & Particles
         if (this.state === 'lost') {
-            // Draw Falling Blood Drops
             this.particles.forEach(p => {
                 ctx.strokeStyle = `rgba(185, 28, 28, ${p.opacity})`;
                 ctx.lineWidth = p.width;
@@ -279,7 +260,6 @@ class DebtComponent {
                 ctx.stroke();
             });
 
-            // "COLLECTED" Stamp
             ctx.save();
             ctx.translate(w / 2, h / 2 + 15);
             ctx.rotate(-0.08);
@@ -293,7 +273,6 @@ class DebtComponent {
         }
 
         if (this.state === 'won') {
-            // Render Winner Screen Over Text
             ctx.fillStyle = 'rgba(17, 20, 26, 0.85)';
             ctx.fillRect(0, 0, w, h);
 
@@ -304,7 +283,6 @@ class DebtComponent {
             ctx.fillText("WINNER", w / 2, h / 2);
             ctx.shadowBlur = 0; 
 
-            // Draw Confetti
             this.particles.forEach(p => {
                 ctx.save();
                 ctx.translate(p.x, p.y);
