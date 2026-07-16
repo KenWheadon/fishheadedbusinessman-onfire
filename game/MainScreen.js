@@ -10,12 +10,18 @@ class MainScreen {
         // 1. Sub-component Setup
         this.debt = new DebtComponent({ width: 340, height: 140 });
         this.chars = new Chars({ width: this.width, height: 500 });
-        this.carrot = new CarrotCutter({ width: this.width, height: this.height });
+        this.carrot = new CarrotCutter({ width: this.width, height: this.height, align: 'left' });
         // adjust to match previous visual position of x:40, y:550, w:360, h:140
         this.carrot.layout.nodeX = 100; // 40 + 60
         this.carrot.layout.nodeY = 630; // 550 + (140 - 60)
         this.carrot.layout.baseX = 40;
         this.carrot.layout.baseY = 600; // 550 + (140 - 90)
+
+        this.carrotRight = new CarrotCutter({ width: this.width, height: this.height, align: 'right' });
+        this.carrotRight.layout.nodeX = 100; 
+        this.carrotRight.layout.nodeY = 630; 
+        this.carrotRight.layout.baseX = 40;
+        this.carrotRight.layout.baseY = 600; 
         this.cardGame = new CardGame({ width: 760, height: 360 }); 
         this.popup = new GamePopup({ width: 500, height: 250 });
 
@@ -26,6 +32,7 @@ class MainScreen {
         this.layout = {
             cardGame: { x: 260, y: 180, w: 760, h: 360, instance: this.cardGame },
             carrot:   { x: 0,   y: 0,   w: this.width, h: this.height, instance: this.carrot },
+            carrotRight: { x: 0, y: 0, w: this.width, h: this.height, instance: this.carrotRight },
             debt:     { x: 470, y: 550, w: 340, h: 140, instance: this.debt },
             chars:    { x: 0,   y: 110, w: this.width, h: 500, instance: this.chars }
         };
@@ -44,7 +51,7 @@ class MainScreen {
         this.stateTimer = 2.0;      // Show chars in center for 2 seconds
 
         this._cardRoundOutcomeHandled = false;
-        this._lastCarrotCount = this.carrot.checkCut();
+        this._lastCarrotCount = this.carrot.checkCut() + this.carrotRight.checkCut();
         this._lastAliveCount = this.chars.characters.filter(c => c.alive).length;
         
         this._penaltyTimer = 0;
@@ -70,7 +77,7 @@ class MainScreen {
         this.stateTimer = 2.0;
 
         this._cardRoundOutcomeHandled = false;
-        this._lastCarrotCount = this.carrot.checkCut();
+        this._lastCarrotCount = this.carrot.checkCut() + this.carrotRight.checkCut();
         this._lastAliveCount = this.chars.characters.filter(c => c.alive).length;
         
         this._penaltyTimer = 0;
@@ -195,8 +202,9 @@ class MainScreen {
                     // Unlock Character/Carrot interactions
                     this.chars.locked = false;
                     this.carrot.unlock();
+                    this.carrotRight.unlock();
 
-                    this._lastCarrotCount = this.carrot.checkCut();
+                    this._lastCarrotCount = this.carrot.checkCut() + this.carrotRight.checkCut();
                     this._lastAliveCount = this.chars.characters.filter(c => c.alive).length;
 
                     this.gameState = 'PENALTY_WAIT_CHOICE';
@@ -209,7 +217,7 @@ class MainScreen {
                 targetBottomY = 550;
                 targetCardGameScale = 0.0;
 
-                const curCarrots = this.carrot.checkCut();
+                const curCarrots = this.carrot.checkCut() + this.carrotRight.checkCut();
                 const curAlive = this.chars.characters.filter(c => c.alive).length;
 
                 // Monitor inputs until player has exploded a character OR cut off a carrot
@@ -220,6 +228,7 @@ class MainScreen {
                     // Instantly relock selections
                     this.chars.locked = true;
                     this.carrot.isLocked = true;
+                    this.carrotRight.isLocked = true;
 
                     this._penaltyTimer = 3.0; // Let animations run for 3 seconds
                     this.gameState = 'PENALTY_RESOLUTION';
@@ -234,7 +243,7 @@ class MainScreen {
 
                 this._penaltyTimer -= safeDt;
                 if (this._penaltyTimer <= 0) {
-                    if (this.carrot.checkCut() <= 0) {
+                    if (this.carrot.checkCut() + this.carrotRight.checkCut() <= 0) {
                         this.gameState = 'LOSE_SEQUENCE';
                         this.stateTimer = 2.0; // Wait before rendering gameover loss
                     } else {
@@ -339,7 +348,7 @@ class MainScreen {
         ctx.fillRect(0, 0, this.width, this.height);
 
         // Draw components according to active state layers
-        const drawOrder = ['cardGame', 'chars', 'debt', 'carrot'];
+        const drawOrder = ['cardGame', 'chars', 'debt', 'carrot', 'carrotRight'];
         for (const key of drawOrder) {
             const entry = this.layout[key];
             if (!entry) continue;
@@ -350,7 +359,7 @@ class MainScreen {
                 const charsX = (this.width - this.width * this.charsScale) / 2;
                 ctx.translate(charsX, this.charsY);
                 ctx.scale(this.charsScale, this.charsScale);
-            } else if (key === 'carrot') {
+            } else if (key === 'carrot' || key === 'carrotRight') {
                 ctx.translate(0, this.bottomY - 550);
             } else if (key === 'debt') {
                 ctx.translate(entry.x, this.bottomY);
@@ -434,7 +443,7 @@ class MainScreen {
                 scaleY = this.charsScale;
                 bw = this.width * scaleX;
                 bh = entry.h * scaleY;
-            } else if (key === 'carrot') {
+            } else if (key === 'carrot' || key === 'carrotRight') {
                 bx = 0;
                 by = this.bottomY - 550;
                 bw = this.width;

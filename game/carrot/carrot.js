@@ -8,9 +8,10 @@ class CarrotCutter {
    * @param {number} config.width - Bounding width of this component block
    * @param {number} config.height - Bounding height of this component block
    */
-  constructor({ width = 800, height = 600 } = {}) {
+  constructor({ width = 800, height = 600, align = 'left' } = {}) {
     this.width = width;
     this.height = height;
+    this.align = align;
 
     // --- EASY-ADJUST LAYOUT DASHBOARD ---
     this.layout = {
@@ -213,6 +214,10 @@ class CarrotCutter {
   }
 
   handleMouseMove(localX, localY) {
+    if (this.align === 'right') {
+      localX = this.width - localX;
+    }
+
     // Hub hovering is deactivated if the layout is locked
     if (this.isLocked) {
       this.isHubHovered = false;
@@ -261,6 +266,10 @@ class CarrotCutter {
   }
 
   handleMouseClick(localX, localY) {
+    if (this.align === 'right') {
+      localX = this.width - localX;
+    }
+
     if (this.isLocked) return;
 
     if (localX >= 0 && localX <= this.width && localY >= 0 && localY <= this.height) {
@@ -461,6 +470,11 @@ class CarrotCutter {
   draw(ctx, x, y) {
     ctx.save();
     ctx.translate(x, y);
+
+    if (this.align === 'right') {
+      ctx.translate(this.width, 0);
+      ctx.scale(-1, 1);
+    }
 
     ctx.beginPath();
     ctx.rect(0, 0, this.width, this.height);
