@@ -7,7 +7,12 @@ class MainScreen {
         // 1. Sub-component Setup
         this.debt = new DebtComponent({ width: 340, height: 140 });
         this.chars = new Chars({ width: this.width, height: 500 });
-        this.carrot = new CarrotCutter({ width: 360, height: 140 });
+        this.carrot = new CarrotCutter({ width: this.width, height: this.height });
+        // adjust to match previous visual position of x:40, y:550, w:360, h:140
+        this.carrot.layout.nodeX = 100; // 40 + 60
+        this.carrot.layout.nodeY = 630; // 550 + (140 - 60)
+        this.carrot.layout.baseX = 40;
+        this.carrot.layout.baseY = 600; // 550 + (140 - 90)
         this.cardGame = new CardGame({ width: 760, height: 360 }); 
         this.popup = new GamePopup({ width: 500, height: 250 });
 
@@ -17,7 +22,7 @@ class MainScreen {
         // 2. Base Coordinates Layout Reference Map
         this.layout = {
             cardGame: { x: 260, y: 180, w: 760, h: 360, instance: this.cardGame },
-            carrot:   { x: 40,  y: 550, w: 360, h: 140, instance: this.carrot },
+            carrot:   { x: 0,   y: 0,   w: this.width, h: this.height, instance: this.carrot },
             debt:     { x: 470, y: 550, w: 340, h: 140, instance: this.debt },
             chars:    { x: 0,   y: 110, w: this.width, h: 500, instance: this.chars }
         };
@@ -315,7 +320,9 @@ class MainScreen {
             if (key === 'chars') {
                 ctx.translate(0, this.charsY);
                 ctx.scale(this.charsScale, this.charsScale);
-            } else if (key === 'carrot' || key === 'debt') {
+            } else if (key === 'carrot') {
+                ctx.translate(0, this.bottomY - 550);
+            } else if (key === 'debt') {
                 ctx.translate(entry.x, this.bottomY);
             } else if (key === 'cardGame') {
                 // Scale outward from component matrix center
@@ -382,7 +389,12 @@ class MainScreen {
                 scaleY = this.charsScale;
                 bw = this.width * scaleX;
                 bh = entry.h * scaleY;
-            } else if (key === 'carrot' || key === 'debt') {
+            } else if (key === 'carrot') {
+                bx = 0;
+                by = this.bottomY - 550;
+                bw = this.width;
+                bh = this.height;
+            } else if (key === 'debt') {
                 by = this.bottomY;
             } else if (key === 'cardGame') {
                 if (this.cardGameScale < 0.1) continue; // Do not route to collapsed card game

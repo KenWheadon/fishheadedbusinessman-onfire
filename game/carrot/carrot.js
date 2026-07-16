@@ -302,6 +302,8 @@ class CarrotCutter {
   }
 
   update(dt = 1) {
+    if (dt < 0.5) dt *= 60; // Auto-convert seconds to frames
+
     if (this.screenShake > 0) {
       this.screenShake *= Math.pow(0.86, dt);
       if (this.screenShake < 0.2) this.screenShake = 0;
@@ -462,7 +464,7 @@ class CarrotCutter {
 
     ctx.beginPath();
     ctx.rect(0, 0, this.width, this.height);
-    ctx.clip();
+    // ctx.clip(); // Removed to allow full screen particles/shockwaves just in case
 
     const imgBase = this.getAsset('base');
 
