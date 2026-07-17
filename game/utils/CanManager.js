@@ -8,7 +8,7 @@ class CanManager {
         this.delayedSpawns = []; // Queue for future staggered spawns
 
         // Game Configuration
-        this.maxCans = 12;
+        this.maxCans = 8;
         this.score = 0;
         this.multiplier = 1;
 
@@ -44,7 +44,7 @@ class CanManager {
         this.height = height;
 
         const baseScale = Math.min(width / 800, height / 600);
-        this.scaleFactor = Math.min(Math.max(baseScale, 0.75), 1.25);
+        this.scaleFactor = Math.min(Math.max(baseScale, 0.5), 1.1);
 
         // Reposition score / multipliers nicely in layout
         this.scoreText.setPosition(130 * this.scaleFactor, 50 * this.scaleFactor);
@@ -69,7 +69,7 @@ class CanManager {
 
     queueStaggeredSpawns() {
         const margin = 60 * this.scaleFactor;
-        
+
         // Setup two distinct delayed spawn events
         for (let i = 0; i < 2; i++) {
             const delay = 0.1 + Math.random() * 0.2; // 0.1 - 0.3s delay
@@ -105,7 +105,7 @@ class CanManager {
                         this.multText.animateIn();
                     }
                     this.multText.setText(`${this.multiplier}X MULTIPLIER!`);
-                    
+
                     // Dynamically scale multiplier text size upward as it grows!
                     this.multText.fontSize = Math.min(48, 20 + this.multiplier * 2.5);
                 }
@@ -148,7 +148,7 @@ class CanManager {
                 this.multText.setText(`1X MULTIPLIER!`);
                 this.multText.fontSize = 24;
                 this.multText.animateOut(); // Clear display overlay
-                
+
                 this.cans.splice(i, 1);
                 continue;
             }

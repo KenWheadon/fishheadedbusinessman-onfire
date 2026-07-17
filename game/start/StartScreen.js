@@ -22,28 +22,29 @@ class StartScreen {
             twirlVelocity: 0
         };
 
-        // Instantiate Arcade-styled buttons
+        // Consistent arcade-styled buttons[cite: 3]
         this.playButton = new ArcadeButton({
             text: 'PLAY',
-            themeColor: '#39ff14',
+            themeColor: '#39ff14', // Glowing green for play[cite: 3]
             glowColor: '#00ff66'
         });
 
         this.settingsButton = new ArcadeButton({
             text: 'SETTINGS',
-            themeColor: '#ff007f',
+            themeColor: '#ff007f', // Glowing pink/magenta for settings[cite: 3]
             glowColor: '#ff00ff'
         });
 
         this.buttons = [this.playButton, this.settingsButton];
 
-        // ==========================================
-        // INITIALIZE CAN GAMEPLAY ON START SCREEN
-        // ==========================================
+        // Raining cans gameplay element
         this.canManager = new CanManager({
             width: this.width,
             height: this.height
         });
+
+        // Click Interception Flag to prevent event fall-through
+        this.canInterception = false;
 
         this.popOutTimer = 0;
         this.popOutPhase = 0;
@@ -61,20 +62,19 @@ class StartScreen {
         const centerX = this.width / 2;
         const centerY = this.height / 2;
 
-        // Scale Logo
+        // Scale Logo[cite: 3]
         this.logo.x = centerX;
         this.logo.y = centerY - 90 * this.scale;
         this.logo.width = 280 * this.scale;
         this.logo.height = 140 * this.scale;
 
-        // Recalculate button spacing
+        // Recalculate positions & sizes for buttons[cite: 3]
         const startY = centerY + 65 * this.scale;
         const spacing = 75 * this.scale;
 
         this.playButton.setPosition(centerX, startY, 210 * this.scale, 52 * this.scale, this.scale);
         this.settingsButton.setPosition(centerX, startY + spacing, 210 * this.scale, 52 * this.scale, this.scale);
 
-        // Propagate window updates to CanManager
         if (this.canManager) {
             this.canManager.resize(width, height);
         }
@@ -89,8 +89,9 @@ class StartScreen {
         this.logo.twirlVelocity = 0;
         this.popOutTimer = 0;
         this.popOutPhase = 0;
+        this.canInterception = false;
 
-        // Reset our modular button configurations inside
+        // Reset our modular button configurations inside[cite: 3]
         this.buttons.forEach(btn => {
             btn.scale = 1;
             btn.targetScale = 1;
@@ -99,7 +100,7 @@ class StartScreen {
             btn.ripples = [];
         });
 
-        // Clear active cans
+        // Reset game state for cans
         this.canManager = new CanManager({
             width: this.width,
             height: this.height
@@ -115,20 +116,24 @@ class StartScreen {
     handleMouseDown(localX, localY) {
         if (this.state !== 'ACTIVE') return;
 
-        // 1. Hook and route clicks/taps into Can Manager physics before elements
+        // 1. Reset dynamic interception flag
+        this.canInterception = false;
+
+        // 2. Check if a can was clicked (Cans are on top, so they take ultimate priority)
         const hitCan = this.canManager.handleMouseClick(localX, localY);
         if (hitCan) {
-            // Can click was consumed, prevent logo twirling / button click overlay
+            // Can click was consumed: intercept event, prevent fall-through
+            this.canInterception = true;
             return;
         }
 
-        // 2. Check Logo Click twirl
+        // 3. Fallback: Check Logo Click twirl[cite: 3]
         if (this.isPointInRect(localX, localY, this.logo)) {
             this.logo.twirlVelocity = 12;
             this.logo.targetScale = 1.2;
         }
 
-        // 3. Pass MouseDown through
+        // 4. Fallback: Pass MouseDown to buttons[cite: 3]
         this.buttons.forEach(btn => btn.handleMouseDown(localX, localY));
     }
 
@@ -136,12 +141,18 @@ class StartScreen {
         this.logo.targetScale = 1;
         if (this.state !== 'ACTIVE') return;
 
-        // Play Button Callback execution
+        // If the press down started on a can, swallow the click and do nothing
+        if (this.canInterception) {
+            this.canInterception = false;
+            return;
+        }
+
+        // Play Button Callback execution[cite: 3]
         this.playButton.handleMouseUp(localX, localY, () => {
             this.triggerPopOut();
         });
 
-        // Settings Button Callback execution
+        // Settings Button Callback execution[cite: 3]
         this.settingsButton.handleMouseUp(localX, localY, () => {
             this.onSettings();
         });
@@ -165,7 +176,7 @@ class StartScreen {
         this.popOutPhase = 1;
 
         this.logo.targetScale = 1.4;
-        this.buttons.forEach(btn => btn.targetScale = 0);
+        this.buttons.forEach(btn => btn.targetScale = 0); // Shrink cleanly on exit transition[cite: 3]
     }
 
     update(dt) {
@@ -174,12 +185,12 @@ class StartScreen {
 
         if (this.state === 'OFFSCREEN') return;
 
-        // Tick Can Spawns, Trajectory Physics, and multi-text animations
+        // Tick Can Spawns & Physics
         if (this.state === 'ACTIVE') {
             this.canManager.update(dt);
         }
 
-        // Handle global layout transitions
+        // Handle global layout transitions[cite: 3]
         if (this.state === 'POPPING_OUT') {
             if (this.popOutPhase === 1) {
                 this.popOutTimer -= dt;
@@ -194,7 +205,7 @@ class StartScreen {
             }
         }
 
-        // Logo spring physics updates
+        // Logo spring physics updates[cite: 3]
         const logoRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
         this.logo.scale = this.lerp(this.logo.scale, this.logo.targetScale, logoRate);
         this.logo.rotation += this.logo.twirlVelocity * frameMultiplier;
@@ -205,7 +216,7 @@ class StartScreen {
         const snapBackRate = 1 - Math.pow(1 - 0.12, frameMultiplier);
         this.logo.rotation = this.lerp(this.logo.rotation, 0, snapBackRate);
 
-        // Update buttons
+        // Update each button individually[cite: 3]
         this.buttons.forEach(btn => btn.update(dt));
     }
 
@@ -223,11 +234,11 @@ class StartScreen {
         ctx.rect(0, 0, this.width, this.height);
         ctx.clip();
 
-        // 1. Render Base Teal Wallpaper Background
+        // 1. Render Base Teal Wallpaper Background[cite: 3]
         ctx.fillStyle = '#0f766e';
         ctx.fillRect(0, 0, this.width, this.height);
 
-        // 2. Render centered 9:16 'bg-start' wallpaper
+        // 2. Render centered 9:16 'bg-start' wallpaper[cite: 3]
         let bgImg = null;
         try {
             bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-start') : null;
@@ -244,14 +255,7 @@ class StartScreen {
             ctx.fillRect(imgX, 0, imgWidth, imgHeight);
         }
 
-        // ==========================================
-        // DRAW RAINING CANS GAME ELEMENT (Below Buttons & UI)
-        // ==========================================
-        if (this.state === 'ACTIVE') {
-            this.canManager.draw(ctx);
-        }
-
-        // 3. Render Logo
+        // 3. Render Logo[cite: 3]
         ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
         ctx.translate(this.logo.x, this.logo.y + logoIdleY * this.scale);
@@ -294,8 +298,13 @@ class StartScreen {
         }
         ctx.restore();
 
-        // 4. Draw our button components
+        // 4. Draw button components[cite: 3]
         this.buttons.forEach(btn => btn.draw(ctx));
+
+        // 5. DRAW RAINING CANS GAME ELEMENT (Moved to render last, ensuring they appear on top!)
+        if (this.state === 'ACTIVE') {
+            this.canManager.draw(ctx);
+        }
 
         ctx.restore();
     }
