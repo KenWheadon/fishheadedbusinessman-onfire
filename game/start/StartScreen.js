@@ -110,30 +110,48 @@ class StartScreen {
     }
 
     handleMouseMove(localX, localY) {
-        this.buttons.forEach(btn => btn.handleMouseMove(localX, localY));
+        // BLOCKED: If multiplier backdrop is active, StartScreen buttons cannot be hovered
+        const isTealOverlayBlocking = (this.state === 'ACTIVE' && this.canManager && this.canManager.multiplier > 1);
+
+        if (isTealOverlayBlocking) {
+            this.buttons.forEach(btn => {
+                btn.isHovered = false;
+                btn.targetScale = 1.0;
+            });
+        } else {
+            this.buttons.forEach(btn => btn.handleMouseMove(localX, localY));
+        }
+
+        if (this.state === 'ACTIVE' && this.canManager) {
+            this.canManager.handleMouseMove(localX, localY);
+        }
     }
 
     handleMouseDown(localX, localY) {
         if (this.state !== 'ACTIVE') return;
 
-        // 1. Reset dynamic interception flag
         this.canInterception = false;
 
-        // 2. Check if a can was clicked (Cans are on top, so they take ultimate priority)
+        // 1. Check if a can was clicked
         const hitCan = this.canManager.handleMouseClick(localX, localY);
         if (hitCan) {
-            // Can click was consumed: intercept event, prevent fall-through
             this.canInterception = true;
             return;
         }
 
-        // 3. Fallback: Check Logo Click twirl[cite: 3]
+        // BLOCKED: If multiplier is active, click inputs cannot fall through to back-layer buttons
+        if (this.canManager && this.canManager.multiplier > 1) {
+            this.canInterception = true; // Pretend it was consumed by a can click
+            return;
+        }
+
+        // 2. Logo Click twirl[cite: 3]
         if (this.isPointInRect(localX, localY, this.logo)) {
             this.logo.twirlVelocity = 12;
             this.logo.targetScale = 1.2;
         }
 
-        // 4. Fallback: Pass MouseDown to buttons[cite: 3]
+        // 3. Pass MouseDown to back buttons[cite: 3]
         this.buttons.forEach(btn => btn.handleMouseDown(localX, localY));
     }
 
@@ -141,8 +159,8 @@ class StartScreen {
         this.logo.targetScale = 1;
         if (this.state !== 'ACTIVE') return;
 
-        // If the press down started on a can, swallow the click and do nothing
-        if (this.canInterception) {
+        // Prevent fall-through if blocked by intercept flag or active multiplier
+        if (this.canInterception || (this.canManager && this.canManager.multiplier > 1)) {
             this.canInterception = false;
             return;
         }
@@ -301,7 +319,7 @@ class StartScreen {
         // 4. Draw button components[cite: 3]
         this.buttons.forEach(btn => btn.draw(ctx));
 
-        // 5. DRAW RAINING CANS GAME ELEMENT (Moved to render last, ensuring they appear on top!)
+        // 5. DRAW RAINING CANS GAME ELEMENT (Appears on top!)
         if (this.state === 'ACTIVE') {
             this.canManager.draw(ctx);
         }
