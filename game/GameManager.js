@@ -9,47 +9,6 @@
  * ┌──────────────────────── State Machine ─────────────────────────────────┐
  * │  LOADING  →  START  →  PLAYING  →  GAMEOVER  →  START (restart)       │
  * └────────────────────────────────────────────────────────────────────────┘
- *
- * Integration Workflow
- * ────────────────────
- *  1. GameManager.init()  – spins up GameLoader + starts the rAF loop.
- *  2.                     – simultaneously kicks off AssetManager.load().
- *  3. onProgress(pct)     – bridges to GameLoader.setProgress(pct * 100).
- *  4. onComplete()        – transitions LOADING → START.
- *
- * Constructor Options
- * ────────────────────
- *  {
- *    canvasId        : string           – id of the existing <canvas> element
- *    width           : number           – logical canvas width  (default: 800)
- *    height          : number           – logical canvas height (default: 600)
- *    assets          : Array<{key,src}> – manifest handed to AssetManager.load()
- *    components      : {                – named modular screen components
- *      start         : StartScreen instance,
- *      achievements  : AchievementSystem instance,
- *      // … any component that exposes update(dt), draw(ctx, x, y),
- *      //   handleMouseMove(lx, ly), handleMouseClick(lx, ly)
- *    }
- *    layout          : {                – bounding boxes for each component
- *      start         : { x, y, w, h },
- *      achievements  : { x, y, w, h },
- *    }
- *    onAchievementTriggered : function(achievementKey) – external hook
- *    loaderConfig    : {}               – forwarded to new GameLoader(...)
- *  }
- *
- * Achievement Hook
- * ────────────────
- *  GameManager never hardcodes achievement logic. It exposes:
- *    this.onAchievementTriggered(key, data)
- *  which callers wire to their AchievementSystem, analytics layer, etc.
- *  GameManager calls it on state transitions and can be called externally
- *  by game-play modules at any time.
- *
- * Extending to new states
- * ───────────────────────
- *  Override _updateState(dt) / _drawState() or add extra cases to the
- *  switch blocks.  The pattern is intentionally not sealed.
  */
 class GameManager {
 
@@ -60,8 +19,9 @@ class GameManager {
   constructor(config = {}) {
     // ── Canvas ──────────────────────────────────────────────
     this._canvasId = config.canvasId || 'gameCanvas';
-    this._width    = config.width    || 800;
-    this._height   = config.height   || 600;
+    // Use full screen values by default on initial start
+    this._width = window.innerWidth;
+    this._height = window.innerHeight;
 
     /** @type {HTMLCanvasElement|null} */
     this._canvas = null;
@@ -77,7 +37,7 @@ class GameManager {
 
     // ── Components & layout ─────────────────────────────────
     /**
-     * Named component map.  Each value must implement:
+     * Named component map. Each value must implement:
      *   update(dt), draw(ctx, x, y),
      *   handleMouseMove(lx, ly), handleMouseClick(lx, ly)
      * @type {Object.<string, object>}
@@ -91,30 +51,33 @@ class GameManager {
      */
     this._layout = config.layout || {};
 
+    // ── Neon Text Elements ──────────────────────────────────
+    this._loadingNeon = config.loadingNeon || null;
+    this._startNeon = config.startNeon || null;
+
+    // ── Resizing Hook ───────────────────────────────────────
+    this._onResizeCallback = config.onResize || null;
+
     // ── GameLoader ──────────────────────────────────────────
     this._loaderConfig = config.loaderConfig || {};
     /** @type {GameLoader|null} */
     this._loader = null;
 
     // ── rAF loop ────────────────────────────────────────────
-    this._rafId       = null;
-    this._lastTime    = null;
-    this._running     = false;
+    this._rafId = null;
+    this._lastTime = null;
+    this._running = false;
 
     // ── Achievement hook ─────────────────────────────────────
-    /**
-     * External achievement pipeline.
-     * Signature: (key: string, data?: any) => void
-     */
     this.onAchievementTriggered = config.onAchievementTriggered || null;
-
     this.onAssetsLoaded = config.onAssetsLoaded || null;
 
     // ── Input routing state ──────────────────────────────────
-    this._boundMouseMove  = this._onMouseMove.bind(this);
-    this._boundMouseDown  = this._onMouseDown.bind(this);
-    this._boundMouseUp    = this._onMouseUp.bind(this);
+    this._boundMouseMove = this._onMouseMove.bind(this);
+    this._boundMouseDown = this._onMouseDown.bind(this);
+    this._boundMouseUp = this._onMouseUp.bind(this);
     this._boundMouseClick = this._onMouseClick.bind(this);
+    this._boundResize = this.resize.bind(this);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -122,11 +85,7 @@ class GameManager {
   // ─────────────────────────────────────────────────────────
 
   /**
-   * Bootstraps the entire game:
-   *  • Resolves the <canvas> element and 2D context
-   *  • Creates and starts the GameLoader
-   *  • Begins the rAF loop
-   *  • Launches the asset loading pipeline
+   * Bootstraps the entire game with dynamic resizing listeners.
    */
   init() {
     // 1. Resolve canvas
@@ -134,35 +93,47 @@ class GameManager {
     if (!this._canvas) {
       throw new Error(`[GameManager] No <canvas> found with id="${this._canvasId}"`);
     }
-    this._canvas.width  = this._width;
+
+    // Set viewport dimensions immediately on resolution
+    this._width = window.innerWidth;
+    this._height = window.innerHeight;
+    this._canvas.width = this._width;
     this._canvas.height = this._height;
     this._ctx = this._canvas.getContext('2d');
 
-    // 2. Create and start the GameLoader
+    // 2. Create and start the GameLoader[cite: 1, 2]
     this._loader = new GameLoader({
-      width:  this._width,
+      width: this._width,
       height: this._height,
       ...this._loaderConfig,
     });
-    this._loader.start();
+    this._loader.start(); //[cite: 1, 2]
 
-    // 3. Wire input listeners on the canvas
+    // 3. Trigger initial neon ignition sequence[cite: 2]
+    this._loadingNeon?.animateIn();
+
+    // 4. Wire input and window resize listeners
     this._attachInputListeners();
+    window.addEventListener('resize', this._boundResize);
 
-    // 4. Kick off the rAF loop
+    // Run initial manual layout sync to center neon texts
+    this.resize();
+
+    // 5. Kick off the rAF loop
     this._running = true;
     this._lastTime = performance.now();
     this._rafId = requestAnimationFrame(this._loop.bind(this));
 
-    // 5. Simultaneously begin asset loading
-    //    onProgress → GameLoader.setProgress(pct * 100)
-    //    onComplete  → transition LOADING → START
+    // 6. Simultaneously begin asset loading
     AssetManager.load(
       this._assets,
       (normalisedPct) => {
-        this._loader?.setProgress(normalisedPct * 100);
+        this._loader?.setProgress(normalisedPct * 100); //[cite: 1, 2]
       },
       () => {
+        // Begin fading out the loading screen neon text alongside the loader exit transition[cite: 1, 2]
+        this._loadingNeon?.animateOut();
+
         if (typeof this.onAssetsLoaded === 'function') {
           try {
             this.onAssetsLoaded();
@@ -171,12 +142,65 @@ class GameManager {
           }
         }
 
-        // Wait for the loader's own exit animation to finish before switching
+        // Wait for the loader's own exit animation to finish before switching[cite: 1, 2]
         this._waitForLoaderExit(() => {
           this._transitionTo('START');
         });
       }
     );
+  }
+
+  /**
+   * Cleanly handles resizing and scales internal buffers to match the window.
+   */
+  resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    this._width = w;
+    this._height = h;
+
+    if (this._canvas) {
+      this._canvas.width = w;
+      this._canvas.height = h;
+    }
+
+    // 1. Recalculate component bounding box layout grids using the hook
+    if (typeof this._onResizeCallback === 'function') {
+      this._onResizeCallback(w, h);
+    }
+
+    // 2. Center and scale neon text layers dynamically, respecting manual overrides
+    if (this._loadingNeon) {
+      // Use yPercent first, then static configY, or fall back to default h * 0.18
+      const targetY = this._loadingNeon.yPercent !== undefined
+        ? (h * this._loadingNeon.yPercent)
+        : (this._loadingNeon.configY !== undefined ? this._loadingNeon.configY : h * 0.18);
+
+      this._loadingNeon.setPosition(w / 2, targetY);
+    }
+
+    if (this._startNeon) {
+      // Use yPercent first, then static configY, or fall back to default h * 0.22
+      const targetY = this._startNeon.yPercent !== undefined
+        ? (h * this._startNeon.yPercent)
+        : (this._startNeon.configY !== undefined ? this._startNeon.configY : h * 0.22);
+
+      this._startNeon.setPosition(w / 2, targetY);
+    }
+
+    // 3. Propagate new boundaries to the GameLoader
+    if (this._loader && typeof this._loader.resize === 'function') {
+      this._loader.resize(w, h);
+    }
+
+    // 4. Delegate dimensions to active screens/overlays
+    for (const [name, component] of Object.entries(this._components)) {
+      if (component && typeof component.resize === 'function') {
+        const bounds = this._layout[name] || { x: 0, y: 0, w: w, h: h };
+        component.resize(bounds.w || w, bounds.h || h);
+      }
+    }
   }
 
   /**
@@ -189,6 +213,7 @@ class GameManager {
       this._rafId = null;
     }
     this._detachInputListeners();
+    window.removeEventListener('resize', this._boundResize);
   }
 
   // ── State helpers ──────────────────────────────────────────
@@ -199,9 +224,6 @@ class GameManager {
   /**
    * Triggers the onAchievementTriggered hook without coupling to any concrete
    * achievement system implementation.
-   *
-   * @param {string} key  – achievement identifier
-   * @param {*}     [data] – optional payload
    */
   triggerAchievement(key, data) {
     if (typeof this.onAchievementTriggered === 'function') {
@@ -237,19 +259,17 @@ class GameManager {
 
   /** @private */
   _update(dt) {
+    // Tick the active status clocks of active text arrays to process fades and wiggles[cite: 2]
+    this._loadingNeon?.update(dt);
+    this._startNeon?.update(dt);
+
     switch (this._state) {
       case 'LOADING':
-        this._loader?.update(dt);
+        this._loader?.update(dt); //[cite: 1, 2]
         break;
 
       case 'START':
-        this._updateActiveComponents(dt);
-        break;
-
       case 'PLAYING':
-        this._updateActiveComponents(dt);
-        break;
-
       case 'GAMEOVER':
         this._updateActiveComponents(dt);
         break;
@@ -258,7 +278,6 @@ class GameManager {
 
   /**
    * Tick every component registered for the current non-loading state.
-   * Override to change which components are active per state.
    * @private
    */
   _updateActiveComponents(dt) {
@@ -293,11 +312,18 @@ class GameManager {
 
     switch (this._state) {
       case 'LOADING':
-        // GameLoader owns the entire canvas during loading
+        // GameLoader owns the entire background canvas during loading[cite: 1, 2]
         this._loader?.draw(ctx, 0, 0);
+        // Draw the neon text cleanly layered on top of the centered background image[cite: 2]
+        this._loadingNeon?.draw(ctx, 0, 0);
         break;
 
       case 'START':
+        this._drawActiveComponents(ctx);
+        // Draw the active screen neon text layered directly over the start menu components[cite: 2]
+        this._startNeon?.draw(ctx, 0, 0);
+        break;
+
       case 'PLAYING':
       case 'GAMEOVER':
         this._drawActiveComponents(ctx);
@@ -307,8 +333,6 @@ class GameManager {
 
   /**
    * Renders each named component into its registered layout bounding box.
-   * Components receive their OWN local coordinate space (0,0) via ctx.translate,
-   * so they never need to know where they live on the master canvas.
    * @private
    */
   _drawActiveComponents(ctx) {
@@ -334,16 +358,15 @@ class GameManager {
   // State Machine
   // ─────────────────────────────────────────────────────────
 
-  /**
-   * Drives a state transition and fires the achievement hook for milestone
-   * transitions so external systems can react without hard coupling.
-   *
-   * @private
-   * @param {'LOADING'|'START'|'PLAYING'|'GAMEOVER'} nextState
-   */
+  /** @private */
   _transitionTo(nextState) {
     const prev = this._state;
     if (prev === nextState) return;
+
+    // Power off the Start Screen neon text if exiting the Start state[cite: 2]
+    if (prev === 'START') {
+      this._startNeon?.animateOut();
+    }
 
     this._state = nextState;
     console.log(`[GameManager] State: ${prev} → ${nextState}`);
@@ -359,19 +382,16 @@ class GameManager {
       this.triggerAchievement('game_over');
     }
 
-    // ── Lifecycle callbacks on components ────────────────────
     this._onStateEnter(nextState);
   }
 
-  /**
-   * Called immediately after entering a new state.  Wire component resets or
-   * one-time setup here.
-   * @private
-   */
+  /** @private */
   _onStateEnter(state) {
     switch (state) {
       case 'START': {
-        // Reset the start-screen component if it exposes a reset API
+        // Ignite start screen neon text with dynamic flickering entrance[cite: 2]
+        this._startNeon?.animateIn();
+
         const startComp = this._components['start'];
         if (startComp && typeof startComp.reset === 'function') {
           startComp.reset();
@@ -380,18 +400,16 @@ class GameManager {
       }
       case 'PLAYING': {
         const mainComp = this._components['playing'];
-        // The components might need a reset if restarting
         if (mainComp && typeof mainComp.reset === 'function') {
-           mainComp.reset();
+          mainComp.reset();
         }
         break;
       }
       case 'GAMEOVER': {
         const endComp = this._components['end'];
         if (endComp && typeof endComp.reset === 'function') {
-           endComp.reset();
+          endComp.reset();
         }
-        // Force intro progress to 0 if it has one
         if (endComp) endComp.introProgress = 0;
         break;
       }
@@ -402,14 +420,7 @@ class GameManager {
   // Loading transition helper
   // ─────────────────────────────────────────────────────────
 
-  /**
-   * Polls the GameLoader's `isOnScreen()` flag once per frame until the exit
-   * animation completes, then fires the callback.  This prevents the game from
-   * flipping to START while the loader's pop-and-exit sequence is mid-flight.
-   *
-   * @private
-   * @param {function} callback
-   */
+  /** @private */
   _waitForLoaderExit(callback) {
     const poll = () => {
       if (!this._loader || !this._loader.isOnScreen()) {
@@ -428,98 +439,77 @@ class GameManager {
   /** @private */
   _attachInputListeners() {
     const c = this._canvas;
-    c.addEventListener('mousemove',  this._boundMouseMove);
-    c.addEventListener('mousedown',  this._boundMouseDown);
-    c.addEventListener('mouseup',    this._boundMouseUp);
-    c.addEventListener('click',      this._boundMouseClick);
+    c.addEventListener('mousemove', this._boundMouseMove);
+    c.addEventListener('mousedown', this._boundMouseDown);
+    c.addEventListener('mouseup', this._boundMouseUp);
+    c.addEventListener('click', this._boundMouseClick);
   }
 
   /** @private */
   _detachInputListeners() {
     const c = this._canvas;
     if (!c) return;
-    c.removeEventListener('mousemove',  this._boundMouseMove);
-    c.removeEventListener('mousedown',  this._boundMouseDown);
-    c.removeEventListener('mouseup',    this._boundMouseUp);
-    c.removeEventListener('click',      this._boundMouseClick);
+    c.removeEventListener('mousemove', this._boundMouseMove);
+    c.removeEventListener('mousedown', this._boundMouseDown);
+    c.removeEventListener('mouseup', this._boundMouseUp);
+    c.removeEventListener('click', this._boundMouseClick);
   }
 
-  /**
-   * Converts a raw MouseEvent into canvas-local coordinates, accounting for
-   * device-pixel scaling and any CSS sizing applied to the canvas element.
-   *
-   * @private
-   * @param {MouseEvent} e
-   * @returns {{ x: number, y: number }}
-   */
+  /** @private */
   _canvasCoords(e) {
-    const rect    = this._canvas.getBoundingClientRect();
-    const scaleX  = this._width  / rect.width;
-    const scaleY  = this._height / rect.height;
+    const rect = this._canvas.getBoundingClientRect();
+    const scaleX = this._width / rect.width;
+    const scaleY = this._height / rect.height;
     return {
       x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top)  * scaleY,
+      y: (e.clientY - rect.top) * scaleY,
     };
   }
 
-  /**
-   * Routes a mouse position to whichever component owns that canvas region,
-   * transforming to the component's local coordinate space before dispatch.
-   *
-   * @private
-   * @param {string}   handlerName – 'handleMouseMove' | 'handleMouseClick' | …
-   * @param {number}   cx          – canvas x
-   * @param {number}   cy          – canvas y
-   */
+  /** @private */
   _routeInput(handlerName, cx, cy) {
     if (this._state === 'LOADING') {
-      // During loading only the GameLoader receives input
-      const lh = this._loader;
+      const lh = this._loader; //[cite: 1, 2]
       if (lh && typeof lh[handlerName] === 'function') {
-        lh[handlerName](cx, cy);
+        lh[handlerName](cx, cy); //[cite: 1, 2]
       }
       return;
     }
 
-    // We check popups in reverse draw order (top-most first) to allow modal interception.
-    // If achievements is open, it consumes all inputs.
     const achievements = this._components['achievements'];
     if (achievements && achievements.isOpen) {
       if (typeof achievements[handlerName] === 'function') {
         const bounds = this._layout['achievements'] ?? { x: 0, y: 0 };
         achievements[handlerName](cx - bounds.x, cy - bounds.y);
       }
-      return; // Block other components
+      return;
     }
 
-    // If help carousel is open, it consumes all inputs.
     const help = this._components['help'];
     if (help && help.isVisible) {
       if (typeof help[handlerName] === 'function') {
         const bounds = this._layout['help'] ?? { x: 0, y: 0 };
         help[handlerName](cx - bounds.x, cy - bounds.y);
       }
-      return; // Block other components
+      return;
     }
 
-    // If credits is open, it consumes all inputs.
     const credits = this._components['credits'];
     if (credits && credits.isVisible) {
       if (typeof credits[handlerName] === 'function') {
         const bounds = this._layout['credits'] ?? { x: 0, y: 0 };
         credits[handlerName](cx - bounds.x, cy - bounds.y);
       }
-      return; // Block other components
+      return;
     }
 
-    // If settings is open, it consumes all inputs.
     const settings = this._components['settings'];
     if (settings && !settings.isoffscreen()) {
       if (typeof settings[handlerName] === 'function') {
         const bounds = this._layout['settings'] ?? { x: 0, y: 0 };
         settings[handlerName](cx - bounds.x, cy - bounds.y);
       }
-      return; // Block other components
+      return;
     }
 
     const activeScreenMap = {
@@ -529,47 +519,39 @@ class GameManager {
     };
     const activeScreen = activeScreenMap[this._state];
 
-    // Route to every component whose layout bounds contain the hit point.
-    // Components clip themselves, so overlapping regions go to both.
     for (const [name, component] of Object.entries(this._components)) {
-      if (name === 'achievements' || name === 'settings' || name === 'help' || name === 'credits') continue; // Already handled above
-      
+      if (name === 'achievements' || name === 'settings' || name === 'help' || name === 'credits') continue;
+
       if (name === 'start' || name === 'playing' || name === 'end') {
         if (name !== activeScreen) continue;
       }
-      
+
       if (typeof component[handlerName] !== 'function') continue;
 
       const bounds = this._layout[name] ?? { x: 0, y: 0, w: this._width, h: this._height };
       const { x: bx, y: by, w: bw = this._width, h: bh = this._height } = bounds;
 
-      // Hit test against bounding box
       if (cx >= bx && cx <= bx + bw && cy >= by && cy <= by + bh) {
-        // Transform to the component's local coordinate origin
         component[handlerName](cx - bx, cy - by);
       }
     }
   }
 
-  /** @private */
   _onMouseMove(e) {
     const { x, y } = this._canvasCoords(e);
     this._routeInput('handleMouseMove', x, y);
   }
 
-  /** @private */
   _onMouseDown(e) {
     const { x, y } = this._canvasCoords(e);
     this._routeInput('handleMouseDown', x, y);
   }
 
-  /** @private */
   _onMouseUp(e) {
     const { x, y } = this._canvasCoords(e);
     this._routeInput('handleMouseUp', x, y);
   }
 
-  /** @private */
   _onMouseClick(e) {
     const { x, y } = this._canvasCoords(e);
     this._routeInput('handleMouseClick', x, y);

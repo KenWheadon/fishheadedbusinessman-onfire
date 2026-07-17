@@ -77,6 +77,9 @@ class SimpleAssetManager {
       { key: 'page-4', src: 'images/page-4.png' },
       { key: 'page-5', src: 'images/page-5.png' },
 
+      // 6. Background images
+      { key: 'bg-loading', src: 'images/bg-loading.jpg' },
+
       // 7. Audio assets (extracted from folder directory)
       { key: 'alert-ding', src: 'audio/alert-ding.mp3' },
       { key: 'bell-correct', src: 'audio/bell-correct-answer.mp3' },

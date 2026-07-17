@@ -7,6 +7,7 @@ class GameLoader {
     // Structural Dimensions
     this.width = config.width || 600;
     this.height = config.height || 400;
+    this.scale = 1.0; // Dynamic scale factor based on layout boundaries
 
     // Progress Tracking State
     this.targetProgress = 0;
@@ -30,6 +31,22 @@ class GameLoader {
     this.mouseLocalX = 0;
     this.mouseLocalY = 0;
     this.particles = [];
+
+    // Trigger initial scaling evaluation
+    this.resize(this.width, this.height);
+  }
+
+  /**
+   * Dynamically updates canvas size boundaries and scales layout components smoothly.
+   * Call this whenever your parent canvas sizes change!
+   */
+  resize(width, height) {
+    this.width = width;
+    this.height = height;
+
+    // Fluid layout scaling based on viewport size
+    const referenceDimension = Math.min(width, height);
+    this.scale = Math.min(Math.max(referenceDimension / 800, 0.65), 1.35);
   }
 
   /**
@@ -92,14 +109,14 @@ class GameLoader {
   handleMouseClick(localX, localY) {
     if (!this.isStarted || this.hasExited) return;
     
-    // Spawn interactive juicy spark particles inside components boundaries
+    // Spawn interactive sparks (scaled relative to screen size)
     for (let i = 0; i < 8; i++) {
       this.particles.push({
         x: localX,
         y: localY,
-        vx: (Math.random() - 0.5) * 120,
-        vy: (Math.random() - 0.5) * 120,
-        radius: Math.random() * 3 + 2,
+        vx: (Math.random() - 0.5) * 120 * this.scale,
+        vy: (Math.random() - 0.5) * 120 * this.scale,
+        radius: (Math.random() * 3 + 2) * this.scale,
         color: '#e5c158',
         alpha: 1,
         life: 0.5 + Math.random() * 0.3
@@ -135,14 +152,18 @@ class GameLoader {
     if (this.currentProgress >= 100) {
       if (!this.hasExited) {
         this.hasExited = true;
+        
+        // Align particles perfectly with the dynamic bar's responsive location
+        const barY = (this.height / 2) + 50 * this.scale;
+
         // Celebration particle burst
         for (let i = 0; i < 40; i++) {
           this.particles.push({
-            x: this.width / 2 + (Math.random() - 0.5) * 200,
-            y: this.height / 2 + 20,
-            vx: (Math.random() - 0.5) * 200,
-            vy: -Math.random() * 150 - 50,
-            radius: Math.random() * 4 + 2,
+            x: this.width / 2 + (Math.random() - 0.5) * 200 * this.scale,
+            y: barY,
+            vx: (Math.random() - 0.5) * 200 * this.scale,
+            vy: (-Math.random() * 150 - 50) * this.scale,
+            radius: (Math.random() * 4 + 2) * this.scale,
             color: Math.random() > 0.5 ? '#e5c158' : '#fff1aa',
             alpha: 1,
             life: 1.0 + Math.random() * 0.5
@@ -182,11 +203,33 @@ class GameLoader {
     ctx.rect(0, 0, this.width, this.height);
     ctx.clip();
 
-    // 1. Draw Deep Base Panel Wallpaper Background
-    ctx.fillStyle = '#0e0e12';
+    // 1. Draw Vibrant Teal Base Panel Wallpaper Background
+    ctx.fillStyle = '#0f766e'; // Rich modern teal
     ctx.fillRect(0, 0, this.width, this.height);
 
-    // 2. Resolve Original CSS Keyframes Transformations via Javascript Equations
+    // 2. Draw 9:16 Full Height, Centered Background Image ('bg-loading')
+    const bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-loading') : null;
+    const imgHeight = this.height;
+    const imgWidth = imgHeight * (9 / 16);
+    const imgX = (this.width - imgWidth) / 2;
+
+    if (bgImg) {
+      ctx.drawImage(bgImg, imgX, 0, imgWidth, imgHeight);
+    } else {
+      // Elegant semi-transparent container placeholder if asset isn't resolved yet
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(imgX, 0, imgWidth, imgHeight);
+    }
+
+    // 3. Dynamic Responsive Layout Y-Offsets
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+
+    const logoY = centerY - 70 * this.scale;
+    const barY = centerY + 50 * this.scale;
+    const textY = barY + 45 * this.scale;
+
+    // Resolve Original CSS Keyframes Transformations via Javascript Equations
     let logoScale = 1;
     let logoYOffset = 0;
     let logoAlpha = 1;
@@ -256,10 +299,10 @@ class GameLoader {
       }
     }
 
-    // 3. Render Logo Segment
+    // 4. Render Logo Segment
     ctx.save();
-    ctx.translate(this.width / 2, this.height / 2 - 50 + logoYOffset);
-    ctx.scale(logoScale, logoScale);
+    ctx.translate(centerX, logoY + logoYOffset);
+    ctx.scale(logoScale * this.scale, logoScale * this.scale); // Dynamic layouts scaling applied
     ctx.globalAlpha = logoAlpha;
 
     if (glowStrength > 0) {
@@ -281,13 +324,15 @@ class GameLoader {
     }
     ctx.restore();
 
-    // 4. Render Loading Progress Bar Frame Elements
+    // 5. Render Loading Progress Bar Frame Elements
     ctx.save();
-    ctx.translate(this.width / 2, this.height / 2 + 40 + barYOffset);
-    ctx.scale(barScaleX, barScaleY);
+    ctx.translate(centerX, barY + barYOffset);
+    ctx.scale(barScaleX * this.scale, barScaleY * this.scale); // Dynamic layouts scaling applied
     ctx.globalAlpha = barAlpha;
 
-    const bWidth = Math.min(this.width * 0.8, 450);
+    // Constrain bar width relative to layout scale factor
+    const maxBarWidth = 450;
+    const bWidth = Math.min((this.width * 0.8) / this.scale, maxBarWidth);
     const bHeight = 20;
     const bx = -bWidth / 2;
     const by = -bHeight / 2;
@@ -295,7 +340,7 @@ class GameLoader {
     // Base Bar Track Canvas Path
     ctx.beginPath();
     ctx.roundRect(bx, by, bWidth, bHeight, 10);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = this.isStarted ? '#e5c158' : '#2a2a35';
@@ -308,15 +353,16 @@ class GameLoader {
 
     // Render Filled State Bar Segment
     if (this.currentProgress > 0) {
-      const fillW = (bWidth - 6) * (this.currentProgress / 100);
+      const innerPadding = 3;
+      const fillW = (bWidth - innerPadding * 2) * (this.currentProgress / 100);
       if (fillW > 0) {
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(bx + 3, by + 3, bWidth - 6, bHeight - 6, 6);
+        ctx.roundRect(bx + innerPadding, by + innerPadding, bWidth - innerPadding * 2, bHeight - innerPadding * 2, 6);
         ctx.clip();
 
         // Active Color Scheme Gradient Profiles
-        let barGrad = ctx.createLinearGradient(bx + 3, 0, bx + 3 + fillW, 0);
+        let barGrad = ctx.createLinearGradient(bx + innerPadding, 0, bx + innerPadding + fillW, 0);
         if (this.isStarted) {
           barGrad.addColorStop(0, '#e5c158');
           barGrad.addColorStop(1, '#fff1aa');
@@ -326,14 +372,14 @@ class GameLoader {
         }
 
         ctx.fillStyle = barGrad;
-        ctx.fillRect(bx + 3, by + 3, fillW, bHeight - 6);
+        ctx.fillRect(bx + innerPadding, by + innerPadding, fillW, bHeight - innerPadding * 2);
 
         // Animated Shimmer Overlay Calculations
         if (this.isStarted && !this.hasExited) {
           const shimmerLength = 150;
           const shimmerSpeed = 250; 
           const totalLoopTrack = bWidth + shimmerLength;
-          let shimX = bx + 3 - shimmerLength + (this.shimmerTimer * shimmerSpeed) % totalLoopTrack;
+          let shimX = bx + innerPadding - shimmerLength + (this.shimmerTimer * shimmerSpeed) % totalLoopTrack;
 
           let shimGrad = ctx.createLinearGradient(shimX, 0, shimX + shimmerLength, 0);
           shimGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
@@ -341,17 +387,17 @@ class GameLoader {
           shimGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
           ctx.fillStyle = shimGrad;
-          ctx.fillRect(shimX, by + 3, shimmerLength, bHeight - 6);
+          ctx.fillRect(shimX, by + innerPadding, shimmerLength, bHeight - innerPadding * 2);
         }
         ctx.restore();
       }
     }
     ctx.restore();
 
-    // 5. Status Messaging Subtext Layer
+    // 6. Status Messaging Subtext Layer
     ctx.save();
-    ctx.translate(this.width / 2, this.height / 2 + 85);
-    ctx.scale(textScale, textScale);
+    ctx.translate(centerX, textY);
+    ctx.scale(textScale * this.scale, textScale * this.scale); // Dynamic layouts scaling applied
     ctx.globalAlpha = textAlpha;
 
     ctx.font = 'bold 12px "Segoe UI", sans-serif';
@@ -366,7 +412,7 @@ class GameLoader {
     ctx.fillText(displayMsg.toUpperCase(), 0, 0);
     ctx.restore();
 
-    // 6. Draw Localized Internal Canvas Particles
+    // 7. Draw Localized Internal Canvas Particles
     for (const p of this.particles) {
       ctx.save();
       ctx.globalAlpha = p.alpha;

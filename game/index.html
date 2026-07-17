@@ -1,23 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fish-Headed Businessman on Fire</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       background: #0e0e12;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      overflow: hidden;
+      /* Prevent unwanted scrollbars on window resizes */
     }
+
     canvas {
       display: block;
-      /* Scale canvas CSS size while keeping logical 1280x720 pixels */
-      width: min(1280px, 100vw);
-      aspect-ratio: 1280 / 720;
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
       image-rendering: pixelated;
     }
 
@@ -38,10 +51,12 @@
       transition: opacity 0.3s;
       backdrop-filter: blur(6px);
     }
+
     .game-modal-overlay.open {
       opacity: 1;
       pointer-events: auto;
     }
+
     .game-modal {
       background: linear-gradient(145deg, #181824, #0d0d14);
       border: 2px solid #ff4e50;
@@ -57,15 +72,18 @@
       align-items: stretch;
       font-family: system-ui, -apple-system, sans-serif;
     }
+
     .game-modal-overlay.open .game-modal {
       transform: scale(1);
     }
+
     .modal-left {
       flex: 0 0 190px;
       display: flex;
       flex-direction: column;
       position: relative;
     }
+
     .headshot-wrapper {
       width: 100%;
       height: 100%;
@@ -80,12 +98,14 @@
       align-items: center;
       justify-content: center;
     }
+
     .modal-headshot {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
+
     .headshot-scanner {
       position: absolute;
       top: 0;
@@ -97,11 +117,21 @@
       animation: scan-line 3s linear infinite;
       pointer-events: none;
     }
+
     @keyframes scan-line {
-      0% { top: 0%; }
-      50% { top: 100%; }
-      100% { top: 0%; }
+      0% {
+        top: 0%;
+      }
+
+      50% {
+        top: 100%;
+      }
+
+      100% {
+        top: 0%;
+      }
     }
+
     .headshot-fallback {
       font-family: monospace;
       color: #ff4e50;
@@ -113,6 +143,7 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
+
     .modal-right {
       flex: 1;
       display: flex;
@@ -120,6 +151,7 @@
       justify-content: space-between;
       text-align: left;
     }
+
     .modal-title {
       font-size: 1.3rem;
       font-weight: 900;
@@ -130,6 +162,7 @@
       padding-bottom: 10px;
       margin-bottom: 15px;
     }
+
     .modal-plead-text {
       font-style: italic;
       color: #ffd2d3;
@@ -141,6 +174,7 @@
       border-radius: 4px;
       margin-bottom: 15px;
     }
+
     .modal-confirm-text {
       color: #a4a4b5;
       font-size: 0.85rem;
@@ -149,10 +183,12 @@
       letter-spacing: 0.5px;
       margin-bottom: 20px;
     }
+
     .modal-actions {
       display: flex;
       gap: 12px;
     }
+
     .modal-actions button {
       padding: 12px 28px;
       font-size: 1rem;
@@ -162,28 +198,33 @@
       border: none;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
+
     .btn-modal-confirm {
       background: linear-gradient(135deg, #ff4e50, #f9d423);
       color: #121216;
       flex: 1.2;
     }
+
     .btn-modal-cancel {
       background-color: #1e1e2d;
       color: #eaeaf0;
       border: 1px solid #3c3c54;
       flex: 1;
     }
+
     .btn-modal-cancel:hover {
       background-color: #2a2a3f;
       border-color: #535375;
     }
+
     .modal-actions button:active {
       transform: translateY(1px);
     }
   </style>
 </head>
+
 <body>
   <canvas id="gameCanvas"></canvas>
 
@@ -209,14 +250,6 @@
     </div>
   </div>
 
-  <!--
-    Load order matters:
-      1. AssetManager  – must be global before any component references it
-      2. Component files (GameLoader, StartScreen, AchievementSystem, …)
-      3. GameManager   – references the components
-      4. This bootstrap script
-  -->
-
   <!-- 1. Asset pipeline -->
   <script src="AssetManager.js"></script>
 
@@ -228,7 +261,10 @@
   <script src="credits/CreditsPopup.js"></script>
   <script src="popup/GamePopup.js"></script>
   <script src="help/HelpCarousel.js"></script>
-  
+
+  <!-- Neon Text Component (Already loaded as specified) -->
+  <script src="utils/NeonTextComponent.js"></script>
+
   <script src="debt/DebtComponent.js"></script>
   <script src="chars/chars.js"></script>
   <script src="carrot/carrot.js"></script>
@@ -244,27 +280,24 @@
 
   <!-- 4. Bootstrap -->
   <script>
-    // ── Canvas dimensions ──────────────────────────────────────────────────
-    const W = 1280;
-    const H = 720;
+    // ── Get true window viewport dimensions on load ──────────────────────
+    let W = window.innerWidth;
+    let H = window.innerHeight;
 
-    // ── Layout: each component gets its slice of the canvas ───────────────
-    //   During LOADING the GameLoader fills the whole canvas.
-    //   The achievements panel dashboard is hidden. StartScreen and AchievementSystem
-    //   cover the full canvas, while SettingsPopup is centered.
+    // ── Layout: Maps viewport bounds to individual modules ─────────────────
     const LAYOUT = {
-      start:        { x: 0,   y: 0, w: W, h: H },
-      achievements: { x: 0,   y: 0, w: W, h: H },
-      settings:     { x: (W - 460) / 2, y: (H - 400) / 2, w: 460, h: 400 },
-      credits:      { x: 0,   y: 0, w: W, h: H },
-      help:         { x: 0,   y: 0, w: W, h: H },
-      playing:      { x: 0,   y: 0, w: W, h: H },
-      end:          { x: 0,   y: 0, w: W, h: H },
+      start: { x: 0, y: 0, w: W, h: H },
+      achievements: { x: 0, y: 0, w: W, h: H },
+      settings: { x: (W - 460) / 2, y: (H - 400) / 2, w: 460, h: 400 },
+      credits: { x: 0, y: 0, w: W, h: H },
+      help: { x: 0, y: 0, w: W, h: H },
+      playing: { x: 0, y: 0, w: W, h: H },
+      end: { x: 0, y: 0, w: W, h: H },
     };
 
     // ── Instantiate modular components ────────────────────────────────────
     const settingsPopup = new SettingsPopup({
-      width:  LAYOUT.settings.w,
+      width: LAYOUT.settings.w,
       height: LAYOUT.settings.h,
     }, {
       onAchievements: () => {
@@ -287,9 +320,9 @@
     let playRequested = false;
 
     const startScreen = new StartScreen({
-      width:  LAYOUT.start.w,
+      width: LAYOUT.start.w,
       height: LAYOUT.start.h,
-      onPlay:     () => {
+      onPlay: () => {
         if (mainScreen) {
           if (typeof mainScreen.reset === 'function') {
             mainScreen.reset();
@@ -305,48 +338,91 @@
     });
 
     const achievementSystem = new AchievementSystem({
-      width:  LAYOUT.achievements.w,
+      width: LAYOUT.achievements.w,
       height: LAYOUT.achievements.h,
     });
 
     const creditsPopup = new CreditsPopup({
-      width:  LAYOUT.credits.w,
+      width: LAYOUT.credits.w,
       height: LAYOUT.credits.h,
     });
 
     const helpCarousel = new HelpCarousel({
-      width:  LAYOUT.help.w,
+      width: LAYOUT.help.w,
       height: LAYOUT.help.h,
     });
 
     let mainScreen = null;
 
     const endScreen = new EndScreenComponent({
-      width:  LAYOUT.end.w,
+      width: LAYOUT.end.w,
       height: LAYOUT.end.h,
       onMainMenu: () => gm._transitionTo('START'),
       onSettings: () => settingsPopup.show(),
       onCredits: () => creditsPopup.show(),
     });
 
+    // ── Instantiate Neon Text Components ─────────────────────────────────
+    // Loading Screen Neon Text (Cyberpunk Pink Katakana)
+    const loadingNeonText = new NeonTextComponent({
+      text: "フィンガーズ × フレンズ",
+      fontSize: 44,
+      glowColor: '#ff007f',
+      wiggleIntensity: 2,
+      letterSpacing: '2px',
+      yPercent: 0.8
+    });
+
+    // Start Screen Neon Text (Cyberpunk Cyan Cross match)
+    const startNeonText = new NeonTextComponent({
+      text: "FLESH × DEBT",
+      fontSize: 52,
+      glowColor: '#00ffff',
+      wiggleIntensity: 3,
+      letterSpacing: '4px',
+      yPercent: 0.9
+    });
+
     // ── Wire up GameManager ────────────────────────────────────────────────
     const gm = new GameManager({
       canvasId: 'gameCanvas',
-      width:    W,
-      height:   H,
+      width: W,
+      height: H,
 
-      assets:   AssetManager.MANIFEST,
+      assets: AssetManager.MANIFEST,
 
       components: {
-        start:        startScreen,
-        playing:      mainScreen,
-        end:          endScreen,
-        settings:     settingsPopup,
+        start: startScreen,
+        playing: mainScreen,
+        end: endScreen,
+        settings: settingsPopup,
         achievements: achievementSystem,
-        credits:      creditsPopup,
-        help:         helpCarousel,
+        credits: creditsPopup,
+        help: helpCarousel,
       },
       layout: LAYOUT,
+
+      // Bind neon texts directly to the manager
+      loadingNeon: loadingNeonText,
+      startNeon: startNeonText,
+
+      // Recalculates bounding coordinates for layouts on-the-fly when resizing
+      onResize: (w, h) => {
+        LAYOUT.start.w = w;
+        LAYOUT.start.h = h;
+        LAYOUT.achievements.w = w;
+        LAYOUT.achievements.h = h;
+        LAYOUT.settings.x = (w - 460) / 2;
+        LAYOUT.settings.y = (h - 400) / 2;
+        LAYOUT.credits.w = w;
+        LAYOUT.credits.h = h;
+        LAYOUT.help.w = w;
+        LAYOUT.help.h = h;
+        LAYOUT.playing.w = w;
+        LAYOUT.playing.h = h;
+        LAYOUT.end.w = w;
+        LAYOUT.end.h = h;
+      },
 
       // Achievement hook: bridges GameManager events into the AchievementSystem
       onAchievementTriggered: (key, data) => {
@@ -357,7 +433,7 @@
       onAssetsLoaded: () => {
         if (!mainScreen) {
           mainScreen = new MainScreen({
-            width:  LAYOUT.playing.w,
+            width: LAYOUT.playing.w,
             height: LAYOUT.playing.h,
             onGameOver: (isWin) => {
               if (endScreen && typeof endScreen.setWinState === 'function') {
@@ -392,11 +468,12 @@
 
     // ── Go! ────────────────────────────────────────────────────────────────
     gm.init();
-    
+
     // Initialize debug menu if active
     if (typeof DebugMenu !== 'undefined') {
       new DebugMenu(gm, endScreen);
     }
   </script>
 </body>
+
 </html>
