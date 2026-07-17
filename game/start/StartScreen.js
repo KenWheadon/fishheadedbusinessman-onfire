@@ -2,124 +2,124 @@ class StartScreen {
     constructor(config = {}) {
         this.width = config.width || 800;
         this.height = config.height || 600;
-        
+        this.scale = 1.0;
+
         // Setup Callbacks
-        this.onSettings = config.onSettings || (() => {});
-        this.onPlay = config.onPlay || (() => {});
-        
-        // Component state
+        this.onSettings = config.onSettings || (() => { });
+        this.onPlay = config.onPlay || (() => { });
+
         this.state = 'ACTIVE'; // ACTIVE, POPPING_OUT, OFFSCREEN
         this.time = 0;
-        
-        // Dynamic positioning based on component dimensions
+
         this.logo = {
-            x: this.width / 2,
-            y: this.height * 0.3,
-            width: Math.min(this.width * 0.375, 300),
-            height: Math.min(this.height * 0.25, 150),
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
             scale: 1,
             targetScale: 1,
             rotation: 0,
             twirlVelocity: 0
         };
 
-        // Buttons setup (HELP completely removed, coordinates auto-spaced)
-        const startY = this.height * 0.58;
-        const spacing = Math.min(this.height * 0.13, 80);
-        
-        this.buttons = [
-            this.createButton('PLAY', startY, '#4CAF50'),
-            this.createButton('SETTINGS', startY + spacing, '#FF9800')
-        ];
+        // NEW: Instantiate consistent arcade-styled buttons
+        this.playButton = new ArcadeButton({
+            text: 'PLAY',
+            themeColor: '#39ff14', // Glowing green for play
+            glowColor: '#00ff66'
+        });
 
-        // Decoupled Mouse Local State
-        this.mouseX = -9999;
-        this.mouseY = -9999;
-        
-        // State transition trackers (replacing setTimeout)
+        this.settingsButton = new ArcadeButton({
+            text: 'SETTINGS',
+            themeColor: '#ff007f', // Glowing pink/magenta for settings
+            glowColor: '#ff00ff'
+        });
+
+        // Quick accessible array for batch operations (drawing/updating)
+        this.buttons = [this.playButton, this.settingsButton];
+
         this.popOutTimer = 0;
-        this.popOutPhase = 0; // 0: Inactive, 1: Anticipation, 2: Shrink
+        this.popOutPhase = 0;
+
+        this.resize(this.width, this.height);
     }
 
-    createButton(text, y, color) {
-        return {
-            text: text,
-            x: this.width / 2,
-            y: y,
-            width: Math.min(this.width * 0.25, 200),
-            height: Math.min(this.height * 0.083, 50),
-            color: color,
-            scale: 1,
-            targetScale: 1,
-            isHovered: false
-        };
+    resize(width, height) {
+        this.width = width;
+        this.height = height;
+
+        const referenceDimension = Math.min(width, height);
+        this.scale = Math.min(Math.max(referenceDimension / 800, 0.65), 1.35);
+
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+
+        // Scale Logo
+        this.logo.x = centerX;
+        this.logo.y = centerY - 90 * this.scale;
+        this.logo.width = 280 * this.scale;
+        this.logo.height = 140 * this.scale;
+
+        // Recalculate positions & sizes for modern responsive layouts
+        const startY = centerY + 65 * this.scale;
+        const spacing = 75 * this.scale;
+
+        this.playButton.setPosition(centerX, startY, 210 * this.scale, 52 * this.scale, this.scale);
+        this.settingsButton.setPosition(centerX, startY + spacing, 210 * this.scale, 52 * this.scale, this.scale);
     }
 
-    // Public Reset API (Restores component to pristine starting state)
     reset() {
         this.state = 'ACTIVE';
         this.time = 0;
-        
         this.logo.scale = 1;
         this.logo.targetScale = 1;
         this.logo.rotation = 0;
         this.logo.twirlVelocity = 0;
+        this.popOutTimer = 0;
+        this.popOutPhase = 0;
 
+        // Reset our modular button configurations inside
         this.buttons.forEach(btn => {
             btn.scale = 1;
             btn.targetScale = 1;
-            btn.isHovered = false;
+            btn.velocity = 0;
+            btn.particles = [];
+            btn.ripples = [];
         });
 
-        this.popOutTimer = 0;
-        this.popOutPhase = 0;
+        this.resize(this.width, this.height);
     }
 
-    // Localized Input Hooks
+    // Pass canvas local vectors down to the elements
     handleMouseMove(localX, localY) {
-        this.mouseX = localX;
-        this.mouseY = localY;
+        this.buttons.forEach(btn => btn.handleMouseMove(localX, localY));
     }
 
     handleMouseDown(localX, localY) {
-        this.mouseX = localX;
-        this.mouseY = localY;
-
         if (this.state !== 'ACTIVE') return;
 
-        // Check Logo Click (Give it high angular velocity)
-        if (this.isPointInRect(this.mouseX, this.mouseY, this.logo)) {
-            this.logo.twirlVelocity = 12; // Dynamic spin impulse
+        // Check Logo Click twirl
+        if (this.isPointInRect(localX, localY, this.logo)) {
+            this.logo.twirlVelocity = 12;
             this.logo.targetScale = 1.2;
         }
 
-        // Check Button Clicks (Visual press down feel)
-        this.buttons.forEach(btn => {
-            if (this.isPointInRect(this.mouseX, this.mouseY, btn)) {
-                btn.isHovered = true;
-                btn.targetScale = 0.8; 
-            }
-        });
+        // Pass MouseDown through
+        this.buttons.forEach(btn => btn.handleMouseDown(localX, localY));
     }
 
     handleMouseUp(localX, localY) {
-        this.mouseX = localX;
-        this.mouseY = localY;
-
-        if (this.state !== 'ACTIVE') return;
-        
         this.logo.targetScale = 1;
+        if (this.state !== 'ACTIVE') return;
 
-        this.buttons.forEach(btn => {
-            const isHovered = this.isPointInRect(this.mouseX, this.mouseY, btn);
-            if (isHovered) {
-                if (btn.text === 'PLAY') this.triggerPopOut();
-                if (btn.text === 'SETTINGS') this.onSettings();
-                btn.targetScale = 1.1;
-            } else {
-                btn.targetScale = 1.0;
-            }
-            btn.isHovered = isHovered;
+        // Play Button Callback execution
+        this.playButton.handleMouseUp(localX, localY, () => {
+            this.triggerPopOut();
+        });
+
+        // Settings Button Callback execution
+        this.settingsButton.handleMouseUp(localX, localY, () => {
+            this.onSettings();
         });
     }
 
@@ -129,160 +129,123 @@ class StartScreen {
     }
 
     isPointInRect(px, py, rect) {
-        return px > rect.x - rect.width / 2 && 
-               px < rect.x + rect.width / 2 && 
-               py > rect.y - rect.height / 2 && 
-               py < rect.y + rect.height / 2;
+        return px > rect.x - rect.width / 2 &&
+            px < rect.x + rect.width / 2 &&
+            py > rect.y - rect.height / 2 &&
+            py < rect.y + rect.height / 2;
     }
 
     triggerPopOut() {
         this.state = 'POPPING_OUT';
-        this.popOutTimer = 0.15; // 150ms anticipation phase
-        this.popOutPhase = 1; 
-        
+        this.popOutTimer = 0.15;
+        this.popOutPhase = 1;
+
         this.logo.targetScale = 1.4;
-        this.buttons.forEach(btn => btn.targetScale = 1.4);
-    }
-
-    isoffscreen() {
-        return this.state === 'OFFSCREEN';
-    }
-
-    // Mathematical frame-rate independent interpolation
-    lerp(start, end, amt) {
-        return (1 - amt) * start + amt * end;
+        this.buttons.forEach(btn => btn.targetScale = 0); // Shrink cleanly on exit transition
     }
 
     update(dt) {
-        // Scalar to match original 60fps frame calculations
         const frameMultiplier = dt * 60;
-        this.time += dt * 3.0; 
+        this.time += dt * 3.0;
 
         if (this.state === 'OFFSCREEN') return;
 
-        // Manage Pop Out transition cycles strictly with dt
+        // Handle global layout transitions
         if (this.state === 'POPPING_OUT') {
             if (this.popOutPhase === 1) {
                 this.popOutTimer -= dt;
                 if (this.popOutTimer <= 0) {
-                    this.popOutPhase = 2; // Move to shrink phase
+                    this.popOutPhase = 2;
                     this.logo.targetScale = 0;
-                    this.buttons.forEach(btn => btn.targetScale = 0);
                 }
             } else if (this.popOutPhase === 2 && this.logo.scale < 0.05) {
                 this.state = 'OFFSCREEN';
                 this.logo.scale = 0;
-                this.buttons.forEach(btn => btn.scale = 0);
                 if (this.onPlay) this.onPlay();
             }
         }
 
-        // Update Logo Scale Juice
+        // Logo spring physics updates
         const logoRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
         this.logo.scale = this.lerp(this.logo.scale, this.logo.targetScale, logoRate);
-        
-        // Update Logo Rotation (Twirl impulse fades and elastic-snaps back to original 0 rotation)
         this.logo.rotation += this.logo.twirlVelocity * frameMultiplier;
-        
+
         const twirlRate = 1 - Math.pow(1 - 0.1, frameMultiplier);
         this.logo.twirlVelocity = this.lerp(this.logo.twirlVelocity, 0, twirlRate);
 
         const snapBackRate = 1 - Math.pow(1 - 0.12, frameMultiplier);
         this.logo.rotation = this.lerp(this.logo.rotation, 0, snapBackRate);
 
-        // Update Buttons Juice
-        this.buttons.forEach((btn, index) => {
-            if (this.state === 'ACTIVE') {
-                btn.isHovered = this.isPointInRect(this.mouseX, this.mouseY, btn);
-                
-                if (btn.isHovered) {
-                    const hoverRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
-                    btn.targetScale = this.lerp(btn.targetScale, 1.1, hoverRate);
-                } else {
-                    const idleScale = 1 + Math.sin(this.time + index) * 0.02;
-                    const idleRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
-                    btn.targetScale = this.lerp(btn.targetScale, idleScale, idleRate);
-                }
-            }
-            const btnScaleRate = 1 - Math.pow(1 - 0.3, frameMultiplier);
-            btn.scale = this.lerp(btn.scale, btn.targetScale, btnScaleRate);
-        });
+        // Update each button individually
+        this.buttons.forEach(btn => btn.update(dt));
+    }
+
+    lerp(start, end, amt) {
+        return (1 - amt) * start + amt * end;
     }
 
     draw(ctx, x, y) {
         if (this.state === 'OFFSCREEN') return;
 
         ctx.save();
-        // Translate context relative to offset specified by caller
         ctx.translate(x, y);
 
-        // Clip context bounds to guarantee strict modular layout boundaries
         ctx.beginPath();
         ctx.rect(0, 0, this.width, this.height);
         ctx.clip();
 
-        // Local background card design
-        ctx.fillStyle = '#2b2b2b';
+        // 1. Render Base Teal Wallpaper Background
+        ctx.fillStyle = '#0f766e';
         ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw Logo
+        // 2. Render centered 9:16 'bg-start' wallpaper
+        let bgImg = null;
+        try {
+            bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-start') : null;
+        } catch (e) { }
+
+        const imgHeight = this.height;
+        const imgWidth = imgHeight * (9 / 16);
+        const imgX = (this.width - imgWidth) / 2;
+
+        if (bgImg) {
+            ctx.drawImage(bgImg, imgX, 0, imgWidth, imgHeight);
+        } else {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(imgX, 0, imgWidth, imgHeight);
+        }
+
+        // 3. Render Logo
         ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
-        ctx.translate(this.logo.x, this.logo.y + logoIdleY);
+        ctx.translate(this.logo.x, this.logo.y + logoIdleY * this.scale);
         ctx.rotate(this.logo.rotation);
         ctx.scale(this.logo.scale, this.logo.scale);
-        
-        // Safe global asset lookup
+
         let logoImg = null;
         try {
             logoImg = typeof AssetManager !== 'undefined' ? AssetManager.get('logo') : null;
-        } catch (e) {}
+        } catch (e) { }
 
         if (logoImg) {
             ctx.drawImage(logoImg, -this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
         } else {
-            // Elegant placeholder fallback 
             ctx.fillStyle = '#fff';
             ctx.fillRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
             ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 4 * this.scale;
             ctx.strokeRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
-            
+
             ctx.fillStyle = '#000';
-            ctx.font = 'bold 22px sans-serif';
+            ctx.font = `bold ${Math.round(22 * this.scale)}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('LOGO IMAGE', 0, 0);
         }
         ctx.restore();
 
-        // Draw Buttons
-        this.buttons.forEach(btn => {
-            ctx.save();
-            ctx.translate(btn.x, btn.y);
-            ctx.scale(btn.scale, btn.scale);
-
-            // Button Shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.beginPath();
-            ctx.roundRect(-btn.width / 2, -btn.height / 2 + 5, btn.width, btn.height, 10);
-            ctx.fill();
-
-            // Button Body
-            ctx.fillStyle = btn.color;
-            ctx.beginPath();
-            ctx.roundRect(-btn.width / 2, -btn.height / 2, btn.width, btn.height, 10);
-            ctx.fill();
-
-            // Button Text
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 20px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(btn.text, 0, 0);
-
-            ctx.restore();
-        });
+        // 4. Draw our new juicy neon button components!
+        this.buttons.forEach(btn => btn.draw(ctx));
 
         ctx.restore();
     }
