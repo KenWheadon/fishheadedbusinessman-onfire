@@ -22,21 +22,28 @@ class StartScreen {
             twirlVelocity: 0
         };
 
-        // NEW: Instantiate consistent arcade-styled buttons
+        // Instantiate Arcade-styled buttons
         this.playButton = new ArcadeButton({
             text: 'PLAY',
-            themeColor: '#39ff14', // Glowing green for play
+            themeColor: '#39ff14',
             glowColor: '#00ff66'
         });
 
         this.settingsButton = new ArcadeButton({
             text: 'SETTINGS',
-            themeColor: '#ff007f', // Glowing pink/magenta for settings
+            themeColor: '#ff007f',
             glowColor: '#ff00ff'
         });
 
-        // Quick accessible array for batch operations (drawing/updating)
         this.buttons = [this.playButton, this.settingsButton];
+
+        // ==========================================
+        // INITIALIZE CAN GAMEPLAY ON START SCREEN
+        // ==========================================
+        this.canManager = new CanManager({
+            width: this.width,
+            height: this.height
+        });
 
         this.popOutTimer = 0;
         this.popOutPhase = 0;
@@ -60,12 +67,17 @@ class StartScreen {
         this.logo.width = 280 * this.scale;
         this.logo.height = 140 * this.scale;
 
-        // Recalculate positions & sizes for modern responsive layouts
+        // Recalculate button spacing
         const startY = centerY + 65 * this.scale;
         const spacing = 75 * this.scale;
 
         this.playButton.setPosition(centerX, startY, 210 * this.scale, 52 * this.scale, this.scale);
         this.settingsButton.setPosition(centerX, startY + spacing, 210 * this.scale, 52 * this.scale, this.scale);
+
+        // Propagate window updates to CanManager
+        if (this.canManager) {
+            this.canManager.resize(width, height);
+        }
     }
 
     reset() {
@@ -87,10 +99,15 @@ class StartScreen {
             btn.ripples = [];
         });
 
+        // Clear active cans
+        this.canManager = new CanManager({
+            width: this.width,
+            height: this.height
+        });
+
         this.resize(this.width, this.height);
     }
 
-    // Pass canvas local vectors down to the elements
     handleMouseMove(localX, localY) {
         this.buttons.forEach(btn => btn.handleMouseMove(localX, localY));
     }
@@ -98,13 +115,20 @@ class StartScreen {
     handleMouseDown(localX, localY) {
         if (this.state !== 'ACTIVE') return;
 
-        // Check Logo Click twirl
+        // 1. Hook and route clicks/taps into Can Manager physics before elements
+        const hitCan = this.canManager.handleMouseClick(localX, localY);
+        if (hitCan) {
+            // Can click was consumed, prevent logo twirling / button click overlay
+            return;
+        }
+
+        // 2. Check Logo Click twirl
         if (this.isPointInRect(localX, localY, this.logo)) {
             this.logo.twirlVelocity = 12;
             this.logo.targetScale = 1.2;
         }
 
-        // Pass MouseDown through
+        // 3. Pass MouseDown through
         this.buttons.forEach(btn => btn.handleMouseDown(localX, localY));
     }
 
@@ -141,7 +165,7 @@ class StartScreen {
         this.popOutPhase = 1;
 
         this.logo.targetScale = 1.4;
-        this.buttons.forEach(btn => btn.targetScale = 0); // Shrink cleanly on exit transition
+        this.buttons.forEach(btn => btn.targetScale = 0);
     }
 
     update(dt) {
@@ -149,6 +173,11 @@ class StartScreen {
         this.time += dt * 3.0;
 
         if (this.state === 'OFFSCREEN') return;
+
+        // Tick Can Spawns, Trajectory Physics, and multi-text animations
+        if (this.state === 'ACTIVE') {
+            this.canManager.update(dt);
+        }
 
         // Handle global layout transitions
         if (this.state === 'POPPING_OUT') {
@@ -176,7 +205,7 @@ class StartScreen {
         const snapBackRate = 1 - Math.pow(1 - 0.12, frameMultiplier);
         this.logo.rotation = this.lerp(this.logo.rotation, 0, snapBackRate);
 
-        // Update each button individually
+        // Update buttons
         this.buttons.forEach(btn => btn.update(dt));
     }
 
@@ -215,7 +244,14 @@ class StartScreen {
             ctx.fillRect(imgX, 0, imgWidth, imgHeight);
         }
 
-        // 3. Render Logo (UPDATED: Added Aspect Ratio Correction)
+        // ==========================================
+        // DRAW RAINING CANS GAME ELEMENT (Below Buttons & UI)
+        // ==========================================
+        if (this.state === 'ACTIVE') {
+            this.canManager.draw(ctx);
+        }
+
+        // 3. Render Logo
         ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
         ctx.translate(this.logo.x, this.logo.y + logoIdleY * this.scale);
@@ -228,7 +264,6 @@ class StartScreen {
         } catch (e) { }
 
         if (logoImg) {
-            // Determine SVG's aspect ratio. Fall back to old logo ratio (2:1) if unavailable
             const imgAspect = (logoImg.naturalWidth && logoImg.naturalHeight)
                 ? logoImg.naturalWidth / logoImg.naturalHeight
                 : 2.0;
@@ -237,12 +272,9 @@ class StartScreen {
             let drawHeight = this.logo.height * 2;
             const boxAspect = drawWidth / drawHeight;
 
-            // Fit the logo inside the target box without stretching
             if (imgAspect > boxAspect) {
-                // Image is wider than the target box aspect ratio
                 drawHeight = drawWidth / imgAspect;
             } else {
-                // Image is taller than the target box aspect ratio
                 drawWidth = drawHeight * imgAspect;
             }
 
@@ -262,7 +294,7 @@ class StartScreen {
         }
         ctx.restore();
 
-        // 4. Draw our new juicy neon button components!
+        // 4. Draw our button components
         this.buttons.forEach(btn => btn.draw(ctx));
 
         ctx.restore();

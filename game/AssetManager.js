@@ -56,6 +56,11 @@ class SimpleAssetManager {
       { key: 'char-3-burnt', src: 'images/char-3-burnt.webp' },
       { key: 'char-4-burnt', src: 'images/char-4-burnt.webp' },
       { key: 'char-5-burnt', src: 'images/char-5-burnt.webp' },
+      { key: 'can1', src: 'images/can1.webp' },
+      { key: 'can2', src: 'images/can2.webp' },
+      { key: 'can1-crumple', src: 'images/can1-crumple.webp' },
+      { key: 'can2-crumple', src: 'images/can2-crumple.webp' },
+
 
       // 4. Credits assets
       { key: 'kenwheadon', src: 'images/kenwheadon.png' },
