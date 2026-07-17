@@ -85,7 +85,7 @@ class CanManager {
     }
 
     getRandomSpawnInterval() {
-        return 20 + Math.random() * 10;
+        return 5 + Math.random() * 5;
     }
 
     // --- MEMORY POOL RECYCLERS ---
