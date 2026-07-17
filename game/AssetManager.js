@@ -38,8 +38,6 @@ class SimpleAssetManager {
       { key: 'top3', src: 'images/carrot-3.png' },
       { key: 'top4', src: 'images/carrot-4.png' },
       { key: 'top5', src: 'images/carrot-5.png' },
-      { key: 'carrot-top', src: 'images/carrot-top.png' },
-      { key: 'carrot-bottom', src: 'images/carrot-bottom.png' },
       { key: 'image1', src: 'images/image1.png' },
 
       // 3. Characters assets
