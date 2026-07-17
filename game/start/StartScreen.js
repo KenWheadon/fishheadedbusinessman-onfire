@@ -215,7 +215,7 @@ class StartScreen {
             ctx.fillRect(imgX, 0, imgWidth, imgHeight);
         }
 
-        // 3. Render Logo
+        // 3. Render Logo (UPDATED: Added Aspect Ratio Correction)
         ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
         ctx.translate(this.logo.x, this.logo.y + logoIdleY * this.scale);
@@ -228,7 +228,25 @@ class StartScreen {
         } catch (e) { }
 
         if (logoImg) {
-            ctx.drawImage(logoImg, -this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);
+            // Determine SVG's aspect ratio. Fall back to old logo ratio (2:1) if unavailable
+            const imgAspect = (logoImg.naturalWidth && logoImg.naturalHeight)
+                ? logoImg.naturalWidth / logoImg.naturalHeight
+                : 2.0;
+
+            let drawWidth = this.logo.width * 2;
+            let drawHeight = this.logo.height * 2;
+            const boxAspect = drawWidth / drawHeight;
+
+            // Fit the logo inside the target box without stretching
+            if (imgAspect > boxAspect) {
+                // Image is wider than the target box aspect ratio
+                drawHeight = drawWidth / imgAspect;
+            } else {
+                // Image is taller than the target box aspect ratio
+                drawWidth = drawHeight * imgAspect;
+            }
+
+            ctx.drawImage(logoImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
         } else {
             ctx.fillStyle = '#fff';
             ctx.fillRect(-this.logo.width / 2, -this.logo.height / 2, this.logo.width, this.logo.height);

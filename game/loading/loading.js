@@ -108,7 +108,7 @@ class GameLoader {
 
   handleMouseClick(localX, localY) {
     if (!this.isStarted || this.hasExited) return;
-    
+
     // Spawn interactive sparks (scaled relative to screen size)
     for (let i = 0; i < 8; i++) {
       this.particles.push({
@@ -152,7 +152,7 @@ class GameLoader {
     if (this.currentProgress >= 100) {
       if (!this.hasExited) {
         this.hasExited = true;
-        
+
         // Align particles perfectly with the dynamic bar's responsive location
         const barY = (this.height / 2) + 50 * this.scale;
 
@@ -189,8 +189,8 @@ class GameLoader {
   }
 
   /**
-   * Context-Independent Offset Canvas Renderer
-   */
+     * Context-Independent Offset Canvas Renderer
+     */
   draw(ctx, x, y) {
     if (!this.onScreen) return;
 
@@ -299,7 +299,7 @@ class GameLoader {
       }
     }
 
-    // 4. Render Logo Segment
+    // 4. Render Logo Segment (UPDATED: Aspect Ratio Fit)
     ctx.save();
     ctx.translate(centerX, logoY + logoYOffset);
     ctx.scale(logoScale * this.scale, logoScale * this.scale); // Dynamic layouts scaling applied
@@ -313,7 +313,28 @@ class GameLoader {
     // Abstract Asset Management Decoupling Check
     const logoImg = typeof AssetManager !== 'undefined' ? AssetManager.get('logo') : null;
     if (logoImg) {
-      ctx.drawImage(logoImg, -100, -60, 200, 120);
+      // Determine SVG's aspect ratio. Fall back to old layout ratio (5:3) if unavailable
+      const imgAspect = (logoImg.naturalWidth && logoImg.naturalHeight)
+        ? logoImg.naturalWidth / logoImg.naturalHeight
+        : 5 / 3;
+
+      const boxWidth = 400;
+      const boxHeight = 240;
+      const boxAspect = boxWidth / boxHeight;
+
+      let drawWidth = boxWidth;
+      let drawHeight = boxHeight;
+
+      // Fit the logo inside the 200x120 box without stretching
+      if (imgAspect > boxAspect) {
+        // Image is wider than the box aspect ratio
+        drawHeight = boxWidth / imgAspect;
+      } else {
+        // Image is taller than the box aspect ratio
+        drawWidth = boxHeight * imgAspect;
+      }
+
+      ctx.drawImage(logoImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     } else {
       // Elegant High-Fidelity Retro Canvas Emoji Fallback Layout
       ctx.font = '72px sans-serif';
@@ -377,7 +398,7 @@ class GameLoader {
         // Animated Shimmer Overlay Calculations
         if (this.isStarted && !this.hasExited) {
           const shimmerLength = 150;
-          const shimmerSpeed = 250; 
+          const shimmerSpeed = 250;
           const totalLoopTrack = bWidth + shimmerLength;
           let shimX = bx + innerPadding - shimmerLength + (this.shimmerTimer * shimmerSpeed) % totalLoopTrack;
 

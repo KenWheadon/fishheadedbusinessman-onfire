@@ -29,7 +29,7 @@ class SimpleAssetManager {
   get MANIFEST() {
     return [
       // 1. Logo / Core Brand assets
-      { key: 'logo', src: 'images/logo.jpg' },
+      { key: 'logo', src: 'images/logo-ff.svg' },
 
       // 2. Carrot cutter assets
       { key: 'base', src: 'images/carrot-base.png' },
