@@ -32,8 +32,10 @@ class Chars {
     const spacing = this.width / 5;
 
     this.characters.forEach((char, i) => {
+      // Stagger alternating characters upward to give headroom for larger sizes
+      const stagger = (i % 2 === 0) ? 0 : -110 * this.baseScale;
       char.baseX = spacing * i + spacing / 2;
-      char.baseY = this.height * 0.72;
+      char.baseY = this.height * 0.72 + stagger;
 
       // Instantly map living characters to prevent visual jitter
       if (char.alive && !this.isWinning) {
@@ -59,10 +61,15 @@ class Chars {
       const imgBody = (typeof AssetManager !== 'undefined') ? AssetManager.get(`char-${id}`) : null;
       const imgHeadshot = (typeof AssetManager !== 'undefined') ? AssetManager.get(`headshot-${id}`) : null;
 
+      // Stagger alternating characters upward to give headroom for larger sizes
+      const stagger = (i % 2 === 0) ? 0 : -110 * this.baseScale;
+      const charX = spacing * i + spacing / 2;
+      const charY = this.height * 0.72 + stagger;
+
       this.characters.push({
         id: id, image: imgBody, headshot: imgHeadshot,
-        baseX: spacing * i + spacing / 2, baseY: this.height * 0.72,
-        x: spacing * i + spacing / 2, y: this.height * 0.72,
+        baseX: charX, baseY: charY,
+        x: charX, y: charY,
         vx: 0, vy: 0, angle: 0, va: 0, scale: 1, opacity: 1,
         alive: true, isDying: false, dialogues: dialoguePools[i], dialogueIndex: 0,
         hovered: false, isWaitingForBoom: false
@@ -78,8 +85,8 @@ class Chars {
   }
 
   getCharacterAtCoords(coords) {
-    // Scale the hitbox boundaries so selection registers accurately at smaller sizes
-    const w = 170 * this.baseScale, h = 230 * this.baseScale;
+    // Increased base sizing parameters (230w x 310h) to match the larger rendering look
+    const w = 230 * this.baseScale, h = 310 * this.baseScale;
     for (const char of this.characters) {
       if (!char.alive) continue;
       if (coords.x >= char.x - w / 2 && coords.x <= char.x + w / 2 && coords.y >= char.y - h && coords.y <= char.y) {
@@ -151,7 +158,8 @@ class Chars {
     target.vy = (-Math.random() * 15 - 15) * this.baseScale;
     target.va = dir * (Math.random() * 0.05 + 0.03);
 
-    this.spawnExplosion(target.x, target.y - 100 * this.baseScale);
+    // Adjusted explosion coordinate center upward slightly to account for the extra character height
+    this.spawnExplosion(target.x, target.y - 140 * this.baseScale);
     this.shakeIntensity = 18 * this.baseScale;
     this.locked = true;
   }
@@ -239,7 +247,8 @@ class Chars {
         if (this.container) this.container.classList.remove('ultimate-shake');
       } else {
         if (Math.floor(prevTimer / 8) !== Math.floor(this.winTimer / 8)) {
-          this.characters.forEach(char => { if (char.alive) this.spawnHeart(char.x, char.y - 120 * this.baseScale); });
+          // Lifted heart spawn offset higher to clear the new character tops
+          this.characters.forEach(char => { if (char.alive) this.spawnHeart(char.x, char.y - 160 * this.baseScale); });
         }
       }
     }
@@ -293,13 +302,14 @@ class Chars {
 
     this.characters.forEach(char => {
       if (char.alive) {
-        const radius = 140 * this.baseScale;
-        const glow = ctx.createRadialGradient(char.baseX, char.baseY - 40 * this.baseScale, 5 * this.baseScale, char.baseX, char.baseY - 40 * this.baseScale, radius);
+        // Adjusted the background dynamic glow radius and center offsets to mirror the larger cards
+        const radius = 180 * this.baseScale;
+        const glow = ctx.createRadialGradient(char.baseX, char.baseY - 60 * this.baseScale, 5 * this.baseScale, char.baseX, char.baseY - 60 * this.baseScale, radius);
         const alpha = this.isModalOpen ? 0.3 : 1;
         if (!this.isLocked() && !this.isWinning && !this.isModalOpen) glow.addColorStop(0, `rgba(255, 78, 80, ${0.2 * alpha})`);
         else glow.addColorStop(0, `rgba(92, 107, 255, ${0.12 * alpha})`);
         glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(char.baseX, char.baseY - 40 * this.baseScale, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(char.baseX, char.baseY - 60 * this.baseScale, radius, 0, Math.PI * 2); ctx.fill();
       }
     });
   }
@@ -315,8 +325,8 @@ class Chars {
     ctx.scale(targetScale, targetScale);
     ctx.globalAlpha = char.opacity * (char.isDying ? 1 : (this.isModalOpen ? 0.2 : 1));
 
-    // Leaving internal dimension properties at 170x230 because the canvas transform handles scaling perfectly!
-    const w = 170, h = 230;
+    // Increased internal base values to 230x310 for larger presentation scale
+    const w = 230, h = 310;
     if (char.alive) {
       ctx.save(); ctx.scale(1, 0.28);
       const shadow = ctx.createRadialGradient(0, 0, 5, 0, 0, w / 2);
@@ -345,10 +355,10 @@ class Chars {
       ctx.fillStyle = '#1e1e2d'; ctx.strokeStyle = '#3d3d5c'; ctx.lineWidth = 4;
       this.drawRoundedRect(ctx, drawX, drawY, w, h, 14); ctx.fill(); ctx.stroke();
       ctx.fillStyle = `hsl(${char.id * 72}, 70%, 55%)`; this.drawRoundedRect(ctx, drawX + 10, drawY + 10, w - 20, 36, 8); ctx.fill();
-      ctx.fillStyle = '#0f0f18'; ctx.fillRect(drawX + 10, drawY + 54, w - 20, 114);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 38px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`C${char.id}`, 0, drawY + 110);
+      ctx.fillStyle = '#0f0f18'; ctx.fillRect(drawX + 10, drawY + 54, w - 20, 194); // Expanded box fallback height to match new container proportions
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`C${char.id}`, 0, drawY + 140);
       ctx.fillStyle = '#ffffff'; ctx.font = '900 15px monospace'; ctx.fillText(`HERO 0${char.id}`, 0, drawY + 28);
-      ctx.fillStyle = '#656585'; ctx.font = '11px sans-serif'; ctx.fillText(`STABLE READY`, 0, drawY + 200);
+      ctx.fillStyle = '#656585'; ctx.font = '11px sans-serif'; ctx.fillText(`STABLE READY`, 0, drawY + 270);
     }
     ctx.restore();
   }
