@@ -10,7 +10,7 @@ class CarrotLoss {
     }
 
     /**
-     * Updates screen layout dimensions dynamically[cite: 7].
+     * Updates screen layout dimensions dynamically.
      */
     resize(width, height) {
         this.width = width;
@@ -25,7 +25,15 @@ class CarrotLoss {
 
         let intensity = 0, particleSpawnRate = 0, shakeMultiplier = 0;
         if (cutCarrots >= 1 && cutCarrots <= 4) {
-            intensity = 0.1 + (cutCarrots / 4) * 0.2; particleSpawnRate = 1 * cutCarrots; shakeMultiplier = 2;
+            // Reduced initial intensity and shake specifically for 1-2 cut carrots
+            if (cutCarrots <= 2) {
+                intensity = 0.05 * cutCarrots;
+                shakeMultiplier = 1;
+            } else {
+                intensity = 0.1 + (cutCarrots / 4) * 0.2;
+                shakeMultiplier = 2;
+            }
+            particleSpawnRate = 1 * cutCarrots;
         } else if (cutCarrots >= 5 && cutCarrots <= 7) {
             intensity = 0.5 + ((cutCarrots - 4) / 3) * 0.3; particleSpawnRate = 10 * (cutCarrots - 3); shakeMultiplier = 8;
         } else if (cutCarrots >= 8) {

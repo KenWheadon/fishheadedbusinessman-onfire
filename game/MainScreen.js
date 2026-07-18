@@ -12,7 +12,7 @@ class MainScreen {
 
         this.settingsBtn = { x: 0, y: 0, w: 100, h: 40, hovered: false };
 
-        // 1. Sub-component Setup
+        // 1. Sub-component Setup[cite: 1]
         this.debt = new DebtComponent({ width: 340, height: 140 });
         this.chars = new Chars({ width: this.width, height: 500 });
         this.carrot = new CarrotCutter({ width: this.width, height: this.height, align: 'left' });
@@ -21,10 +21,10 @@ class MainScreen {
         this.popup = new GamePopup({ width: 500, height: 250 });
         this.carrotLoss = new CarrotLoss({ width: this.width, height: this.height });
 
-        // Force Chars components to lock initial inputs until popup is accepted
+        // Force Chars components to lock initial inputs until popup is accepted[cite: 1]
         this.chars.locked = true;
 
-        // 2. Reference Map (Populated dynamically inside resize)
+        // 2. Reference Map (Populated dynamically inside resize)[cite: 1]
         this.layout = {
             cardGame: { x: 0, y: 0, w: 0, h: 0, instance: this.cardGame },
             carrot: { x: 0, y: 0, w: this.width, h: this.height, instance: this.carrot },
@@ -33,7 +33,7 @@ class MainScreen {
             chars: { x: 0, y: 0, w: 0, h: 0, instance: this.chars }
         };
 
-        // 3. Animation Interpolation Config Targets
+        // 3. Animation Interpolation Config Targets[cite: 1]
         this.yPositions = {
             charsCenter: 0,
             charsMinimized: 0,
@@ -41,13 +41,13 @@ class MainScreen {
             bottomOnscreen: 0
         };
 
-        // Runtime Interpolation Engine States
+        // Runtime Interpolation Engine States[cite: 1]
         this.charsY = 0;
         this.charsScale = 1.0;
         this.bottomY = 0;
         this.cardGameScale = 0.0;
 
-        // 4. Sequence Timing & Flow State Machine
+        // 4. Sequence Timing & Flow State Machine[cite: 1]
         this.gameState = 'INTRO_CHARS_CENTER';
         this.stateTimer = 2.0;
 
@@ -59,7 +59,7 @@ class MainScreen {
         this._winTimer = 0;
         this._resetDelayTimer = 0;
 
-        // Initial layout execution
+        // Initial layout execution[cite: 1]
         this.resize(this.width, this.height);
     }
 
@@ -70,7 +70,7 @@ class MainScreen {
         this.width = width;
         this.height = height;
 
-        // Establish 9:16 Aspect-Ratio Geometry Boundaries
+        // Establish 9:16 Aspect-Ratio Geometry Boundaries[cite: 1]
         const targetRatio = 9 / 16;
         const bgWidth = height * targetRatio;
         const bgX = (width - bgWidth) / 2;
@@ -78,18 +78,18 @@ class MainScreen {
         // Linear scale factor mapped off native design tool height baseline (960px)
         this.scaleFactor = height / 960;
 
-        // Scale and align settings button to the top-right of the 9:16 frame container
+        // Scale and align settings button to the top-right of the 9:16 frame container[cite: 1]
         this.settingsBtn.w = 100 * this.scaleFactor;
         this.settingsBtn.h = 40 * this.scaleFactor;
         this.settingsBtn.x = bgX + bgWidth - this.settingsBtn.w - 20 * this.scaleFactor;
         this.settingsBtn.y = 20 * this.scaleFactor;
 
         // ─────────────────────────────────────────────────────────
-        // UNIFIED HEIGHT-SCALE COLUMN GRID SYSTEM
+        // UNIFIED HEIGHT-SCALE COLUMN GRID SYSTEM[cite: 1, 2]
         // ─────────────────────────────────────────────────────────
 
-        // Character Row Layout Configuration
-        // Multiplied by 2 so that when scaled down to 0.5 during play, it matches bgWidth exactly.
+        // Character Row Layout Configuration[cite: 1, 2]
+        // Multiplied by 2 so that when scaled down to 0.5 during play, it matches bgWidth exactly.[cite: 1, 2]
         this.layout.chars = {
             x: bgX,
             y: 0,
@@ -98,7 +98,7 @@ class MainScreen {
             instance: this.chars
         };
 
-        // Card Game Component Layout Configuration
+        // Card Game Component Layout Configuration[cite: 1, 2]
         this.layout.cardGame = {
             x: bgX,
             y: 378 * this.scaleFactor,
@@ -107,7 +107,7 @@ class MainScreen {
             instance: this.cardGame
         };
 
-        // Debt Counter Component Layout Configuration
+        // Debt Counter Component Layout Configuration[cite: 1, 2]
         this.layout.debt = {
             x: bgX,
             y: 4 * this.scaleFactor,
@@ -116,11 +116,11 @@ class MainScreen {
             instance: this.debt
         };
 
-        // Full screen interaction layer tracking for inputs
+        // Full screen interaction layer tracking for inputs[cite: 1]
         this.layout.carrot = { x: 0, y: 0, w: width, h: height, instance: this.carrot };
         this.layout.carrotRight = { x: 0, y: 0, w: width, h: height, instance: this.carrotRight };
 
-        // Anchor carrot platform nodes relative to the bottom edge of the viewport screen
+        // Anchor carrot platform nodes relative to the bottom edge of the viewport screen[cite: 2]
         this.carrot.layout.baseX = bgX + 20 * this.scaleFactor;
         this.carrot.layout.baseY = height - 79 * this.scaleFactor;
         this.carrot.layout.nodeX = bgX + 58 * this.scaleFactor;
@@ -131,7 +131,7 @@ class MainScreen {
         this.carrotRight.layout.nodeX = bgX + 57 * this.scaleFactor;
         this.carrotRight.layout.nodeY = height - 50 * this.scaleFactor;
 
-        // Dynamic Animation Interpolation Target Paths
+        // Dynamic Animation Interpolation Target Paths[cite: 1, 2]
         this.yPositions = {
             charsCenter: 171 * this.scaleFactor,
             charsMinimized: 129 * this.scaleFactor,
@@ -450,11 +450,11 @@ class MainScreen {
             ctx.translate(this.carrotLoss.shakeX, this.carrotLoss.shakeY);
         }
 
-        // 1. Render Outer Solid Backdrop Fill
+        // 1. Render Outer Solid Backdrop Fill[cite: 1]
         ctx.fillStyle = '#0f766e';
         ctx.fillRect(-50, -50, this.width + 100, this.height + 100);
 
-        // 2. Render Centered 9:16 Core Canvas Wallpaper Frame
+        // 2. Render Centered 9:16 Core Canvas Wallpaper Frame[cite: 1]
         let bgImg = null;
         try {
             bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-main') : null;
@@ -474,14 +474,17 @@ class MainScreen {
         // ─────────────────────────────────────────────────────────
         // AMBIENT TOP PINK GRADIENT OVERLAY
         // ─────────────────────────────────────────────────────────
-        // Creates a vertical gradient starting at the top edge (y=0) and fading out completely 1/3 down the screen height.
-        const topGradient = ctx.createLinearGradient(imgX, 0, imgX, imgHeight / 3);
-        topGradient.addColorStop(0, 'rgba(244, 63, 94, 0.5)'); // Ambient soft pink 
-        topGradient.addColorStop(1, 'rgba(244, 63, 94, 0)');   // Smoothly blends out to zero opacity
-        ctx.fillStyle = topGradient;
-        ctx.fillRect(imgX, 0, imgWidth, imgHeight / 3);
+        // Vertical gradient spanning down to 40% height. Solid pink down to a 50% opacity checkpoint at the 70% mark.
+        const gradientHeight = imgHeight * 0.40;
+        const topGradient = ctx.createLinearGradient(imgX, 0, imgX, gradientHeight);
+        topGradient.addColorStop(0, 'rgba(244, 63, 94, 1.0)');   // Solid pink at the absolute top edge
+        topGradient.addColorStop(0.7, 'rgba(244, 63, 94, 0.5)'); // Hits 50% opacity at 70% of the gradient boundary
+        topGradient.addColorStop(1, 'rgba(244, 63, 94, 0)');     // Completely transparent at the 40% height mark
 
-        // 3. Render Stacked Subcomponents aligned with the viewport pipeline
+        ctx.fillStyle = topGradient;
+        ctx.fillRect(imgX, 0, imgWidth, gradientHeight);
+
+        // 3. Render Stacked Subcomponents aligned with the viewport pipeline[cite: 1]
         const drawOrder = ['cardGame', 'chars', 'debt', 'carrot', 'carrotRight'];
         for (const key of drawOrder) {
             const entry = this.layout[key];

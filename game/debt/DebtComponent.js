@@ -37,7 +37,7 @@ class DebtComponent {
             y: this.height / 2 + 15,
             vy: -110,
             opacity: 1.0,
-            color: '#22c55e'
+            color: '#ffffff' // Changed to white
         });
 
         if (this.debt <= 0) {
@@ -142,7 +142,7 @@ class DebtComponent {
         if (this.state === 'lost') this.drawLightSkull(ctx, this.width / 2, this.height / 2 - 15);
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#64748b'; ctx.font = '16px "Courier New", Courier, monospace';
+        ctx.fillStyle = '#ffffff'; ctx.font = '16px "Courier New", Courier, monospace'; // Changed to white
 
         // Added: Slight dark border for the layout header text
         ctx.strokeStyle = '#11141a'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
@@ -150,7 +150,7 @@ class DebtComponent {
         ctx.fillText("CURRENT OUTSTANDING DEBT", this.width / 2, this.height / 2 - 35);
 
         ctx.save(); ctx.translate(this.width / 2, this.height / 2 + 15); ctx.scale(this.textScale, this.textScale);
-        ctx.fillStyle = this.visualDebt > 0 ? '#ef4444' : '#22c55e'; ctx.font = 'bold 48px Arial, sans-serif';
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 48px Arial, sans-serif'; // Changed to white
 
         // Added: Slight dark border for the primary debt value text
         ctx.strokeStyle = '#11141a'; ctx.lineWidth = 5; ctx.lineJoin = 'round';
@@ -173,13 +173,13 @@ class DebtComponent {
                 ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y + p.length); ctx.stroke();
             });
             ctx.save(); ctx.translate(this.width / 2, this.height / 2 + 15); ctx.rotate(-0.08);
-            ctx.fillStyle = 'rgba(220, 38, 38, 0.9)'; ctx.font = 'bold 64px "Impact", sans-serif';
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 64px "Impact", sans-serif'; // Changed to white
             ctx.strokeStyle = '#11141a'; ctx.lineWidth = 8; ctx.strokeText("COLLECTED", 0, 0); ctx.fillText("COLLECTED", 0, 0); ctx.restore();
         }
 
         if (this.state === 'won') {
             // Changed: Removed opaque background layer fill to preserve total transparency during win sequence
-            ctx.fillStyle = '#eab308'; ctx.font = 'bold 72px "Impact", Arial, sans-serif';
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 72px "Impact", Arial, sans-serif'; // Changed to white
             ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 20;
 
             // Added: Slight dark border for "WINNER" text layout
