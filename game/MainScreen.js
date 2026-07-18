@@ -24,7 +24,7 @@ class MainScreen {
         // Force Chars components to lock initial inputs until popup is accepted
         this.chars.locked = true;
 
-        // 2. Dynamic Reference Map (Populated dynamically inside resize)
+        // 2. Reference Map (Populated dynamically inside resize)
         this.layout = {
             cardGame: { x: 260, y: 180, w: 760, h: 360, instance: this.cardGame },
             carrot: { x: 0, y: 0, w: this.width, h: this.height, instance: this.carrot },
@@ -33,7 +33,7 @@ class MainScreen {
             chars: { x: 0, y: 110, w: this.width, h: 500, instance: this.chars }
         };
 
-        // 3. Coordinate Animation Interpolation Targets (Assigned in resize)
+        // 3. Animation Interpolation Config Targets
         this.yPositions = {
             charsCenter: 110,
             charsMinimized: -50,
@@ -59,27 +59,28 @@ class MainScreen {
         this._winTimer = 0;
         this._resetDelayTimer = 0;
 
-        // Initial layout trigger execution
+        // Initial layout execution
         this.resize(this.width, this.height);
     }
 
     /**
-     * Seamlessly re-calculates placement, scales sub-components, 
-     * and maps layout nodes based on current sizing context.
+     * Re-calculates placements and safely scales sub-components without breaking internal math geometries.
      */
     resize(width, height) {
         this.width = width;
         this.height = height;
 
-        // Establish uniform base scale metrics relative to our reference coordinate map
         const baseScale = Math.min(width / 1280, height / 720);
         this.scaleFactor = Math.min(Math.max(baseScale, 0.5), 1.4);
 
-        // Standard upper right header anchors for menu overlay calls
         this.settingsBtn.x = width - 120;
         this.settingsBtn.y = 20;
 
-        // Define Fluid Layout States & Breakpoint Matrices
+        // CRITICAL FIX: Carrots must track full screen geometry boundaries 
+        // to prevent empty point generation array crashes inside carrot.js[cite: 2]
+        this.layout.carrot = { x: 0, y: 0, w: width, h: height, instance: this.carrot };
+        this.layout.carrotRight = { x: 0, y: 0, w: width, h: height, instance: this.carrotRight };
+
         if (width < 600) {
             // ─────────────────────────────────────────────────────────
             // A. MOBILE LAYOUT
@@ -88,27 +89,30 @@ class MainScreen {
             this.isTablet = false;
 
             const cardW = Math.min(width * 0.92, 420);
-            const cardH = cardW * (360 / 760); // Retain structural aspect-ratio configurations
+            const cardH = cardW * (360 / 760);
             const debtW = 260;
             const debtH = 100;
 
             this.layout.chars = { x: 0, y: 0, w: width, h: height * 0.35, instance: this.chars };
-            this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.28, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.78, w: debtW, h: debtH, instance: this.debt };
+            this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.25, w: cardW, h: cardH, instance: this.cardGame };
+            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.72, w: debtW, h: debtH, instance: this.debt };
 
-            // Stack carrot controllers safely down to mobile interface margins
-            this.layout.carrot = { x: 10, y: height * 0.78, w: 80, h: 90, instance: this.carrot };
-            this.layout.carrotRight = { x: width - 90, y: height * 0.78, w: 80, h: 90, instance: this.carrotRight };
+            // Explicitly shift interactive carrot coordinates for mobile dimensions
+            this.carrot.layout.baseX = 20;
+            this.carrot.layout.baseY = height - 100;
+            this.carrot.layout.nodeX = 50;
+            this.carrot.layout.nodeY = height - 70;
 
-            this.carrot.layout = { nodeX: 40, nodeY: 50, baseX: 10, baseY: 30 };
-            this.carrotRight.layout = { nodeX: 40, nodeY: 50, baseX: 10, baseY: 30 };
+            this.carrotRight.layout.baseX = 20;
+            this.carrotRight.layout.baseY = height - 100;
+            this.carrotRight.layout.nodeX = 50;
+            this.carrotRight.layout.nodeY = height - 70;
 
-            // Dynamically assign context positions for the flow animation interpolator
             this.yPositions = {
-                charsCenter: height * 0.22,
+                charsCenter: height * 0.20,
                 charsMinimized: -height * 0.08,
-                bottomOffscreen: height + 250,
-                bottomOnscreen: height * 0.76
+                bottomOffscreen: height + 200,
+                bottomOnscreen: height * 0.72
             };
 
         } else if (width < 1024) {
@@ -125,19 +129,23 @@ class MainScreen {
 
             this.layout.chars = { x: 0, y: 0, w: width, h: height * 0.45, instance: this.chars };
             this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.24, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.75, w: debtW, h: debtH, instance: this.debt };
+            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.70, w: debtW, h: debtH, instance: this.debt };
 
-            this.layout.carrot = { x: 30, y: height * 0.75, w: 140, h: 120, instance: this.carrot };
-            this.layout.carrotRight = { x: width - 170, y: height * 0.75, w: 140, h: 120, instance: this.carrotRight };
+            this.carrot.layout.baseX = 40;
+            this.carrot.layout.baseY = height - 130;
+            this.carrot.layout.nodeX = 80;
+            this.carrot.layout.nodeY = height - 100;
 
-            this.carrot.layout = { nodeX: 70, nodeY: 80, baseX: 30, baseY: 50 };
-            this.carrotRight.layout = { nodeX: 70, nodeY: 80, baseX: 30, baseY: 50 };
+            this.carrotRight.layout.baseX = 40;
+            this.carrotRight.layout.baseY = height - 130;
+            this.carrotRight.layout.nodeX = 80;
+            this.carrotRight.layout.nodeY = height - 100;
 
             this.yPositions = {
                 charsCenter: height * 0.18,
-                charsMinimized: -height * 0.12,
-                bottomOffscreen: height + 350,
-                bottomOnscreen: height * 0.74
+                charsMinimized: -height * 0.10,
+                bottomOffscreen: height + 250,
+                bottomOnscreen: height * 0.70
             };
 
         } else {
@@ -154,24 +162,27 @@ class MainScreen {
 
             this.layout.chars = { x: 0, y: 110, w: width, h: 500 * this.scaleFactor, instance: this.chars };
             this.layout.cardGame = { x: (width - cardW) / 2, y: (height - cardH) / 2 - 20, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height - debtH - 30, w: debtW, h: debtH, instance: this.debt };
+            this.layout.debt = { x: (width - debtW) / 2, y: height - debtH - 40, w: debtW, h: debtH, instance: this.debt };
 
-            // Full-canvas spatial overlays for desktop
-            this.layout.carrot = { x: 0, y: 0, w: width, h: height, instance: this.carrot };
-            this.layout.carrotRight = { x: 0, y: 0, w: width, h: height, instance: this.carrotRight };
+            this.carrot.layout.baseX = 40;
+            this.carrot.layout.baseY = height - 120;
+            this.carrot.layout.nodeX = 100;
+            this.carrot.layout.nodeY = height - 90;
 
-            this.carrot.layout = { nodeX: 100, nodeY: 630, baseX: 40, baseY: 600 };
-            this.carrotRight.layout = { nodeX: 100, nodeY: 630, baseX: 40, baseY: 600 };
+            this.carrotRight.layout.baseX = 40;
+            this.carrotRight.layout.baseY = height - 120;
+            this.carrotRight.layout.nodeX = 100;
+            this.carrotRight.layout.nodeY = height - 90;
 
             this.yPositions = {
                 charsCenter: height * 0.15,
                 charsMinimized: -50 * this.scaleFactor,
-                bottomOffscreen: height + 400,
+                bottomOffscreen: height + 300,
                 bottomOnscreen: height - debtH - 40
             };
         }
 
-        // Propagate updated sizing properties down to inner subcomponents
+        // Propagate size updates down to inner subcomponents safely
         if (this.carrotLoss && typeof this.carrotLoss.resize === 'function') {
             this.carrotLoss.resize(width, height);
         }
@@ -193,7 +204,6 @@ class MainScreen {
         }
         this.popup.close();
 
-        // Snap animation vectors straight back to state baseline configurations
         this.charsY = this.yPositions.charsCenter;
         this.charsScale = 1.0;
         this.bottomY = this.yPositions.bottomOffscreen;
@@ -225,7 +235,6 @@ class MainScreen {
         const cutCarrots = 10 - (this.carrot.checkCut() + this.carrotRight.checkCut());
         this.carrotLoss.update(safeDt, cutCarrots);
 
-        // Core Game Flow Timing & State Updates (Swapped with modular position keys)
         let targetCharsY = this.yPositions.charsCenter;
         let targetCharsScale = 1.0;
         let targetBottomY = this.yPositions.bottomOffscreen;
@@ -441,7 +450,6 @@ class MainScreen {
                 break;
         }
 
-        // Apply visual smooth matrix interpolations
         this.charsY += (targetCharsY - this.charsY) * lerpFactor;
         this.charsScale += (targetCharsScale - this.charsScale) * lerpFactor;
         this.bottomY += (targetBottomY - this.bottomY) * lerpFactor;
@@ -495,20 +503,12 @@ class MainScreen {
                 ctx.translate(charsX, this.charsY);
                 ctx.scale(this.charsScale, this.charsScale);
             } else if (key === 'carrot' || key === 'carrotRight') {
-                if (this.isMobile || this.isTablet) {
-                    // Follow layout mapping anchor offset continuously relative to animated bottom slide container
-                    const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
-                    ctx.translate(entry.x, entry.y + slideOffsetY);
-                } else {
-                    ctx.translate(0, this.bottomY - this.yPositions.bottomOnscreen);
-                }
+                // Apply sliding vector transitions relative to the full viewport sizing mapping
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
+                ctx.translate(0, slideOffsetY);
             } else if (key === 'debt') {
-                if (this.isMobile || this.isTablet) {
-                    const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
-                    ctx.translate(entry.x, entry.y + slideOffsetY);
-                } else {
-                    ctx.translate(entry.x, this.bottomY);
-                }
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
+                ctx.translate(entry.x, entry.y + slideOffsetY);
             } else if (key === 'cardGame') {
                 const cx = entry.x + entry.w / 2;
                 const cy = entry.y + entry.h / 2;
@@ -570,7 +570,6 @@ class MainScreen {
             return;
         }
 
-        // Loop and perform relative input hit-tests
         for (const key in this.layout) {
             const entry = this.layout[key];
             const instance = entry.instance;
@@ -591,23 +590,15 @@ class MainScreen {
                 bw = entry.w * scaleX;
                 bh = entry.h * scaleY;
             } else if (key === 'carrot' || key === 'carrotRight') {
-                if (this.isMobile || this.isTablet) {
-                    const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
-                    bx = entry.x;
-                    by = entry.y + slideOffsetY;
-                } else {
-                    bx = 0;
-                    by = this.bottomY - this.yPositions.bottomOnscreen;
-                    bw = this.width;
-                    bh = this.height;
-                }
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
+                bx = 0;
+                by = slideOffsetY;
+                bw = this.width;
+                bh = this.height;
             } else if (key === 'debt') {
-                if (this.isMobile || this.isTablet) {
-                    const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
-                    by = entry.y + slideOffsetY;
-                } else {
-                    by = this.bottomY;
-                }
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
+                bx = entry.x;
+                by = entry.y + slideOffsetY;
             } else if (key === 'cardGame') {
                 if (this.cardGameScale < 0.1) continue;
 
