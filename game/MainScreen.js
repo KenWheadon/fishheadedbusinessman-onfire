@@ -123,12 +123,12 @@ class MainScreen {
         // Anchor carrot platform nodes relative to the bottom edge of the viewport screen[cite: 2]
         this.carrot.layout.baseX = bgX + 20 * this.scaleFactor;
         this.carrot.layout.baseY = height - 79 * this.scaleFactor;
-        this.carrot.layout.nodeX = bgX + 58 * this.scaleFactor;
+        this.carrot.layout.nodeX = bgX + 82 * this.scaleFactor;
         this.carrot.layout.nodeY = height - 50 * this.scaleFactor;
 
         this.carrotRight.layout.baseX = bgX + 19 * this.scaleFactor;
         this.carrotRight.layout.baseY = height - 80 * this.scaleFactor;
-        this.carrotRight.layout.nodeX = bgX + 57 * this.scaleFactor;
+        this.carrotRight.layout.nodeX = bgX + 82 * this.scaleFactor;
         this.carrotRight.layout.nodeY = height - 50 * this.scaleFactor;
 
         // Dynamic Animation Interpolation Target Paths[cite: 1, 2]

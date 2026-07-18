@@ -25,11 +25,11 @@ class GameLayoutEditor {
         this.selectedElement = null;
         this.isDragging = false;
         this.isResizing = false;
-        this.dragOffset  = { x: 0, y: 0 };
-        this.handleSize  = 12;
+        this.dragOffset = { x: 0, y: 0 };
+        this.handleSize = 12;
 
         this._simulatedGameState = null;
-        this._originalGameState  = null;
+        this._originalGameState = null;
 
         this._canvas = null;
 
@@ -115,7 +115,7 @@ class GameLayoutEditor {
                 getBounds: (ms) => {
                     const e = ms.layout.chars;
                     if (!e) return null;
-                    const s  = ms.charsScale;
+                    const s = ms.charsScale;
                     const bw = e.w * s;
                     const bh = e.h * s;
                     const bx = (ms.width - bw) / 2;
@@ -128,8 +128,8 @@ class GameLayoutEditor {
                     if (ms.yPositions) {
                         const stateName = ms.gameState;
                         // Determine which yPosition target is driving this state
-                        const usesCenter = ['INTRO_CHARS_CENTER','PENALTY_SLIDE_DOWN','PENALTY_WAIT_CHOICE',
-                                            'PENALTY_RESOLUTION','WIN_SEQUENCE','WIN_WAIT','LOSE_SEQUENCE'];
+                        const usesCenter = ['INTRO_CHARS_CENTER', 'PENALTY_SLIDE_DOWN', 'PENALTY_WAIT_CHOICE',
+                            'PENALTY_RESOLUTION', 'WIN_SEQUENCE', 'WIN_WAIT', 'LOSE_SEQUENCE'];
                         if (usesCenter.includes(stateName)) {
                             ms.yPositions.charsCenter = Math.round(ms.yPositions.charsCenter + dy);
                         } else {
@@ -147,10 +147,10 @@ class GameLayoutEditor {
                 },
                 getExport: (ms) => {
                     return {
-                        charsY_center:    Math.round(ms.yPositions ? ms.yPositions.charsCenter    : ms.charsY),
+                        charsY_center: Math.round(ms.yPositions ? ms.yPositions.charsCenter : ms.charsY),
                         charsY_minimized: Math.round(ms.yPositions ? ms.yPositions.charsMinimized : ms.charsY),
-                        layout_w:         Math.round(ms.layout.chars ? ms.layout.chars.w : 0),
-                        layout_h:         Math.round(ms.layout.chars ? ms.layout.chars.h : 0),
+                        layout_w: Math.round(ms.layout.chars ? ms.layout.chars.w : 0),
+                        layout_h: Math.round(ms.layout.chars ? ms.layout.chars.h : 0),
                     };
                 }
             },
@@ -163,18 +163,24 @@ class GameLayoutEditor {
                     const slideOffsetY = ms.bottomY - ms.yPositions.bottomOnscreen;
                     const nx = ci.layout.nodeX;
                     const ny = ci.layout.nodeY + slideOffsetY;
-                    const r  = 60; // approximate hit-zone radius around node
+                    const r = 60; // approximate hit-zone radius around node
                     return { x: nx - r, y: ny - r, w: r * 2, h: r * 2 };
                 },
                 applyDelta: (ms, dx, dy) => {
                     const ci = ms.carrot;
                     if (!ci) return;
-                    ci.layout.nodeX  = Math.round(ci.layout.nodeX  + dx);
-                    ci.layout.nodeY  = Math.round(ci.layout.nodeY  + dy);
-                    ci.layout.baseX  = Math.round(ci.layout.baseX  + dx);
-                    ci.layout.baseY  = Math.round(ci.layout.baseY  + dy);
+                    ci.layout.nodeX = Math.round(ci.layout.nodeX + dx);
+                    ci.layout.nodeY = Math.round(ci.layout.nodeY + dy);
+                    ci.layout.baseX = Math.round(ci.layout.baseX + dx);
+                    ci.layout.baseY = Math.round(ci.layout.baseY + dy);
                 },
-                applySize: () => { /* carrot size controlled by topLength / scale - not exposed here */ },
+                applySize: (ms, dw, dh) => {
+                    const ci = ms.carrot;
+                    if (!ci) return;
+                    // Independently offsets the carrot sprout node location via resize drag
+                    ci.layout.nodeX = Math.round(ci.layout.nodeX + dw);
+                    ci.layout.nodeY = Math.round(ci.layout.nodeY + dh);
+                },
                 getExport: (ms) => {
                     const ci = ms.carrot;
                     if (!ci) return null;
@@ -196,19 +202,25 @@ class GameLayoutEditor {
                     // so its internal nodeX is measured from the right edge
                     const nx = ms.width - ci.layout.nodeX;
                     const ny = ci.layout.nodeY + slideOffsetY;
-                    const r  = 60;
+                    const r = 60;
                     return { x: nx - r, y: ny - r, w: r * 2, h: r * 2 };
                 },
                 applyDelta: (ms, dx, dy) => {
                     const ci = ms.carrotRight;
                     if (!ci) return;
                     // dx is mirrored because of the ctx.scale(-1,1) flip
-                    ci.layout.nodeX  = Math.round(ci.layout.nodeX  - dx);
-                    ci.layout.nodeY  = Math.round(ci.layout.nodeY  + dy);
-                    ci.layout.baseX  = Math.round(ci.layout.baseX  - dx);
-                    ci.layout.baseY  = Math.round(ci.layout.baseY  + dy);
+                    ci.layout.nodeX = Math.round(ci.layout.nodeX - dx);
+                    ci.layout.nodeY = Math.round(ci.layout.nodeY + dy);
+                    ci.layout.baseX = Math.round(ci.layout.baseX - dx);
+                    ci.layout.baseY = Math.round(ci.layout.baseY + dy);
                 },
-                applySize: () => {},
+                applySize: (ms, dw, dh) => {
+                    const ci = ms.carrotRight;
+                    if (!ci) return;
+                    // Independently offsets mirrored right sprout node location (X delta flipped due to matrix scale)
+                    ci.layout.nodeX = Math.round(ci.layout.nodeX - dw);
+                    ci.layout.nodeY = Math.round(ci.layout.nodeY + dh);
+                },
                 getExport: (ms) => {
                     const ci = ms.carrotRight;
                     if (!ci) return null;
@@ -231,12 +243,12 @@ class GameLayoutEditor {
         this.uiContainer = document.createElement('div');
         this.uiContainer.id = 'layout-editor-panel';
         this.uiContainer.style.cssText = [
-            'position:fixed','top:10px','left:10px','z-index:99999',
-            'background:rgba(10,15,28,0.96)','border:2px solid #3b82f6',
-            'color:#f1f5f9',"font-family:'Courier New',monospace",
-            'padding:14px 16px','border-radius:10px',
+            'position:fixed', 'top:10px', 'left:10px', 'z-index:99999',
+            'background:rgba(10,15,28,0.96)', 'border:2px solid #3b82f6',
+            'color:#f1f5f9', "font-family:'Courier New',monospace",
+            'padding:14px 16px', 'border-radius:10px',
             'box-shadow:0 8px 32px rgba(0,0,0,0.7),0 0 20px rgba(59,130,246,0.15)',
-            'width:290px','font-size:11.5px','line-height:1.6','user-select:none'
+            'width:290px', 'font-size:11.5px', 'line-height:1.6', 'user-select:none'
         ].join(';');
 
         const sel = 'width:100%;background:#0f172a;color:#e2e8f0;border:1px solid #334155;padding:5px 8px;border-radius:5px;font-family:monospace;font-size:11px;cursor:pointer;';
@@ -322,14 +334,14 @@ class GameLayoutEditor {
 
         // Nudge buttons (hold-to-repeat)
         const nudgeMap = {
-            'gle-nudge-left':  (ms) => this._nudge(ms, -1, 0),
+            'gle-nudge-left': (ms) => this._nudge(ms, -1, 0),
             'gle-nudge-right': (ms) => this._nudge(ms, +1, 0),
-            'gle-nudge-up':    (ms) => this._nudge(ms, 0, -1),
-            'gle-nudge-down':  (ms) => this._nudge(ms, 0, +1),
-            'gle-shrink-w':    (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, -5, 0); },
-            'gle-grow-w':      (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, +5, 0); },
-            'gle-shrink-h':    (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, 0, -5); },
-            'gle-grow-h':      (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, 0, +5); },
+            'gle-nudge-up': (ms) => this._nudge(ms, 0, -1),
+            'gle-nudge-down': (ms) => this._nudge(ms, 0, +1),
+            'gle-shrink-w': (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, -5, 0); },
+            'gle-grow-w': (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, +5, 0); },
+            'gle-shrink-h': (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, 0, -5); },
+            'gle-grow-h': (ms) => { const d = this._getDescriptors(); if (d[this.selectedElement]) d[this.selectedElement].applySize(ms, 0, +5); },
         };
 
         for (const [id, fn] of Object.entries(nudgeMap)) {
@@ -385,11 +397,11 @@ class GameLayoutEditor {
             const badge = document.getElementById('gle-stage-badge');
             if (badge) {
                 badge.textContent = self.gm._state;
-                const cols = { LOADING:'#64748b', START:'#10b981', PLAYING:'#3b82f6', GAMEOVER:'#ef4444' };
+                const cols = { LOADING: '#64748b', START: '#10b981', PLAYING: '#3b82f6', GAMEOVER: '#ef4444' };
                 const c = cols[self.gm._state] || '#f59e0b';
                 badge.style.color = c;
                 badge.style.borderColor = c + '44';
-                badge.style.background  = c + '22';
+                badge.style.background = c + '22';
             }
         };
     }
@@ -404,15 +416,15 @@ class GameLayoutEditor {
             if (!this._canvas) { requestAnimationFrame(tryAttach); return; }
             this._canvas.addEventListener('mousedown', (e) => this._onMouseDown(e), true);
             this._canvas.addEventListener('mousemove', (e) => this._onMouseMove(e), true);
-            this._canvas.addEventListener('mouseup',   (e) => this._onMouseUp(e),   true);
+            this._canvas.addEventListener('mouseup', (e) => this._onMouseUp(e), true);
         };
         requestAnimationFrame(tryAttach);
     }
 
     _canvasCoords(e) {
         if (!this._canvas) return { x: 0, y: 0 };
-        const rect   = this._canvas.getBoundingClientRect();
-        const scaleX = this.gm._width  / rect.width;
+        const rect = this._canvas.getBoundingClientRect();
+        const scaleX = this.gm._width / rect.width;
         const scaleY = this.gm._height / rect.height;
         return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     }
@@ -533,26 +545,26 @@ class GameLayoutEditor {
 
         if (this._simulatedGameState) {
             if (this._originalGameState === null) this._originalGameState = ms.gameState;
-            ms.gameState  = this._simulatedGameState;
+            ms.gameState = this._simulatedGameState;
             ms.stateTimer = 999;
 
             const yp = ms.yPositions;
             if (!yp) return;
 
             const targets = {
-                'INTRO_CHARS_CENTER':  { charsY: yp.charsCenter,   charsScale: 1.0, bottomY: yp.bottomOffscreen, cardGameScale: 0.0 },
-                'INTRO_MINIMIZE':      { charsY: yp.charsMinimized, charsScale: 0.5, bottomY: yp.bottomOnscreen,  cardGameScale: 0.0 },
-                'PLAYING':             { charsY: yp.charsMinimized, charsScale: 0.5, bottomY: yp.bottomOnscreen,  cardGameScale: 1.0 },
-                'PENALTY_WAIT_CHOICE': { charsY: yp.charsCenter,    charsScale: 1.0, bottomY: yp.bottomOnscreen,  cardGameScale: 0.0 },
-                'WIN_SEQUENCE':        { charsY: yp.charsCenter,    charsScale: 1.0, bottomY: yp.bottomOnscreen,  cardGameScale: 0.0 },
-                'LOSE_SEQUENCE':       { charsY: yp.charsCenter,    charsScale: 1.0, bottomY: yp.bottomOnscreen,  cardGameScale: 0.0 },
+                'INTRO_CHARS_CENTER': { charsY: yp.charsCenter, charsScale: 1.0, bottomY: yp.bottomOffscreen, cardGameScale: 0.0 },
+                'INTRO_MINIMIZE': { charsY: yp.charsMinimized, charsScale: 0.5, bottomY: yp.bottomOnscreen, cardGameScale: 0.0 },
+                'PLAYING': { charsY: yp.charsMinimized, charsScale: 0.5, bottomY: yp.bottomOnscreen, cardGameScale: 1.0 },
+                'PENALTY_WAIT_CHOICE': { charsY: yp.charsCenter, charsScale: 1.0, bottomY: yp.bottomOnscreen, cardGameScale: 0.0 },
+                'WIN_SEQUENCE': { charsY: yp.charsCenter, charsScale: 1.0, bottomY: yp.bottomOnscreen, cardGameScale: 0.0 },
+                'LOSE_SEQUENCE': { charsY: yp.charsCenter, charsScale: 1.0, bottomY: yp.bottomOnscreen, cardGameScale: 0.0 },
             };
 
             const t = targets[this._simulatedGameState];
             if (t) {
-                ms.charsY        = t.charsY;
-                ms.charsScale    = t.charsScale;
-                ms.bottomY       = t.bottomY;
+                ms.charsY = t.charsY;
+                ms.charsScale = t.charsScale;
+                ms.bottomY = t.bottomY;
                 ms.cardGameScale = t.cardGameScale;
             }
         } else {
@@ -618,7 +630,7 @@ class GameLayoutEditor {
 
             // Box
             ctx.strokeStyle = isSel ? '#ef4444' : '#3b82f6';
-            ctx.lineWidth   = isSel ? 2.5 : 1.5;
+            ctx.lineWidth = isSel ? 2.5 : 1.5;
             ctx.setLineDash(isSel ? [] : [5, 4]);
             ctx.strokeRect(x + 0.5, y + 0.5, w, h);
             ctx.setLineDash([]);
@@ -633,8 +645,8 @@ class GameLayoutEditor {
             const lw = ctx.measureText(labelText).width + 10;
             ctx.fillStyle = isSel ? 'rgba(127,29,29,0.88)' : 'rgba(15,23,42,0.84)';
             ctx.fillRect(x, y, lw, 16);
-            ctx.fillStyle    = isSel ? '#fca5a5' : '#93c5fd';
-            ctx.textAlign    = 'left';
+            ctx.fillStyle = isSel ? '#fca5a5' : '#93c5fd';
+            ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText(labelText, x + 5, y + 8);
 
@@ -665,24 +677,24 @@ class GameLayoutEditor {
             return;
         }
 
-        const descs  = this._getDescriptors();
-        const out    = {};
+        const descs = this._getDescriptors();
+        const out = {};
         for (const name of this.PLAYING_WHITELIST) {
             const desc = descs[name];
             if (desc) out[name] = desc.getExport(ms);
         }
 
-        const json     = JSON.stringify(out, null, 2);
-        const suffix   = this._simulatedGameState ? '_' + this._simulatedGameState : '';
+        const json = JSON.stringify(out, null, 2);
+        const suffix = this._simulatedGameState ? '_' + this._simulatedGameState : '';
         const filename = 'layout-playing-sub' + suffix + '-' + Date.now() + '.json';
 
         console.log('%c[GameLayoutEditor] Export' + suffix, 'color:#22c55e;font-weight:bold;');
         console.log(json);
 
         const blob = new Blob([json], { type: 'application/json' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
