@@ -5,12 +5,12 @@ class MainScreen {
         this.onGameOver = config.onGameOver || (() => { });
         this.onSettings = config.onSettings || (() => { });
 
-        // Dynamic properties to track breakpoints and scaling factor
+        // Dynamic scaling factor tracking
         this.scaleFactor = 1.0;
         this.isMobile = false;
         this.isTablet = false;
 
-        this.settingsBtn = { x: this.width - 120, y: 20, w: 100, h: 40, hovered: false };
+        this.settingsBtn = { x: 0, y: 0, w: 100, h: 40, hovered: false };
 
         // 1. Sub-component Setup
         this.debt = new DebtComponent({ width: 340, height: 140 });
@@ -26,25 +26,25 @@ class MainScreen {
 
         // 2. Reference Map (Populated dynamically inside resize)
         this.layout = {
-            cardGame: { x: 260, y: 180, w: 760, h: 360, instance: this.cardGame },
+            cardGame: { x: 0, y: 0, w: 0, h: 0, instance: this.cardGame },
             carrot: { x: 0, y: 0, w: this.width, h: this.height, instance: this.carrot },
             carrotRight: { x: 0, y: 0, w: this.width, h: this.height, instance: this.carrotRight },
-            debt: { x: 470, y: 550, w: 340, h: 140, instance: this.debt },
-            chars: { x: 0, y: 110, w: this.width, h: 500, instance: this.chars }
+            debt: { x: 0, y: 0, w: 0, h: 0, instance: this.debt },
+            chars: { x: 0, y: 0, w: 0, h: 0, instance: this.chars }
         };
 
         // 3. Animation Interpolation Config Targets
         this.yPositions = {
-            charsCenter: 110,
-            charsMinimized: -50,
-            bottomOffscreen: 750,
-            bottomOnscreen: 550
+            charsCenter: 0,
+            charsMinimized: 0,
+            bottomOffscreen: 0,
+            bottomOnscreen: 0
         };
 
         // Runtime Interpolation Engine States
-        this.charsY = 110;
+        this.charsY = 0;
         this.charsScale = 1.0;
-        this.bottomY = 750;
+        this.bottomY = 0;
         this.cardGameScale = 0.0;
 
         // 4. Sequence Timing & Flow State Machine
@@ -64,123 +64,87 @@ class MainScreen {
     }
 
     /**
-     * Re-calculates placements and safely scales sub-components without breaking internal math geometries.
+     * Responsive sizing grid driven strictly by viewport height.
      */
     resize(width, height) {
         this.width = width;
         this.height = height;
 
-        const baseScale = Math.min(width / 1280, height / 720);
-        this.scaleFactor = Math.min(Math.max(baseScale, 0.5), 1.4);
+        // Establish 9:16 Aspect-Ratio Geometry Boundaries
+        const targetRatio = 9 / 16;
+        const bgWidth = height * targetRatio;
+        const bgX = (width - bgWidth) / 2;
 
-        this.settingsBtn.x = width - 120;
-        this.settingsBtn.y = 20;
+        // Linear scale factor mapped off native design tool height baseline (960px)
+        this.scaleFactor = height / 960;
 
-        // Carrots track full screen geometry boundaries to prevent empty array crashes
+        // Scale and align settings button to the top-right of the 9:16 frame container
+        this.settingsBtn.w = 100 * this.scaleFactor;
+        this.settingsBtn.h = 40 * this.scaleFactor;
+        this.settingsBtn.x = bgX + bgWidth - this.settingsBtn.w - 20 * this.scaleFactor;
+        this.settingsBtn.y = 20 * this.scaleFactor;
+
+        // ─────────────────────────────────────────────────────────
+        // UNIFIED HEIGHT-SCALE COLUMN GRID SYSTEM
+        // ─────────────────────────────────────────────────────────
+
+        // Character Row Layout Configuration
+        // Multiplied by 2 so that when scaled down to 0.5 during play, it matches bgWidth exactly.
+        this.layout.chars = {
+            x: bgX,
+            y: 0,
+            w: bgWidth * 2,
+            h: 496 * this.scaleFactor,
+            instance: this.chars
+        };
+
+        // Card Game Component Layout Configuration
+        this.layout.cardGame = {
+            x: bgX,
+            y: 378 * this.scaleFactor,
+            w: bgWidth,
+            h: 255 * this.scaleFactor,
+            instance: this.cardGame
+        };
+
+        // Debt Counter Component Layout Configuration
+        this.layout.debt = {
+            x: bgX,
+            y: 4 * this.scaleFactor,
+            w: bgWidth,
+            h: 129 * this.scaleFactor,
+            instance: this.debt
+        };
+
+        // Full screen interaction layer tracking for inputs
         this.layout.carrot = { x: 0, y: 0, w: width, h: height, instance: this.carrot };
         this.layout.carrotRight = { x: 0, y: 0, w: width, h: height, instance: this.carrotRight };
 
-        if (width < 600) {
-            // ─────────────────────────────────────────────────────────
-            // A. MOBILE LAYOUT
-            // ─────────────────────────────────────────────────────────
-            this.isMobile = true;
-            this.isTablet = false;
+        // Anchor carrot platform nodes relative to the bottom edge of the viewport screen
+        this.carrot.layout.baseX = bgX + 20 * this.scaleFactor;
+        this.carrot.layout.baseY = height - 79 * this.scaleFactor;
+        this.carrot.layout.nodeX = bgX + 58 * this.scaleFactor;
+        this.carrot.layout.nodeY = height - 50 * this.scaleFactor;
 
-            const cardW = Math.min(width * 0.92, 420);
-            const cardH = cardW * (360 / 760);
-            const debtW = 260;
-            const debtH = 100;
+        this.carrotRight.layout.baseX = bgX + 19 * this.scaleFactor;
+        this.carrotRight.layout.baseY = height - 80 * this.scaleFactor;
+        this.carrotRight.layout.nodeX = bgX + 57 * this.scaleFactor;
+        this.carrotRight.layout.nodeY = height - 50 * this.scaleFactor;
 
-            this.layout.chars = { x: 0, y: 0, w: width, h: height * 0.35, instance: this.chars };
-            this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.25, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.72, w: debtW, h: debtH, instance: this.debt };
+        // Dynamic Animation Interpolation Target Paths
+        this.yPositions = {
+            charsCenter: 171 * this.scaleFactor,
+            charsMinimized: 129 * this.scaleFactor,
+            bottomOffscreen: height + 300 * this.scaleFactor,
+            bottomOnscreen: 0
+        };
 
-            this.carrot.layout.baseX = 20;
-            this.carrot.layout.baseY = height - 100;
-            this.carrot.layout.nodeX = 50;
-            this.carrot.layout.nodeY = height - 70;
-
-            this.carrotRight.layout.baseX = 20;
-            this.carrotRight.layout.baseY = height - 100;
-            this.carrotRight.layout.nodeX = 50;
-            this.carrotRight.layout.nodeY = height - 70;
-
-            this.yPositions = {
-                charsCenter: height * 0.20,
-                charsMinimized: -height * 0.08,
-                bottomOffscreen: height + 200,
-                bottomOnscreen: height * 0.72
-            };
-
-        } else if (width < 1024) {
-            // ─────────────────────────────────────────────────────────
-            // B. TABLET LAYOUT
-            // ─────────────────────────────────────────────────────────
-            this.isMobile = false;
-            this.isTablet = true;
-
-            const cardW = width * 0.82;
-            const cardH = cardW * (360 / 760);
-            const debtW = 320;
-            const debtH = 130;
-
-            this.layout.chars = { x: 0, y: 0, w: width, h: height * 0.45, instance: this.chars };
-            this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.24, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height * 0.70, w: debtW, h: debtH, instance: this.debt };
-
-            this.carrot.layout.baseX = 40;
-            this.carrot.layout.baseY = height - 130;
-            this.carrot.layout.nodeX = 80;
-            this.carrot.layout.nodeY = height - 100;
-
-            this.carrotRight.layout.baseX = 40;
-            this.carrotRight.layout.baseY = height - 130;
-            this.carrotRight.layout.nodeX = 80;
-            this.carrotRight.layout.nodeY = height - 100;
-
-            this.yPositions = {
-                charsCenter: height * 0.18,
-                charsMinimized: -height * 0.10,
-                bottomOffscreen: height + 250,
-                bottomOnscreen: height * 0.70
-            };
-
-        } else {
-            // ─────────────────────────────────────────────────────────
-            // C. DESKTOP NATIVE LAYOUT
-            // ─────────────────────────────────────────────────────────
-            this.isMobile = false;
-            this.isTablet = false;
-
-            const cardW = 760 * this.scaleFactor;
-            const cardH = 360 * this.scaleFactor;
-            const debtW = 340 * this.scaleFactor;
-            const debtH = 140 * this.scaleFactor;
-
-            this.layout.chars = { x: 0, y: 110, w: width, h: 500 * this.scaleFactor, instance: this.chars };
-            this.layout.cardGame = { x: (width - cardW) / 2, y: (height - cardH) / 2 - 20, w: cardW, h: cardH, instance: this.cardGame };
-            this.layout.debt = { x: (width - debtW) / 2, y: height - debtH - 40, w: debtW, h: debtH, instance: this.debt };
-
-            this.carrot.layout.baseX = 40;
-            this.carrot.layout.baseY = height - 120;
-            this.carrot.layout.nodeX = 100;
-            this.carrot.layout.nodeY = height - 90;
-
-            this.carrotRight.layout.baseX = 40;
-            this.carrotRight.layout.baseY = height - 120;
-            this.carrotRight.layout.nodeX = 100;
-            this.carrotRight.layout.nodeY = height - 90;
-
-            this.yPositions = {
-                charsCenter: height * 0.15,
-                charsMinimized: -50 * this.scaleFactor,
-                bottomOffscreen: height + 300,
-                bottomOnscreen: height - debtH - 40
-            };
+        // Standalone popup scaling configurations
+        if (this.popup) {
+            this.popup.width = Math.min(bgWidth * 0.9, 500 * this.scaleFactor);
+            this.popup.height = this.popup.width * (250 / 500);
         }
 
-        // Propagate size updates down to inner subcomponents safely
         if (this.carrotLoss && typeof this.carrotLoss.resize === 'function') {
             this.carrotLoss.resize(width, height);
         }
@@ -460,11 +424,11 @@ class MainScreen {
 
         ctx.fillStyle = this.settingsBtn.hovered ? '#334155' : '#1e293b';
         ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * this.scaleFactor;
 
         ctx.beginPath();
         if (ctx.roundRect) {
-            ctx.roundRect(0, 0, this.settingsBtn.w, this.settingsBtn.h, 8);
+            ctx.roundRect(0, 0, this.settingsBtn.w, this.settingsBtn.h, 8 * this.scaleFactor);
         } else {
             ctx.rect(0, 0, this.settingsBtn.w, this.settingsBtn.h);
         }
@@ -472,7 +436,7 @@ class MainScreen {
         ctx.stroke();
 
         ctx.fillStyle = '#cbd5e1';
-        ctx.font = 'bold 16px sans-serif';
+        ctx.font = `bold ${Math.max(11, 16 * this.scaleFactor)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('SETTINGS', this.settingsBtn.w / 2, this.settingsBtn.h / 2);
@@ -486,14 +450,11 @@ class MainScreen {
             ctx.translate(this.carrotLoss.shakeX, this.carrotLoss.shakeY);
         }
 
-        // ─────────────────────────────────────────────────────────
-        // UNIFIED BACKGROUND PIPELINE SYSTEM
-        // ─────────────────────────────────────────────────────────
-        // 1. Render Base Teal Wallpaper Background Frame
+        // 1. Render Outer Solid Backdrop Fill
         ctx.fillStyle = '#0f766e';
         ctx.fillRect(-50, -50, this.width + 100, this.height + 100);
 
-        // 2. Render Centered 9:16 Aspect-Ratio Wallpaper[cite: 3]
+        // 2. Render Centered 9:16 Core Canvas Wallpaper Frame
         let bgImg = null;
         try {
             bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-main') : null;
@@ -506,12 +467,21 @@ class MainScreen {
         if (bgImg) {
             ctx.drawImage(bgImg, imgX, 0, imgWidth, imgHeight);
         } else {
-            // Fallback structural mask container boundary line context
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(imgX, 0, imgWidth, imgHeight);
         }
 
-        // Render subcomponents cleanly on top of wallpaper grids
+        // ─────────────────────────────────────────────────────────
+        // AMBIENT TOP PINK GRADIENT OVERLAY
+        // ─────────────────────────────────────────────────────────
+        // Creates a vertical gradient starting at the top edge (y=0) and fading out completely 1/3 down the screen height.
+        const topGradient = ctx.createLinearGradient(imgX, 0, imgX, imgHeight / 3);
+        topGradient.addColorStop(0, 'rgba(244, 63, 94, 0.5)'); // Ambient soft pink 
+        topGradient.addColorStop(1, 'rgba(244, 63, 94, 0)');   // Smoothly blends out to zero opacity
+        ctx.fillStyle = topGradient;
+        ctx.fillRect(imgX, 0, imgWidth, imgHeight / 3);
+
+        // 3. Render Stacked Subcomponents aligned with the viewport pipeline
         const drawOrder = ['cardGame', 'chars', 'debt', 'carrot', 'carrotRight'];
         for (const key of drawOrder) {
             const entry = this.layout[key];
@@ -530,8 +500,9 @@ class MainScreen {
                 const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
                 ctx.translate(entry.x, entry.y + slideOffsetY);
             } else if (key === 'cardGame') {
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
                 const cx = entry.x + entry.w / 2;
-                const cy = entry.y + entry.h / 2;
+                const cy = entry.y + entry.h / 2 + slideOffsetY;
                 ctx.translate(cx, cy);
                 ctx.scale(this.cardGameScale, this.cardGameScale);
                 ctx.translate(-entry.w / 2, -entry.h / 2);
@@ -622,10 +593,11 @@ class MainScreen {
             } else if (key === 'cardGame') {
                 if (this.cardGameScale < 0.1) continue;
 
+                const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
                 scaleX = this.cardGameScale;
                 scaleY = this.cardGameScale;
                 bx = entry.x + (entry.w - entry.w * scaleX) / 2;
-                by = entry.y + (entry.h - entry.h * scaleY) / 2;
+                by = (entry.y + slideOffsetY) + (entry.h - entry.h * scaleY) / 2;
                 bw = entry.w * scaleX;
                 bh = entry.h * scaleY;
             }

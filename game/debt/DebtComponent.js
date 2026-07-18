@@ -18,7 +18,7 @@ class DebtComponent {
     }
 
     /**
-     * Updates block alignment limits dynamically[cite: 9].
+     * Updates block alignment limits dynamically.
      */
     resize(width, height) {
         this.width = width;
@@ -138,21 +138,33 @@ class DebtComponent {
 
     draw(ctx, x, y) {
         ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, this.width, this.height); ctx.clip();
-        ctx.fillStyle = '#11141a'; ctx.fillRect(0, 0, this.width, this.height);
 
         if (this.state === 'lost') this.drawLightSkull(ctx, this.width / 2, this.height / 2 - 15);
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillStyle = '#64748b'; ctx.font = '16px "Courier New", Courier, monospace';
+
+        // Added: Slight dark border for the layout header text
+        ctx.strokeStyle = '#11141a'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+        ctx.strokeText("CURRENT OUTSTANDING DEBT", this.width / 2, this.height / 2 - 35);
         ctx.fillText("CURRENT OUTSTANDING DEBT", this.width / 2, this.height / 2 - 35);
 
         ctx.save(); ctx.translate(this.width / 2, this.height / 2 + 15); ctx.scale(this.textScale, this.textScale);
         ctx.fillStyle = this.visualDebt > 0 ? '#ef4444' : '#22c55e'; ctx.font = 'bold 48px Arial, sans-serif';
+
+        // Added: Slight dark border for the primary debt value text
+        ctx.strokeStyle = '#11141a'; ctx.lineWidth = 5; ctx.lineJoin = 'round';
+        ctx.strokeText(`$${Math.round(this.visualDebt).toLocaleString()}`, 0, 0);
         ctx.fillText(`$${Math.round(this.visualDebt).toLocaleString()}`, 0, 0); ctx.restore();
 
         this.floatingTexts.forEach(ft => {
             ctx.save(); ctx.fillStyle = ft.color; ctx.globalAlpha = Math.max(0, ft.opacity);
-            ctx.font = 'bold 22px Arial, sans-serif'; ctx.fillText(ft.text, ft.x, ft.y); ctx.restore();
+            ctx.font = 'bold 22px Arial, sans-serif';
+
+            // Added: Slight dark border for floating cash text
+            ctx.strokeStyle = '#11141a'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+            ctx.strokeText(ft.text, ft.x, ft.y);
+            ctx.fillText(ft.text, ft.x, ft.y); ctx.restore();
         });
 
         if (this.state === 'lost') {
@@ -166,9 +178,15 @@ class DebtComponent {
         }
 
         if (this.state === 'won') {
-            ctx.fillStyle = 'rgba(17, 20, 26, 0.85)'; ctx.fillRect(0, 0, this.width, this.height);
+            // Changed: Removed opaque background layer fill to preserve total transparency during win sequence
             ctx.fillStyle = '#eab308'; ctx.font = 'bold 72px "Impact", Arial, sans-serif';
-            ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 20; ctx.fillText("WINNER", this.width / 2, this.height / 2); ctx.shadowBlur = 0;
+            ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 20;
+
+            // Added: Slight dark border for "WINNER" text layout
+            ctx.strokeStyle = '#11141a'; ctx.lineWidth = 6; ctx.lineJoin = 'round';
+            ctx.strokeText("WINNER", this.width / 2, this.height / 2);
+            ctx.fillText("WINNER", this.width / 2, this.height / 2); ctx.shadowBlur = 0;
+
             this.particles.forEach(p => {
                 ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.fillStyle = p.color;
                 ctx.globalAlpha = Math.max(0, p.opacity); ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();

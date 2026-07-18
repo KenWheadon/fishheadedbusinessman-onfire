@@ -279,6 +279,7 @@
 
   <script src="end/EndScreenComponent.js"></script>
   <script src="debug.js"></script>
+  <script src="utils/GameLayoutEditor.js"></script>
 
   <!-- 3. Orchestrator -->
   <script src="GameManager.js"></script>
@@ -477,6 +478,11 @@
     // Initialize debug menu if active
     if (typeof DebugMenu !== 'undefined') {
       new DebugMenu(gm, endScreen);
+    }
+
+    // Initialize layout editor (dev tool)
+    if (typeof GameLayoutEditor !== 'undefined') {
+      window._layoutEditor = new GameLayoutEditor(gm);
     }
   </script>
 </body>

@@ -1,3 +1,49 @@
+class ConfettiParticle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.w = Math.random() * 8 + 4;
+    this.h = Math.random() * 6 + 3;
+    const colors = ['#ff4e50', '#f9d423', '#00ffff', '#ff007f', '#39ff14', '#bd00ff'];
+    this.color = colors[Math.floor(Math.random() * colors.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 250 + 100;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed - 150;
+    this.gravity = 500;
+    this.drag = 0.98;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 10;
+    this.life = 1.5 + Math.random() * 1.5;
+    this.maxLife = this.life;
+  }
+
+  update(dt) {
+    const safeDt = dt !== undefined ? dt : 1 / 60;
+    this.vy += this.gravity * safeDt;
+    this.vx *= Math.pow(this.drag, safeDt * 60);
+    this.vy *= Math.pow(this.drag, safeDt * 60);
+    this.x += this.vx * safeDt;
+    this.y += this.vy * safeDt;
+    this.rotation += this.rotSpeed * safeDt;
+    this.life -= safeDt;
+    this.alpha = Math.max(0, this.life / this.maxLife);
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.alpha);
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 6;
+    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+    ctx.restore();
+  }
+}
+
 class CardGame {
   constructor(config = {}) {
     this.width = config.width || 800;
@@ -5,7 +51,7 @@ class CardGame {
     this.baseWidth = 800;
     this.baseHeight = 450;
 
-    // Initial scale values[cite: 6]
+    // Initial scale values
     this.scaleX = this.width / this.baseWidth;
     this.scaleY = this.height / this.baseHeight;
 
@@ -31,7 +77,7 @@ class CardGame {
   }
 
   /**
-   * Adjusts inner matrix transformations to scale fluidly[cite: 6].
+   * Adjusts inner matrix transformations to scale fluidly
    */
   resize(width, height) {
     this.width = width;
@@ -288,15 +334,7 @@ class CardGame {
       ctx.translate(dx, dy);
     }
 
-    const grad = ctx.createRadialGradient(
-      this.baseWidth / 2, this.baseHeight / 2, 50,
-      this.baseWidth / 2, this.baseHeight / 2, this.baseWidth
-    );
-    grad.addColorStop(0, '#1e1b4b');
-    grad.addColorStop(1, '#090d16');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
-
+    // Floating background ambient dust
     ctx.fillStyle = '#f8fafc';
     this.bgDust.forEach(dust => {
       ctx.save();
@@ -307,10 +345,28 @@ class CardGame {
       ctx.restore();
     });
 
+    // Subtle background grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     for (let i = 0; i < this.baseWidth; i += 40) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, this.baseHeight); ctx.stroke();
+    }
+
+    // Dynamic prompt instruction layout logic
+    if (this.state === 'playing') {
+      ctx.save();
+      ctx.font = '700 20px system-ui';
+      ctx.fillStyle = '#fbbf24';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Text stroke for legibility against dynamic backgrounds
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 4;
+      ctx.strokeText('FLIP 2 MATCH 2', this.baseWidth / 2, 95);
+
+      ctx.fillText('FLIP 2 MATCH 2', this.baseWidth / 2, 95);
+      ctx.restore();
     }
 
     this.cards.forEach(card => this.drawCard(ctx, card));
@@ -396,13 +452,20 @@ class CardGame {
 
   drawStatusOverlay(ctx) {
     ctx.save();
-    ctx.fillStyle = 'rgba(11, 15, 25, 0.4)';
-    ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
     ctx.font = '900 36px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    // Add strokes to the game over messages for visibility across transparent frames
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 5;
+
     if (this.hasWon) {
-      ctx.fillStyle = '#fbbf24'; ctx.fillText('MATCH COMPLETED!', this.baseWidth / 2, 50);
+      ctx.fillStyle = '#fbbf24';
+      ctx.strokeText('MATCH COMPLETED!', this.baseWidth / 2, 50);
+      ctx.fillText('MATCH COMPLETED!', this.baseWidth / 2, 50);
     } else {
-      ctx.fillStyle = '#ef4444'; ctx.fillText('SKULL UNCOVERED!', this.baseWidth / 2, 50);
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeText('SKULL UNCOVERED!', this.baseWidth / 2, 50);
+      ctx.fillText('SKULL UNCOVERED!', this.baseWidth / 2, 50);
     }
     ctx.restore();
   }

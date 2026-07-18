@@ -3,6 +3,9 @@ class Chars {
     this.width = config.width || 1280;
     this.height = config.height || 720;
 
+    // Calculate a base scaling factor based on the default target width of 1280
+    this.baseScale = this.width / 1280;
+
     this.container = config.container || document.getElementById('game-stage');
     this.modalOverlay = config.modalOverlay || document.getElementById('modal-overlay');
     this.modalHeadshot = config.modalHeadshot || document.getElementById('modal-headshot');
@@ -20,18 +23,19 @@ class Chars {
   }
 
   /**
-   * Recalculates position intervals instantly on device layout change[cite: 10].
+   * Recalculates position intervals and scale dynamically on device layout change.
    */
   resize(width, height) {
     this.width = width;
     this.height = height;
+    this.baseScale = this.width / 1280; // Dynamically track scale changes
     const spacing = this.width / 5;
 
     this.characters.forEach((char, i) => {
       char.baseX = spacing * i + spacing / 2;
       char.baseY = this.height * 0.72;
 
-      // Instantly map living characters to prevent visual jitter[cite: 10]
+      // Instantly map living characters to prevent visual jitter
       if (char.alive && !this.isWinning) {
         char.x = char.baseX;
         char.y = char.baseY;
@@ -74,7 +78,8 @@ class Chars {
   }
 
   getCharacterAtCoords(coords) {
-    const w = 170, h = 230;
+    // Scale the hitbox boundaries so selection registers accurately at smaller sizes
+    const w = 170 * this.baseScale, h = 230 * this.baseScale;
     for (const char of this.characters) {
       if (!char.alive) continue;
       if (coords.x >= char.x - w / 2 && coords.x <= char.x + w / 2 && coords.y >= char.y - h && coords.y <= char.y) {
@@ -140,8 +145,15 @@ class Chars {
     target.alive = false; target.isDying = true; target.hovered = false;
     if (typeof AssetManager !== 'undefined') target.image = AssetManager.get(`char-${target.id}-burnt`) || target.image;
     const dir = Math.random() > 0.5 ? 1 : -1;
-    target.vx = dir * (Math.random() * 3.5 + 4.5); target.vy = -Math.random() * 15 - 15; target.va = dir * (Math.random() * 0.05 + 0.03);
-    this.spawnExplosion(target.x, target.y - 100); this.shakeIntensity = 18; this.locked = true;
+
+    // Scale physics velocity vectors dynamically to keep speed relative to window size
+    target.vx = dir * (Math.random() * 3.5 + 4.5) * this.baseScale;
+    target.vy = (-Math.random() * 15 - 15) * this.baseScale;
+    target.va = dir * (Math.random() * 0.05 + 0.03);
+
+    this.spawnExplosion(target.x, target.y - 100 * this.baseScale);
+    this.shakeIntensity = 18 * this.baseScale;
+    this.locked = true;
   }
 
   reset() {
@@ -164,7 +176,7 @@ class Chars {
     if (aliveCount === 0) return;
     this.isWinning = true; this.winTimer = this.winDuration; this.locked = true;
     if (aliveCount === 5) {
-      this.isUltimateWin = true; this.shakeIntensity = 30;
+      this.isUltimateWin = true; this.shakeIntensity = 30 * this.baseScale;
       if (this.container) this.container.classList.add('ultimate-shake');
     }
   }
@@ -172,14 +184,14 @@ class Chars {
   spawnExplosion(x, y) {
     const customPhrases = ["BOOM!", "KABOOM!", "SLAM!", "POW!", "KO!"];
     this.particles.push({
-      type: 'text', text: customPhrases[Math.floor(Math.random() * customPhrases.length)], x: x, y: y - 50, vx: (Math.random() - 0.5) * 2, vy: -5,
+      type: 'text', text: customPhrases[Math.floor(Math.random() * customPhrases.length)], x: x, y: y - 50 * this.baseScale, vx: (Math.random() - 0.5) * 2 * this.baseScale, vy: -5 * this.baseScale,
       scale: 1, opacity: 1, rotation: (Math.random() - 0.5) * 0.3, life: 75, maxLife: 75
     });
-    this.particles.push({ type: 'ring', x: x, y: y, radius: 10, maxRadius: 200, opacity: 1, life: 45, maxLife: 45 });
+    this.particles.push({ type: 'ring', x: x, y: y, radius: 10 * this.baseScale, maxRadius: 200 * this.baseScale, opacity: 1, life: 45, maxLife: 45 });
     for (let i = 0; i < 40; i++) {
-      const angle = Math.random() * Math.PI * 2, speed = Math.random() * 8 + 3;
+      const angle = Math.random() * Math.PI * 2, speed = (Math.random() * 8 + 3) * this.baseScale;
       this.particles.push({
-        type: 'spark', x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: Math.random() * 6 + 4,
+        type: 'spark', x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: (Math.random() * 6 + 4) * this.baseScale,
         color: `hsl(${Math.random() * 40 + 15}, 100%, ${Math.random() * 30 + 50}%)`, life: 50 + Math.random() * 40, maxLife: 50 + Math.random() * 40
       });
     }
@@ -187,7 +199,7 @@ class Chars {
 
   spawnHeart(x, y) {
     this.particles.push({
-      type: 'heart', x: x + (Math.random() - 0.5) * 60, y: y, vx: (Math.random() - 0.5) * 2.5, vy: -Math.random() * 4 - 3,
+      type: 'heart', x: x + (Math.random() - 0.5) * 60 * this.baseScale, y: y, vx: (Math.random() - 0.5) * 2.5 * this.baseScale, vy: (-Math.random() * 4 - 3) * this.baseScale,
       scale: Math.random() * 0.4 + 0.8, opacity: 1, driftSpeed: Math.random() * 0.08 + 0.04, driftDistance: Math.random() * 15 + 10, life: 80, maxLife: 80
     });
   }
@@ -199,19 +211,22 @@ class Chars {
     this.characters.forEach(char => {
       if (char.alive) {
         if (this.isWinning) {
-          char.x = char.baseX + Math.sin(this.time * 0.35 + char.id * 1.5) * 14;
-          char.y = (char.baseY - 25) + Math.cos(this.time * 0.45 + char.id * 2) * 12;
+          char.x = char.baseX + Math.sin(this.time * 0.35 + char.id * 1.5) * 14 * this.baseScale;
+          char.y = (char.baseY - 25 * this.baseScale) + Math.cos(this.time * 0.45 + char.id * 2) * 12 * this.baseScale;
         } else {
-          char.x = char.baseX; char.y = char.baseY + Math.sin(this.time * 0.06 + char.id * 2) * 4;
+          char.x = char.baseX; char.y = char.baseY + Math.sin(this.time * 0.06 + char.id * 2) * 4 * this.baseScale;
         }
       } else if (char.isDying) {
-        char.x += char.vx * frames; char.y += char.vy * frames; char.vy += 0.45 * frames; char.angle += char.va * frames;
-        const radius = 60, floorY = this.height - 80;
+        char.x += char.vx * frames; char.y += char.vy * frames;
+        char.vy += 0.45 * this.baseScale * frames; // Scale gravity pulling down
+        char.angle += char.va * frames;
+
+        const radius = 60 * this.baseScale, floorY = this.height - 80 * this.baseScale;
         if (char.x < radius) { char.x = radius; char.vx *= -0.6; }
         if (char.x > this.width - radius) { char.x = this.width - radius; char.vx *= -0.6; }
         if (char.y > floorY) {
           char.y = floorY;
-          if (char.vy > 3) { char.vy *= -0.45; char.vx *= 0.8; char.va *= 0.8; }
+          if (char.vy > 3 * this.baseScale) { char.vy *= -0.45; char.vx *= 0.8; char.va *= 0.8; }
           else { char.vy = 0; char.vx *= 0.5; char.va *= 0.5; }
         }
       }
@@ -224,7 +239,7 @@ class Chars {
         if (this.container) this.container.classList.remove('ultimate-shake');
       } else {
         if (Math.floor(prevTimer / 8) !== Math.floor(this.winTimer / 8)) {
-          this.characters.forEach(char => { if (char.alive) this.spawnHeart(char.x, char.y - 120); });
+          this.characters.forEach(char => { if (char.alive) this.spawnHeart(char.x, char.y - 120 * this.baseScale); });
         }
       }
     }
@@ -235,7 +250,7 @@ class Chars {
       const progress = p.life / p.maxLife; p.opacity = progress;
 
       if (p.type === 'spark') {
-        p.x += p.vx * frames; p.y += p.vy * frames; p.vy += 0.12 * frames; p.vx *= Math.pow(0.98, frames);
+        p.x += p.vx * frames; p.y += p.vy * frames; p.vy += 0.12 * this.baseScale * frames; p.vx *= Math.pow(0.98, frames);
       } else if (p.type === 'heart') {
         p.x += (p.vx + Math.sin(this.time * p.driftSpeed) * 0.8) * frames; p.y += p.vy * frames; p.scale = progress * 1.3;
       } else if (p.type === 'text') {
@@ -251,7 +266,7 @@ class Chars {
 
     if (this.shakeIntensity > 0.1) {
       ctx.translate((Math.random() - 0.5) * this.shakeIntensity, (Math.random() - 0.5) * this.shakeIntensity);
-      this.shakeIntensity = this.isUltimateWin ? Math.max(6, this.shakeIntensity * 0.97) : this.shakeIntensity * 0.90;
+      this.shakeIntensity = this.isUltimateWin ? Math.max(6 * this.baseScale, this.shakeIntensity * 0.97) : this.shakeIntensity * 0.90;
     }
 
     this.drawBackground(ctx);
@@ -267,7 +282,7 @@ class Chars {
     const bgGrad = ctx.createLinearGradient(0, 0, 0, this.height);
     bgGrad.addColorStop(0, '#0c0c14'); bgGrad.addColorStop(1, '#1b1b2f');
     ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, this.width, this.height);
-    ctx.strokeStyle = '#2d2d44'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#2d2d44'; ctx.lineWidth = 2 * this.baseScale;
     ctx.beginPath(); ctx.moveTo(0, this.height * 0.75); ctx.lineTo(this.width, this.height * 0.75); ctx.stroke();
 
     const perspectiveCount = 13;
@@ -278,12 +293,13 @@ class Chars {
 
     this.characters.forEach(char => {
       if (char.alive) {
-        const glow = ctx.createRadialGradient(char.baseX, char.baseY - 40, 5, char.baseX, char.baseY - 40, 140);
+        const radius = 140 * this.baseScale;
+        const glow = ctx.createRadialGradient(char.baseX, char.baseY - 40 * this.baseScale, 5 * this.baseScale, char.baseX, char.baseY - 40 * this.baseScale, radius);
         const alpha = this.isModalOpen ? 0.3 : 1;
         if (!this.isLocked() && !this.isWinning && !this.isModalOpen) glow.addColorStop(0, `rgba(255, 78, 80, ${0.2 * alpha})`);
         else glow.addColorStop(0, `rgba(92, 107, 255, ${0.12 * alpha})`);
         glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(char.baseX, char.baseY - 40, 140, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(char.baseX, char.baseY - 40 * this.baseScale, radius, 0, Math.PI * 2); ctx.fill();
       }
     });
   }
@@ -291,10 +307,15 @@ class Chars {
   drawCharacter(ctx, char) {
     ctx.save();
     let jitterX = 0, jitterY = 0;
-    if (char.isWaitingForBoom) { jitterX = (Math.random() - 0.5) * 12; jitterY = (Math.random() - 0.5) * 12; }
-    ctx.translate(char.x + jitterX, char.y + jitterY); ctx.rotate(char.angle); ctx.scale(char.scale, char.scale);
+    if (char.isWaitingForBoom) { jitterX = (Math.random() - 0.5) * 12 * this.baseScale; jitterY = (Math.random() - 0.5) * 12 * this.baseScale; }
+    ctx.translate(char.x + jitterX, char.y + jitterY); ctx.rotate(char.angle);
+
+    // Inject global baseScale into the transformation matrix alongside local animation scales
+    const targetScale = char.scale * this.baseScale;
+    ctx.scale(targetScale, targetScale);
     ctx.globalAlpha = char.opacity * (char.isDying ? 1 : (this.isModalOpen ? 0.2 : 1));
 
+    // Leaving internal dimension properties at 170x230 because the canvas transform handles scaling perfectly!
     const w = 170, h = 230;
     if (char.alive) {
       ctx.save(); ctx.scale(1, 0.28);
@@ -336,15 +357,19 @@ class Chars {
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     if (this.isModalOpen) { ctx.restore(); return; }
 
+    // Responsively scale UI font strings and margins
+    const fontSize = Math.max(11, 18 * this.baseScale);
+    const yPos = 24 * this.baseScale;
+
     if (this.characters.some(c => c.isWaitingForBoom)) {
-      ctx.fillStyle = '#ff3b30'; ctx.shadowColor = '#ff3b30'; ctx.shadowBlur = 12; ctx.font = '900 20px monospace';
-      ctx.fillText('⚡ DETONATION INITIATED: STAND CLEAR ⚡', this.width / 2, 24);
+      ctx.fillStyle = '#ff3b30'; ctx.shadowColor = '#ff3b30'; ctx.shadowBlur = 12 * this.baseScale; ctx.font = `900 ${fontSize + 2}px monospace`;
+      ctx.fillText('⚡ DETONATION INITIATED: STAND CLEAR ⚡', this.width / 2, yPos);
     } else if (this.isLocked()) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.font = 'bold 16px monospace';
-      ctx.fillText('STAGE SECURED / CLICK next() TO INITIATE', this.width / 2, 24);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.font = `bold ${fontSize - 2}px monospace`;
+      ctx.fillText('STAGE SECURED / CLICK next() TO INITIATE', this.width / 2, yPos);
     } else {
-      ctx.fillStyle = '#ff4e50'; ctx.shadowColor = '#ff4e50'; ctx.shadowBlur = 8; ctx.font = '900 18px monospace';
-      ctx.fillText('⚠️ DETONATION UNLOCKED: CHOOSE A TARGET HERO ⚠️', this.width / 2, 24);
+      ctx.fillStyle = '#ff4e50'; ctx.shadowColor = '#ff4e50'; ctx.shadowBlur = 8 * this.baseScale; ctx.font = `900 ${fontSize}px monospace`;
+      ctx.fillText('⚠️ DETONATION UNLOCKED: CHOOSE A TARGET HERO ⚠️', this.width / 2, yPos);
     }
     ctx.restore();
   }
@@ -355,14 +380,15 @@ class Chars {
       if (p.type === 'spark') {
         ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
       } else if (p.type === 'heart') {
-        ctx.font = `${p.scale * 36}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('❤️', p.x, p.y);
+        ctx.font = `${p.scale * 36 * this.baseScale}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('❤️', p.x, p.y);
       } else if (p.type === 'text') {
-        ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.scale(p.scale, p.scale);
+        ctx.translate(p.x, p.y); ctx.rotate(p.rotation);
+        ctx.scale(p.scale * this.baseScale, p.scale * this.baseScale); // Scale text explosion phrases cleanly
         ctx.strokeStyle = '#000000'; ctx.lineWidth = 10; ctx.font = '900 48px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText(p.text, 0, 0);
         const grad = ctx.createLinearGradient(-40, -15, 40, 15); grad.addColorStop(0, '#ff3b30'); grad.addColorStop(0.5, '#ffcc00'); grad.addColorStop(1, '#ffeb3b');
         ctx.fillStyle = grad; ctx.fillText(p.text, 0, 0);
       } else if (p.type === 'ring') {
-        ctx.strokeStyle = `rgba(255, 90, 0, ${p.opacity})`; ctx.lineWidth = 8 * p.opacity; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = `rgba(255, 90, 0, ${p.opacity})`; ctx.lineWidth = 8 * p.opacity * this.baseScale; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.restore();
     });
@@ -371,7 +397,8 @@ class Chars {
   drawUltimateWinText(ctx) {
     ctx.save(); ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'; ctx.fillRect(0, 0, this.width, this.height);
     ctx.translate(this.width / 2, this.height * 0.35);
-    const bounce = 1 + Math.sin(this.time * 0.12) * 0.05; ctx.scale(bounce, bounce);
+    const bounce = 1 + Math.sin(this.time * 0.12) * 0.05;
+    ctx.scale(bounce * this.baseScale, bounce * this.baseScale); // Keep the win banner responsive
     ctx.font = '900 84px "Impact", "Arial Black", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.strokeStyle = '#000000'; ctx.lineWidth = 16; ctx.strokeText('ULTIMATE WINNER!', 0, 0);
     const grad = ctx.createLinearGradient(-250, 0, 250, 0), cycle = (this.time * 4) % 360;
