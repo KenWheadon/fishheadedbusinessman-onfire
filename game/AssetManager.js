@@ -89,6 +89,7 @@ class SimpleAssetManager {
       // 6. Background images
       { key: 'bg-loading', src: 'images/bg-loading.jpg' },
       { key: 'bg-start', src: 'images/bg-start.jpg' },
+      { key: 'bg-main', src: 'images/bg-main.jpg' },
 
 
       // 7. Audio assets (extracted from folder directory)

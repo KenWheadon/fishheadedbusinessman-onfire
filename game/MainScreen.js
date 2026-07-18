@@ -76,8 +76,7 @@ class MainScreen {
         this.settingsBtn.x = width - 120;
         this.settingsBtn.y = 20;
 
-        // CRITICAL FIX: Carrots must track full screen geometry boundaries 
-        // to prevent empty point generation array crashes inside carrot.js[cite: 2]
+        // Carrots track full screen geometry boundaries to prevent empty array crashes
         this.layout.carrot = { x: 0, y: 0, w: width, h: height, instance: this.carrot };
         this.layout.carrotRight = { x: 0, y: 0, w: width, h: height, instance: this.carrotRight };
 
@@ -97,7 +96,6 @@ class MainScreen {
             this.layout.cardGame = { x: (width - cardW) / 2, y: height * 0.25, w: cardW, h: cardH, instance: this.cardGame };
             this.layout.debt = { x: (width - debtW) / 2, y: height * 0.72, w: debtW, h: debtH, instance: this.debt };
 
-            // Explicitly shift interactive carrot coordinates for mobile dimensions
             this.carrot.layout.baseX = 20;
             this.carrot.layout.baseY = height - 100;
             this.carrot.layout.nodeX = 50;
@@ -488,9 +486,32 @@ class MainScreen {
             ctx.translate(this.carrotLoss.shakeX, this.carrotLoss.shakeY);
         }
 
-        ctx.fillStyle = '#0f172a';
+        // ─────────────────────────────────────────────────────────
+        // UNIFIED BACKGROUND PIPELINE SYSTEM
+        // ─────────────────────────────────────────────────────────
+        // 1. Render Base Teal Wallpaper Background Frame
+        ctx.fillStyle = '#0f766e';
         ctx.fillRect(-50, -50, this.width + 100, this.height + 100);
 
+        // 2. Render Centered 9:16 Aspect-Ratio Wallpaper[cite: 3]
+        let bgImg = null;
+        try {
+            bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-main') : null;
+        } catch (e) { }
+
+        const imgHeight = this.height;
+        const imgWidth = imgHeight * (9 / 16);
+        const imgX = (this.width - imgWidth) / 2;
+
+        if (bgImg) {
+            ctx.drawImage(bgImg, imgX, 0, imgWidth, imgHeight);
+        } else {
+            // Fallback structural mask container boundary line context
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(imgX, 0, imgWidth, imgHeight);
+        }
+
+        // Render subcomponents cleanly on top of wallpaper grids
         const drawOrder = ['cardGame', 'chars', 'debt', 'carrot', 'carrotRight'];
         for (const key of drawOrder) {
             const entry = this.layout[key];
@@ -503,7 +524,6 @@ class MainScreen {
                 ctx.translate(charsX, this.charsY);
                 ctx.scale(this.charsScale, this.charsScale);
             } else if (key === 'carrot' || key === 'carrotRight') {
-                // Apply sliding vector transitions relative to the full viewport sizing mapping
                 const slideOffsetY = this.bottomY - this.yPositions.bottomOnscreen;
                 ctx.translate(0, slideOffsetY);
             } else if (key === 'debt') {
