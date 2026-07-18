@@ -58,8 +58,14 @@ class SimpleAssetManager {
       { key: 'char-5-burnt', src: 'images/char-5-burnt.webp' },
       { key: 'can1', src: 'images/can1.webp' },
       { key: 'can2', src: 'images/can2.webp' },
+      { key: 'can3', src: 'images/can3.webp' },
+      { key: 'can4', src: 'images/can4.webp' },
+      { key: 'can5', src: 'images/can5.webp' },
       { key: 'can1-crumple', src: 'images/can1-crumple.webp' },
       { key: 'can2-crumple', src: 'images/can2-crumple.webp' },
+      { key: 'can3-crumple', src: 'images/can3-crumple.webp' },
+      { key: 'can4-crumple', src: 'images/can4-crumple.webp' },
+      { key: 'can5-crumple', src: 'images/can5-crumple.webp' },
 
 
       // 4. Credits assets

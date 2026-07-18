@@ -14,6 +14,9 @@ class CanManager {
 
         // Upgrade Shop State Variables
         this.can2Unlocked = false;
+        this.can3Unlocked = false;
+        this.can4Unlocked = false;
+        this.can5Unlocked = false;
         this.shopOpen = false;
         this.shopScale = 0.0;
         this.shopTargetScale = 0.0;
@@ -21,6 +24,9 @@ class CanManager {
         // --- PROGRESSIVE UPGRADES STATE (PER CAN TYPE) ---
         this.can1Level = 1;            // Can Mk.I starts at Level 1 (Value: 1 PT)[cite: 2]
         this.can2Level = 1;            // Can Mk.II starts at Level 1 (Value: 2 PTS) once unlocked[cite: 2]
+        this.can3Level = 1;            // Can Mk.III starts at Level 1 (Value: 3 PTS) once unlocked
+        this.can4Level = 1;            // Can Mk.IV starts at Level 1 (Value: 4 PTS) once unlocked
+        this.can5Level = 1;            // Can Mk.V starts at Level 1 (Value: 5 PTS) once unlocked
         this.upgradesUnlocked = false; // Hidden until first score is earned
         this.tealBgAlpha = 0.0;        // Fading multiplier backdrop
 
@@ -28,7 +34,7 @@ class CanManager {
         this.shopScrollY = 0;
         this.shopTargetScrollY = 0;
         this.shopMaxScroll = 0;
-        this._boundWheelHandler = null; // Automatically self-cleans on close[cite: 5]
+        this._boundWheelHandler = null; // Automatically self-cleans on close
 
         // Recycled Memory Pools
         this.particlePool = [];
@@ -59,7 +65,7 @@ class CanManager {
             autoStart: false
         });
 
-        // Instantiate Shop UI Buttons[cite: 3, 4]
+        // Instantiate Shop UI Buttons[cite: 3]
         this.shopButton = new ArcadeButton({
             text: 'UPGRADES',
             themeColor: '#ffe600',
@@ -68,7 +74,7 @@ class CanManager {
 
         this.shopCloseButton = new CloseButton({ size: 24 });
 
-        // Item Buy Buttons (Only displays point totals)[cite: 3]
+        // Item Buy Buttons (Dynamic progression costs)[cite: 3]
         this.buyMk1Button = new ArcadeButton({
             text: '5 PTS',
             themeColor: '#39ff14',
@@ -77,6 +83,24 @@ class CanManager {
 
         this.buyMk2Button = new ArcadeButton({
             text: '50 PTS',
+            themeColor: '#ff007f',
+            glowColor: '#ff00ff'
+        });
+
+        this.buyMk3Button = new ArcadeButton({
+            text: '150 PTS',
+            themeColor: '#ff007f',
+            glowColor: '#ff00ff'
+        });
+
+        this.buyMk4Button = new ArcadeButton({
+            text: '350 PTS',
+            themeColor: '#ff007f',
+            glowColor: '#ff00ff'
+        });
+
+        this.buyMk5Button = new ArcadeButton({
+            text: '600 PTS',
             themeColor: '#ff007f',
             glowColor: '#ff00ff'
         });
@@ -136,6 +160,9 @@ class CanManager {
         // Centers of cards relative to the translated center coordinates (0, 0)
         const mk1Y = viewY + 0 * (cardH + cardGap) + cardH / 2 - this.shopScrollY;
         const mk2Y = viewY + 1 * (cardH + cardGap) + cardH / 2 - this.shopScrollY;
+        const mk3Y = viewY + 2 * (cardH + cardGap) + cardH / 2 - this.shopScrollY;
+        const mk4Y = viewY + 3 * (cardH + cardGap) + cardH / 2 - this.shopScrollY;
+        const mk5Y = viewY + 4 * (cardH + cardGap) + cardH / 2 - this.shopScrollY;
 
         const actionBtnW = 100 * this.scaleFactor;
         const actionBtnH = 32 * this.scaleFactor;
@@ -143,6 +170,9 @@ class CanManager {
 
         this.buyMk1Button.setPosition(btnX, mk1Y, actionBtnW, actionBtnH, this.scaleFactor);
         this.buyMk2Button.setPosition(btnX, mk2Y, actionBtnW, actionBtnH, this.scaleFactor);
+        this.buyMk3Button.setPosition(btnX, mk3Y, actionBtnW, actionBtnH, this.scaleFactor);
+        this.buyMk4Button.setPosition(btnX, mk4Y, actionBtnW, actionBtnH, this.scaleFactor);
+        this.buyMk5Button.setPosition(btnX, mk5Y, actionBtnW, actionBtnH, this.scaleFactor);
     }
 
     spawnCan(customX = null) {
@@ -157,7 +187,10 @@ class CanManager {
             width: 48,
             height: 84,
             scaleFactor: this.scaleFactor,
-            can2Unlocked: this.can2Unlocked
+            can2Unlocked: this.can2Unlocked,
+            can3Unlocked: this.can3Unlocked,
+            can4Unlocked: this.can4Unlocked,
+            can5Unlocked: this.can5Unlocked
         }));
     }
 
@@ -185,17 +218,19 @@ class CanManager {
             const viewYMin = -sh / 2 + 90 * this.scaleFactor;
             const viewYMax = sh / 2 - 20 * this.scaleFactor;
 
-            if (this.buyMk1Button.y >= viewYMin && this.buyMk1Button.y <= viewYMax) {
-                this.buyMk1Button.handleMouseMove(tx, ty);
-            } else {
-                this.buyMk1Button.isHovered = false;
-            }
+            const updateButtonHover = (btn) => {
+                if (btn.y >= viewYMin && btn.y <= viewYMax) {
+                    btn.handleMouseMove(tx, ty);
+                } else {
+                    btn.isHovered = false;
+                }
+            };
 
-            if (this.buyMk2Button.y >= viewYMin && this.buyMk2Button.y <= viewYMax) {
-                this.buyMk2Button.handleMouseMove(tx, ty);
-            } else {
-                this.buyMk2Button.isHovered = false;
-            }
+            updateButtonHover(this.buyMk1Button);
+            updateButtonHover(this.buyMk2Button);
+            updateButtonHover(this.buyMk3Button);
+            updateButtonHover(this.buyMk4Button);
+            updateButtonHover(this.buyMk5Button);
         } else {
             if (this.upgradesUnlocked) {
                 this.shopButton.handleMouseMove(mx, my);
@@ -227,12 +262,15 @@ class CanManager {
             const viewYMin = -sh / 2 + 90 * this.scaleFactor;
             const viewYMax = sh / 2 - 20 * this.scaleFactor;
 
-            if (this.buyMk1Button.y >= viewYMin && this.buyMk1Button.y <= viewYMax) {
-                this.buyMk1Button.handleMouseDown(tx, ty);
-            }
-            if (this.buyMk2Button.y >= viewYMin && this.buyMk2Button.y <= viewYMax) {
-                this.buyMk2Button.handleMouseDown(tx, ty);
-            }
+            const triggerButtonDown = (btn) => {
+                if (btn.y >= viewYMin && btn.y <= viewYMax) btn.handleMouseDown(tx, ty);
+            };
+
+            triggerButtonDown(this.buyMk1Button);
+            triggerButtonDown(this.buyMk2Button);
+            triggerButtonDown(this.buyMk3Button);
+            triggerButtonDown(this.buyMk4Button);
+            triggerButtonDown(this.buyMk5Button);
         } else {
             if (this.upgradesUnlocked) {
                 this.shopButton.handleMouseDown(mx, my);
@@ -328,6 +366,111 @@ class CanManager {
                 if (consumed) return true;
             }
 
+            // Progressive Mk.III Can Unlock & Value Upgrade tree
+            if (this.buyMk3Button.y >= viewYMin && this.buyMk3Button.y <= viewYMax) {
+                const upgradeMk3Cost = !this.can3Unlocked ? 150 : (5 * this.can3Level);
+                this.buyMk3Button.handleMouseUp(tx, ty, () => {
+                    if (this.score >= upgradeMk3Cost) {
+                        this.score -= upgradeMk3Cost;
+                        this.screenShake = 15;
+
+                        if (!this.can3Unlocked) {
+                            this.can3Unlocked = true;
+                            this.buyMk3Button.text = `${5 * this.can3Level} PTS`;
+                            this.buyMk3Button.themeColor = '#39ff14';
+                            this.buyMk3Button.glowColor = '#00ff66';
+
+                            this.spawnParticles(0, 0, '#ffe600', 30);
+                            this.spawnParticles(0, 0, '#bd00ff', 30);
+                            this.spawnFloatingText(0, 0, "CYBER CAN Mk.III UNLOCKED!", '#bd00ff');
+                        } else {
+                            this.can3Level++;
+                            this.buyMk3Button.text = `${5 * this.can3Level} PTS`;
+
+                            this.spawnParticles(0, 0, '#39ff14', 25);
+                            this.spawnFloatingText(0, 0, `MK.III VALUE +1!`, '#39ff14');
+                        }
+                        this.scoreText.setText(`SCORE: ${this.score}`);
+                    } else {
+                        this.screenShake = 20;
+                        this.spawnFloatingText(0, 0, "NOT ENOUGH SCORE!", '#ff0055');
+                        this.spawnParticles(0, 0, '#ff0055', 10);
+                    }
+                    consumed = true;
+                });
+                if (consumed) return true;
+            }
+
+            // Progressive Mk.IV Can Unlock & Value Upgrade tree
+            if (this.buyMk4Button.y >= viewYMin && this.buyMk4Button.y <= viewYMax) {
+                const upgradeMk4Cost = !this.can4Unlocked ? 350 : (5 * this.can4Level);
+                this.buyMk4Button.handleMouseUp(tx, ty, () => {
+                    if (this.score >= upgradeMk4Cost) {
+                        this.score -= upgradeMk4Cost;
+                        this.screenShake = 15;
+
+                        if (!this.can4Unlocked) {
+                            this.can4Unlocked = true;
+                            this.buyMk4Button.text = `${5 * this.can4Level} PTS`;
+                            this.buyMk4Button.themeColor = '#39ff14';
+                            this.buyMk4Button.glowColor = '#00ff66';
+
+                            this.spawnParticles(0, 0, '#ffe600', 30);
+                            this.spawnParticles(0, 0, '#ffaa00', 30);
+                            this.spawnFloatingText(0, 0, "CYBER CAN Mk.IV UNLOCKED!", '#ffaa00');
+                        } else {
+                            this.can4Level++;
+                            this.buyMk4Button.text = `${5 * this.can4Level} PTS`;
+
+                            this.spawnParticles(0, 0, '#39ff14', 25);
+                            this.spawnFloatingText(0, 0, `MK.IV VALUE +1!`, '#39ff14');
+                        }
+                        this.scoreText.setText(`SCORE: ${this.score}`);
+                    } else {
+                        this.screenShake = 20;
+                        this.spawnFloatingText(0, 0, "NOT ENOUGH SCORE!", '#ff0055');
+                        this.spawnParticles(0, 0, '#ff0055', 10);
+                    }
+                    consumed = true;
+                });
+                if (consumed) return true;
+            }
+
+            // Progressive Mk.V Can Unlock & Value Upgrade tree
+            if (this.buyMk5Button.y >= viewYMin && this.buyMk5Button.y <= viewYMax) {
+                const upgradeMk5Cost = !this.can5Unlocked ? 600 : (5 * this.can5Level);
+                this.buyMk5Button.handleMouseUp(tx, ty, () => {
+                    if (this.score >= upgradeMk5Cost) {
+                        this.score -= upgradeMk5Cost;
+                        this.screenShake = 15;
+
+                        if (!this.can5Unlocked) {
+                            this.can5Unlocked = true;
+                            this.buyMk5Button.text = `${5 * this.can5Level} PTS`;
+                            this.buyMk5Button.themeColor = '#39ff14';
+                            this.buyMk5Button.glowColor = '#00ff66';
+
+                            this.spawnParticles(0, 0, '#ffe600', 30);
+                            this.spawnParticles(0, 0, '#39ff14', 30);
+                            this.spawnFloatingText(0, 0, "CYBER CAN Mk.V UNLOCKED!", '#39ff14');
+                        } else {
+                            this.can5Level++;
+                            this.buyMk5Button.text = `${5 * this.can5Level} PTS`;
+
+                            this.spawnParticles(0, 0, '#39ff14', 25);
+                            this.spawnFloatingText(0, 0, `MK.V VALUE +1!`, '#39ff14');
+                        }
+                        this.scoreText.setText(`SCORE: ${this.score}`);
+                    } else {
+                        this.screenShake = 20;
+                        this.spawnFloatingText(0, 0, "NOT ENOUGH SCORE!", '#ff0055');
+                        this.spawnParticles(0, 0, '#ff0055', 10);
+                    }
+                    consumed = true;
+                });
+                if (consumed) return true;
+            }
+
             return consumed;
         } else {
             let shopClicked = false;
@@ -340,7 +483,7 @@ class CanManager {
                     this.shopTargetScrollY = 0;
                     shopClicked = true;
 
-                    // Bind wheel controls dynamically for scroll processing[cite: 5]
+                    // Bind wheel controls dynamically for scroll processing
                     if (!this._boundWheelHandler) {
                         this._boundWheelHandler = this._onWindowWheel.bind(this);
                         window.addEventListener('wheel', this._boundWheelHandler, { passive: false });
@@ -362,7 +505,7 @@ class CanManager {
     }
 
     /**
-     * Custom Window Wheel Interface to smooth scrolling transitions[cite: 5]
+     * Custom Window Wheel Interface to smooth scrolling transitions
      */
     _onWindowWheel(e) {
         if (!this.shopOpen || this.shopScale < 0.9) return;
@@ -381,8 +524,24 @@ class CanManager {
             if (can.checkClick(mx, my)) {
                 clickedAny = true;
 
-                // Base scoring levels + progressive upgrades[cite: 2]
-                const baseScore = (can.type === 'can2') ? (1 + this.can2Level) : this.can1Level;
+                // Base scoring tiers + progression multipliers[cite: 2]
+                let baseScore = this.can1Level;
+                let colorCode = '#ff007f';
+
+                if (can.type === 'can2') {
+                    baseScore = 1 + this.can2Level;
+                    colorCode = '#00f0ff';
+                } else if (can.type === 'can3') {
+                    baseScore = 2 + this.can3Level;
+                    colorCode = '#bd00ff';
+                } else if (can.type === 'can4') {
+                    baseScore = 3 + this.can4Level;
+                    colorCode = '#ffaa00';
+                } else if (can.type === 'can5') {
+                    baseScore = 4 + this.can5Level;
+                    colorCode = '#39ff14';
+                }
+
                 const earned = baseScore * this.multiplier;
 
                 this.score += earned;
@@ -392,7 +551,6 @@ class CanManager {
                     this.upgradesUnlocked = true;
                 }
 
-                const colorCode = (can.type === 'can1') ? '#ff007f' : '#00f0ff';
                 this.spawnParticles(can.x, can.y, colorCode, 16);
                 this.spawnFloatingText(can.x, can.y - 40, `+${earned}`, colorCode);
 
@@ -442,6 +600,9 @@ class CanManager {
             this.shopCloseButton.update(dt);
             this.buyMk1Button.update(dt);
             this.buyMk2Button.update(dt);
+            this.buyMk3Button.update(dt);
+            this.buyMk4Button.update(dt);
+            this.buyMk5Button.update(dt);
         }
 
         // Particle garbage recycling
@@ -630,8 +791,6 @@ class CanManager {
             const cardH = 80 * this.scaleFactor;
             const cardGap = 10 * this.scaleFactor;
             const viewY = -sh / 2 + 90 * this.scaleFactor;
-
-            // --- CRITICAL FIX: Properly declare cardX inside the scoped draw stack ---
             const cardX = -cardW / 2;
 
             // Compute vertical scrolling boundaries
@@ -639,11 +798,8 @@ class CanManager {
             const totalContentHeight = totalCards * (cardH + cardGap) - cardGap;
             this.shopMaxScroll = Math.max(0, totalContentHeight - clipH);
 
-            // Card 1 Coordinates
             const c1Y = viewY + 0 * (cardH + cardGap) - this.shopScrollY;
-            // Card 2 Coordinates
             const c2Y = viewY + 1 * (cardH + cardGap) - this.shopScrollY;
-            // Teaser Coordinates (Cards 3 to 5)
             const c3Y = viewY + 2 * (cardH + cardGap) - this.shopScrollY;
             const c4Y = viewY + 3 * (cardH + cardGap) - this.shopScrollY;
             const c5Y = viewY + 4 * (cardH + cardGap) - this.shopScrollY;
@@ -659,17 +815,15 @@ class CanManager {
             ctx.font = `bold ${Math.round(13 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.textAlign = 'left';
             ctx.fillText('CAN MK.I VALUE UPGRADE', cardX + 16, c1Y + 22 * this.scaleFactor);
-
             ctx.fillStyle = '#8a8a9a';
             ctx.font = `bold ${Math.round(10 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.fillText('increases click value by +1 point', cardX + 16, c1Y + 42 * this.scaleFactor);
-
             ctx.fillStyle = '#39ff14';
             ctx.fillText(`[LEVEL: ${this.can1Level} | +${this.can1Level - 1} PTS]`, cardX + 16, c1Y + 62 * this.scaleFactor);
 
             this.buyMk1Button.draw(ctx);
 
-            // --- CARD 2: CYBER CAN MK.II UNLOCK & VALUE TREE ---
+            // --- CARD 2: CYBER CAN MK.II ---
             ctx.fillStyle = '#121215';
             ctx.strokeStyle = this.can2Unlocked ? '#00f0ff' : '#ff007f';
             ctx.lineWidth = 2;
@@ -680,73 +834,74 @@ class CanManager {
             ctx.font = `bold ${Math.round(13 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.textAlign = 'left';
             ctx.fillText('CYBER CAN MK.II', cardX + 16, c2Y + 22 * this.scaleFactor);
-
             ctx.fillStyle = '#8a8a9a';
             ctx.font = `bold ${Math.round(10 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.fillText(this.can2Unlocked ? 'increases click value by +1 point' : 'spawns randomly | worth 2x points', cardX + 16, c2Y + 42 * this.scaleFactor);
-
             ctx.fillStyle = this.can2Unlocked ? '#00f0ff' : '#ff007f';
             ctx.fillText(this.can2Unlocked ? `[LEVEL: ${this.can2Level} | +${this.can2Level - 1} PTS]` : '[STATUS: LOCKED]', cardX + 16, c2Y + 62 * this.scaleFactor);
 
             this.buyMk2Button.draw(ctx);
 
-            // --- TEASER CARD 3: CAN MK.III ---
-            ctx.fillStyle = '#0a0a0c';
-            ctx.strokeStyle = '#474754';
+            // --- CARD 3: CYBER CAN MK.III ---
+            ctx.fillStyle = '#121215';
+            ctx.strokeStyle = this.can3Unlocked ? '#bd00ff' : '#ff007f';
             ctx.lineWidth = 2;
             ctx.fillRect(cardX, c3Y, cardW, cardH);
             ctx.strokeRect(cardX, c3Y, cardW, cardH);
 
-            ctx.fillStyle = '#474754';
+            ctx.fillStyle = '#ffffff';
             ctx.font = `bold ${Math.round(13 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.textAlign = 'left';
             ctx.fillText('CYBER CAN MK.III', cardX + 16, c3Y + 22 * this.scaleFactor);
-            ctx.fillText('worth 3x base points', cardX + 16, c3Y + 42 * this.scaleFactor);
-            ctx.fillText('[STATUS: COMING SOON]', cardX + 16, c3Y + 62 * this.scaleFactor);
+            ctx.fillStyle = '#8a8a9a';
+            ctx.font = `bold ${Math.round(10 * this.scaleFactor)}px "Courier New", monospace`;
+            ctx.fillText(this.can3Unlocked ? 'increases click value by +1 point' : 'spawns randomly | worth 3x points', cardX + 16, c3Y + 42 * this.scaleFactor);
+            ctx.fillStyle = this.can3Unlocked ? '#bd00ff' : '#ff007f';
+            ctx.fillText(this.can3Unlocked ? `[LEVEL: ${this.can3Level} | +${this.can3Level - 1} PTS]` : '[STATUS: LOCKED]', cardX + 16, c3Y + 62 * this.scaleFactor);
 
-            // Disabled button display
-            ctx.strokeRect(cardW / 2 - 112 * this.scaleFactor, c3Y + 24 * this.scaleFactor, 100 * this.scaleFactor, 32 * this.scaleFactor);
-            ctx.font = `bold ${Math.round(12 * this.scaleFactor)}px "Courier New", monospace`;
-            ctx.textAlign = 'center';
-            ctx.fillText('???', cardW / 2 - 62 * this.scaleFactor, c3Y + 40 * this.scaleFactor);
+            this.buyMk3Button.draw(ctx);
 
-            // --- TEASER CARD 4: CAN MK.IV ---
-            ctx.fillStyle = '#0a0a0c';
-            ctx.strokeStyle = '#474754';
+            // --- CARD 4: CYBER CAN MK.IV ---
+            ctx.fillStyle = '#121215';
+            ctx.strokeStyle = this.can4Unlocked ? '#ffaa00' : '#ff007f';
             ctx.lineWidth = 2;
             ctx.fillRect(cardX, c4Y, cardW, cardH);
             ctx.strokeRect(cardX, c4Y, cardW, cardH);
 
-            ctx.fillStyle = '#474754';
+            ctx.fillStyle = '#ffffff';
             ctx.font = `bold ${Math.round(13 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.textAlign = 'left';
             ctx.fillText('CYBER CAN MK.IV', cardX + 16, c4Y + 22 * this.scaleFactor);
-            ctx.fillText('worth 4x base points', cardX + 16, c4Y + 42 * this.scaleFactor);
-            ctx.fillText('[STATUS: COMING SOON]', cardX + 16, c4Y + 62 * this.scaleFactor);
+            ctx.fillStyle = '#8a8a9a';
+            ctx.font = `bold ${Math.round(10 * this.scaleFactor)}px "Courier New", monospace`;
+            ctx.fillText(this.can4Unlocked ? 'increases click value by +1 point' : 'spawns randomly | worth 4x points', cardX + 16, c4Y + 42 * this.scaleFactor);
+            ctx.fillStyle = this.can4Unlocked ? '#ffaa00' : '#ff007f';
+            ctx.fillText(this.can4Unlocked ? `[LEVEL: ${this.can4Level} | +${this.can4Level - 1} PTS]` : '[STATUS: LOCKED]', cardX + 16, c4Y + 62 * this.scaleFactor);
 
-            ctx.strokeRect(cardW / 2 - 112 * this.scaleFactor, c4Y + 24 * this.scaleFactor, 100 * this.scaleFactor, 32 * this.scaleFactor);
-            ctx.fillText('???', cardW / 2 - 62 * this.scaleFactor, c4Y + 40 * this.scaleFactor);
+            this.buyMk4Button.draw(ctx);
 
-            // --- TEASER CARD 5: CAN MK.V ---
-            ctx.fillStyle = '#0a0a0c';
-            ctx.strokeStyle = '#474754';
+            // --- CARD 5: CYBER CAN MK.V ---
+            ctx.fillStyle = '#121215';
+            ctx.strokeStyle = this.can5Unlocked ? '#39ff14' : '#ff007f';
             ctx.lineWidth = 2;
             ctx.fillRect(cardX, c5Y, cardW, cardH);
             ctx.strokeRect(cardX, c5Y, cardW, cardH);
 
-            ctx.fillStyle = '#474754';
+            ctx.fillStyle = '#ffffff';
             ctx.font = `bold ${Math.round(13 * this.scaleFactor)}px "Courier New", monospace`;
             ctx.textAlign = 'left';
             ctx.fillText('CYBER CAN MK.V', cardX + 16, c5Y + 22 * this.scaleFactor);
-            ctx.fillText('worth 5x base points', cardX + 16, c5Y + 42 * this.scaleFactor);
-            ctx.fillText('[STATUS: COMING SOON]', cardX + 16, c5Y + 62 * this.scaleFactor);
+            ctx.fillStyle = '#8a8a9a';
+            ctx.font = `bold ${Math.round(10 * this.scaleFactor)}px "Courier New", monospace`;
+            ctx.fillText(this.can5Unlocked ? 'increases click value by +1 point' : 'spawns randomly | worth 5x points', cardX + 16, c5Y + 42 * this.scaleFactor);
+            ctx.fillStyle = this.can5Unlocked ? '#39ff14' : '#ff007f';
+            ctx.fillText(this.can5Unlocked ? `[LEVEL: ${this.can5Level} | +${this.can5Level - 1} PTS]` : '[STATUS: LOCKED]', cardX + 16, c5Y + 62 * this.scaleFactor);
 
-            ctx.strokeRect(cardW / 2 - 112 * this.scaleFactor, c5Y + 24 * this.scaleFactor, 100 * this.scaleFactor, 32 * this.scaleFactor);
-            ctx.fillText('???', cardW / 2 - 62 * this.scaleFactor, c5Y + 40 * this.scaleFactor);
+            this.buyMk5Button.draw(ctx);
 
             ctx.restore(); // Restore clipping viewport mask
 
-            // --- MINI SCROLLBAR TRACK SLIDER[cite: 5] ---
+            // --- MINI SCROLLBAR TRACK SLIDER ---
             if (this.shopMaxScroll > 0) {
                 const trackW = 4 * this.scaleFactor;
                 const trackH = clipH;

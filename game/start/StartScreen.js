@@ -22,25 +22,28 @@ class StartScreen {
             twirlVelocity: 0
         };
 
-        // Consistent arcade-styled buttons[cite: 3]
+        // Consistent arcade-styled buttons
         this.playButton = new ArcadeButton({
             text: 'PLAY',
-            themeColor: '#39ff14', // Glowing green for play[cite: 3]
+            themeColor: '#39ff14', // Glowing green for play
             glowColor: '#00ff66'
         });
 
         this.settingsButton = new ArcadeButton({
             text: 'SETTINGS',
-            themeColor: '#ff007f', // Glowing pink/magenta for settings[cite: 3]
+            themeColor: '#ff007f', // Glowing pink/magenta for settings
             glowColor: '#ff00ff'
         });
 
         this.buttons = [this.playButton, this.settingsButton];
 
-        // Raining cans gameplay element
+        // Raining cans gameplay element updated for can3 -> can5
         this.canManager = new CanManager({
             width: this.width,
-            height: this.height
+            height: this.height,
+            minCan: 3,
+            maxCan: 5,
+            canTypes: ['can3', 'can4', 'can5']
         });
 
         // Click Interception Flag to prevent event fall-through
@@ -62,13 +65,13 @@ class StartScreen {
         const centerX = this.width / 2;
         const centerY = this.height / 2;
 
-        // Scale Logo[cite: 3]
+        // Scale Logo
         this.logo.x = centerX;
         this.logo.y = centerY - 90 * this.scale;
         this.logo.width = 280 * this.scale;
         this.logo.height = 140 * this.scale;
 
-        // Recalculate positions & sizes for buttons[cite: 3]
+        // Recalculate positions & sizes for buttons
         const startY = centerY + 65 * this.scale;
         const spacing = 75 * this.scale;
 
@@ -91,7 +94,7 @@ class StartScreen {
         this.popOutPhase = 0;
         this.canInterception = false;
 
-        // Reset our modular button configurations inside[cite: 3]
+        // Reset our modular button configurations inside
         this.buttons.forEach(btn => {
             btn.scale = 1;
             btn.targetScale = 1;
@@ -100,10 +103,13 @@ class StartScreen {
             btn.ripples = [];
         });
 
-        // Reset game state for cans
+        // Reset game state for cans updated for can3 -> can5
         this.canManager = new CanManager({
             width: this.width,
-            height: this.height
+            height: this.height,
+            minCan: 3,
+            maxCan: 5,
+            canTypes: ['can3', 'can4', 'can5']
         });
 
         this.resize(this.width, this.height);
@@ -145,13 +151,13 @@ class StartScreen {
             return;
         }
 
-        // 2. Logo Click twirl[cite: 3]
+        // 2. Logo Click twirl
         if (this.isPointInRect(localX, localY, this.logo)) {
             this.logo.twirlVelocity = 12;
             this.logo.targetScale = 1.2;
         }
 
-        // 3. Pass MouseDown to back buttons[cite: 3]
+        // 3. Pass MouseDown to back buttons
         this.buttons.forEach(btn => btn.handleMouseDown(localX, localY));
     }
 
@@ -165,12 +171,12 @@ class StartScreen {
             return;
         }
 
-        // Play Button Callback execution[cite: 3]
+        // Play Button Callback execution
         this.playButton.handleMouseUp(localX, localY, () => {
             this.triggerPopOut();
         });
 
-        // Settings Button Callback execution[cite: 3]
+        // Settings Button Callback execution
         this.settingsButton.handleMouseUp(localX, localY, () => {
             this.onSettings();
         });
@@ -194,7 +200,7 @@ class StartScreen {
         this.popOutPhase = 1;
 
         this.logo.targetScale = 1.4;
-        this.buttons.forEach(btn => btn.targetScale = 0); // Shrink cleanly on exit transition[cite: 3]
+        this.buttons.forEach(btn => btn.targetScale = 0); // Shrink cleanly on exit transition
     }
 
     update(dt) {
@@ -208,7 +214,7 @@ class StartScreen {
             this.canManager.update(dt);
         }
 
-        // Handle global layout transitions[cite: 3]
+        // Handle global layout transitions
         if (this.state === 'POPPING_OUT') {
             if (this.popOutPhase === 1) {
                 this.popOutTimer -= dt;
@@ -223,7 +229,7 @@ class StartScreen {
             }
         }
 
-        // Logo spring physics updates[cite: 3]
+        // Logo spring physics updates
         const logoRate = 1 - Math.pow(1 - 0.2, frameMultiplier);
         this.logo.scale = this.lerp(this.logo.scale, this.logo.targetScale, logoRate);
         this.logo.rotation += this.logo.twirlVelocity * frameMultiplier;
@@ -234,7 +240,7 @@ class StartScreen {
         const snapBackRate = 1 - Math.pow(1 - 0.12, frameMultiplier);
         this.logo.rotation = this.lerp(this.logo.rotation, 0, snapBackRate);
 
-        // Update each button individually[cite: 3]
+        // Update each button individually
         this.buttons.forEach(btn => btn.update(dt));
     }
 
@@ -252,11 +258,11 @@ class StartScreen {
         ctx.rect(0, 0, this.width, this.height);
         ctx.clip();
 
-        // 1. Render Base Teal Wallpaper Background[cite: 3]
+        // 1. Render Base Teal Wallpaper Background
         ctx.fillStyle = '#0f766e';
         ctx.fillRect(0, 0, this.width, this.height);
 
-        // 2. Render centered 9:16 'bg-start' wallpaper[cite: 3]
+        // 2. Render centered 9:16 'bg-start' wallpaper
         let bgImg = null;
         try {
             bgImg = typeof AssetManager !== 'undefined' ? AssetManager.get('bg-start') : null;
@@ -273,7 +279,7 @@ class StartScreen {
             ctx.fillRect(imgX, 0, imgWidth, imgHeight);
         }
 
-        // 3. Render Logo[cite: 3]
+        // 3. Render Logo
         ctx.save();
         const logoIdleY = this.state === 'ACTIVE' ? Math.sin(this.time) * 5 : 0;
         ctx.translate(this.logo.x, this.logo.y + logoIdleY * this.scale);
@@ -316,7 +322,7 @@ class StartScreen {
         }
         ctx.restore();
 
-        // 4. Draw button components[cite: 3]
+        // 4. Draw button components
         this.buttons.forEach(btn => btn.draw(ctx));
 
         // 5. DRAW RAINING CANS GAME ELEMENT (Appears on top!)

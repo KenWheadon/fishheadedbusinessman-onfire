@@ -6,9 +6,20 @@ class Can {
         this.y = config.y || -this.height;
         this.scaleFactor = config.scaleFactor || 1.0;
 
-        // Choose asset profiles based on unlocking flags
+        // Choose asset profiles based on unlocking flags[cite: 1]
         const allowCan2 = config.can2Unlocked || false;
-        this.type = (allowCan2 && Math.random() < 0.5) ? 'can2' : 'can1';
+        const allowCan3 = config.can3Unlocked || false;
+        const allowCan4 = config.can4Unlocked || false;
+        const allowCan5 = config.can5Unlocked || false;
+
+        let availableTypes = ['can1'];
+        if (allowCan2) availableTypes.push('can2');
+        if (allowCan3) availableTypes.push('can3');
+        if (allowCan4) availableTypes.push('can4');
+        if (allowCan5) availableTypes.push('can5');
+
+        // Pick a random unlocked can type
+        this.type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
         this.isCrumpled = false;
 
         // Base Fall State Properties[cite: 1]
@@ -117,9 +128,22 @@ class Can {
             // ==========================================
             // HIGH QUALITY VECTOR FALLBACK ENGINE
             // ==========================================
-            const isPink = this.type === 'can1';
-            const baseColor = isPink ? '#ff007f' : '#00f0ff';
-            const accentColor = isPink ? '#ff00ff' : '#00ffff';
+            let baseColor = '#ff007f';
+            let accentColor = '#ff00ff';
+
+            if (this.type === 'can2') {
+                baseColor = '#00f0ff';
+                accentColor = '#00ffff';
+            } else if (this.type === 'can3') {
+                baseColor = '#bd00ff';
+                accentColor = '#d600ff';
+            } else if (this.type === 'can4') {
+                baseColor = '#ffaa00';
+                accentColor = '#ffcc00';
+            } else if (this.type === 'can5') {
+                baseColor = '#39ff14';
+                accentColor = '#00ff66';
+            }
 
             // Active Hover Neon Glow Plate
             if (this.isHovered && !this.isCrumpled) {
