@@ -1,133 +1,250 @@
 class EndScreenComponent {
     constructor({ width, height, onMainMenu, onSettings, onCredits }) {
         // Core Layout Boundaries
-        this.width = width;
-        this.height = height;
+        this.width = width || 800;
+        this.height = height || 600;
+        this.scaleFactor = 1.0;
 
         // Callbacks
-        this.callbacks = { onMainMenu, onSettings, onCredits };
-        
-        // Internal State & Juice
-        this.introProgress = 0; // Animates from 0 to 1
-        this.isWin = true; // Added state for win/loss
-        this.buttons = [];
-        
-        this._buildLayout();
+        this.callbacks = {
+            onMainMenu,
+            onSettings,
+            onCredits
+        };
+
+        // Internal States & Breakpoint Dimensions
+        this.introProgress = 0; // Animates smoothly from 0 to 1
+        this.isWin = true;
+        this.dialogWidth = 520;
+        this.dialogHeight = 620;
+        this.isMobile = false;
+
+        // 1. INSTANTIATE MODULAR JUICY ARCADE BUTTONS
+        this.mainMenuButton = new ArcadeButton({
+            text: 'MAIN MENU',
+            themeColor: '#39ff14', // Glowing Cyber Green
+            glowColor: '#00ff66'
+        });
+
+        this.settingsButton = new ArcadeButton({
+            text: 'SETTINGS',
+            themeColor: '#00f0ff', // Phosphor Cyan
+            glowColor: '#00ffff'
+        });
+
+        this.creditsButton = new ArcadeButton({
+            text: 'CREDITS',
+            themeColor: '#ff9800', // Neon Orange
+            glowColor: '#ffb020'
+        });
+
+        this.buttons = [this.mainMenuButton, this.settingsButton, this.creditsButton];
+
+        // Perform initial manual layout calculation sync
+        this.resize(this.width, this.height);
     }
 
     setWinState(isWin) {
         this.isWin = isWin;
     }
 
-    _buildLayout() {
-        const centerX = this.width / 2;
-        const startY = this.height / 2;
-        const btnWidth = 240;
-        const btnHeight = 60;
-        const gap = 20;
-
-        this.buttons = [
-            { text: "Main Menu", x: centerX - btnWidth/2, y: startY, w: btnWidth, h: btnHeight, action: this.callbacks.onMainMenu, hover: false, scale: 1 },
-            { text: "Settings", x: centerX - btnWidth/2, y: startY + btnHeight + gap, w: btnWidth, h: btnHeight, action: this.callbacks.onSettings, hover: false, scale: 1 },
-            { text: "Credits", x: centerX - btnWidth/2, y: startY + (btnHeight + gap) * 2, w: btnWidth, h: btnHeight, action: this.callbacks.onCredits, hover: false, scale: 1 }
-        ];
+    // Maps local canvas space to scale-independent center-relative space 
+    getCenterRelativeMouse(localX, localY) {
+        const scale = Math.max(0.01, this.introProgress);
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        return {
+            x: (localX - cx) / scale,
+            y: (localY - cy) / scale
+        };
     }
 
-    // 1. UPDATE: Handles all internal physics, timers, and spring math
+    // Responsive sizing engine - seamlessly handles Mobile, Tablet, and Desktop breakpoints
+    resize(width, height) {
+        this.width = width;
+        this.height = height;
+
+        // Establish uniform base scaling ratios
+        const baseScale = Math.min(width / 800, height / 600);
+        this.scaleFactor = Math.min(Math.max(baseScale, 0.7), 1.25);
+
+        // Fluid layout dimensions based on device form factor breakpoints
+        if (width < 480) {
+            // Mobile: Expand proportions vertically to breathe comfortably
+            this.dialogWidth = Math.min(width * 0.94, 360);
+            this.dialogHeight = Math.min(height * 0.94, 540);
+            this.isMobile = true;
+        } else if (width < 768) {
+            // Tablet
+            this.dialogWidth = 460 * this.scaleFactor;
+            this.dialogHeight = 560 * this.scaleFactor;
+            this.isMobile = false;
+        } else {
+            // Desktop
+            this.dialogWidth = 520 * this.scaleFactor;
+            this.dialogHeight = 620 * this.scaleFactor;
+            this.isMobile = false;
+        }
+
+        // Clamp boundaries to prevent structural visual breakages
+        this.dialogWidth = Math.max(300, Math.min(660, this.dialogWidth));
+        this.dialogHeight = Math.max(480, Math.min(740, this.dialogHeight));
+
+        const dw = this.dialogWidth;
+        const dh = this.dialogHeight;
+
+        // Center-relative text placements
+        this.titleY = -dh * 0.28;
+        this.statusY = -dh * 0.16;
+
+        // Stacked Vertical Layout Math
+        const btnW = dw * 0.82;
+        const btnH = this.isMobile ? 44 : 50 * this.scaleFactor;
+        const gap = this.isMobile ? 14 : 20 * this.scaleFactor;
+        const startBtnY = dh * 0.06;
+
+        // Pass updated positioning configurations directly down to ArcadeButtons
+        this.mainMenuButton.setPosition(0, startBtnY, btnW, btnH, this.scaleFactor);
+        this.settingsButton.setPosition(0, startBtnY + btnH + gap, btnW, btnH, this.scaleFactor);
+        this.creditsButton.setPosition(0, startBtnY + (btnH + gap) * 2, btnW, btnH, this.scaleFactor);
+    }
+
+    // 1. UPDATE: Handles introductory fade ticks and nested button physics loops
     update(dt) {
-        // Intro animation lerp
+        // Linear scaling intro entrance fade
         if (this.introProgress < 1) {
-            this.introProgress += dt * 1.5; // dt is in seconds, multiplier of 1.5 means it takes 0.66s
+            this.introProgress += dt * 1.5; // Takes ~0.66 seconds to snap in fully
             if (this.introProgress > 1) this.introProgress = 1;
         }
 
-        // Button hover spring physics (Juice)
-        const springStiffness = 0.015;
-        this.buttons.forEach(btn => {
-            const targetScale = btn.hover ? 1.08 : 1.0;
-            // Simple ease towards target
-            btn.scale += (targetScale - btn.scale) * (dt * springStiffness);
-        });
+        // Tick internal spring motion physics profiles on buttons
+        this.buttons.forEach(btn => btn.update(dt));
     }
 
-    // 2. DRAW: Renders relative to x/y, strictly within its width/height bounds
+    // 2. DRAW: Juicy, layered canvas presentation rendering sequence
     draw(ctx, x, y) {
         ctx.save();
-        
-        // Translate to the requested layout block position
+
+        // Translate to layout block position assigned by GameManager
         ctx.translate(x, y);
 
-        // Enforce component boundaries (acts like overflow: hidden)
+        // Enforce component perimeter boundaries mask (acts like overflow: hidden)
         ctx.beginPath();
         ctx.rect(0, 0, this.width, this.height);
         ctx.clip();
 
-        // Background Overlay (Fades in based on introProgress)
-        ctx.fillStyle = `rgba(15, 20, 25, ${0.9 * this.introProgress})`;
+        // Dark Matte Screen Backdrop Underlay Tint (Progressively blends in)
+        ctx.fillStyle = `rgba(10, 10, 14, ${0.75 * this.introProgress})`;
         ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw Title (Slides down slightly based on introProgress)
-        const titleY = (this.height / 2 - 100) - (20 * (1 - this.introProgress));
-        
-        // Dynamically style and text for Win vs Loss
-        ctx.fillStyle = this.isWin 
-            ? `rgba(255, 255, 255, ${this.introProgress})` 
-            : `rgba(231, 76, 60, ${this.introProgress})`;
-        ctx.font = 'bold 48px sans-serif';
+        // Break early if component is completely invisible
+        if (this.introProgress <= 0.01) {
+            ctx.restore();
+            return;
+        }
+
+        // Apply shared scaling matrices centered on screen midpoints
+        ctx.save();
+        ctx.translate(this.width / 2, this.height / 2);
+        ctx.scale(this.introProgress, this.introProgress);
+
+        const dw = this.dialogWidth;
+        const dh = this.dialogHeight;
+
+        // LAYER A: NEO-BRUTALIST FLAT SHADOW LAYER (Vibrant Magenta Offset)
+        ctx.fillStyle = '#ff007f';
+        ctx.fillRect(-dw / 2 + 8, -dh / 2 + 8, dw, dh);
+
+        // LAYER B: PRIMARY TERMINAL CABINET ENCLOSURE CASE
+        ctx.fillStyle = '#0a0a0c';
+        ctx.strokeStyle = this.isWin ? '#39ff14' : '#ff007f'; // Dynamic thematic frame colors
+        ctx.lineWidth = 4;
+        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
+        ctx.strokeRect(-dw / 2, -dh / 2, dw, dh);
+
+        // LAYER C: RETRO CRT MONITOR SWEEPING RASTER SCANLINES
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-dw / 2, -dh / 2, dw, dh);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.06)';
+        ctx.lineWidth = 1;
+        for (let sy = -dh / 2; sy < dh / 2; sy += 3) {
+            ctx.beginPath();
+            ctx.moveTo(-dw / 2, sy);
+            ctx.lineTo(dw / 2, sy);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // LAYER D: SCI-FI CORNER EMBED ACCENT GEOMETRY
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.2)';
+        ctx.fillRect(-dw / 2 + 10, -dh / 2 + 10, 8, 2);
+        ctx.fillRect(-dw / 2 + 10, -dh / 2 + 10, 2, 8);
+        ctx.fillRect(dw / 2 - 18, -dh / 2 + 10, 8, 2);
+        ctx.fillRect(dw / 2 - 12, -dh / 2 + 10, 2, 8);
+
+        // LAYER E: STATUS HEADER DISPLAY BANNERS (High Contrast Monospace Typography)
+        ctx.save();
+        ctx.shadowColor = this.isWin ? '#00ff66' : '#ff007f';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.round(36 * this.scaleFactor)}px "Courier New", Courier, monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const titleText = this.isWin ? 'STAGE CLEARED' : 'GAME OVER';
-        ctx.fillText(titleText, this.width / 2, titleY);
 
-        // Draw Buttons
-        ctx.font = '20px sans-serif';
-        this.buttons.forEach((btn, index) => {
-            // Stagger button alpha based on index for a cascading fade-in
-            const btnAlphaProgress = Math.max(0, Math.min(1, (this.introProgress - (index * 0.1)) * 2));
-            
-            ctx.save();
-            // Translate to button center for scaling
-            ctx.translate(btn.x + btn.w / 2, btn.y + btn.h / 2);
-            ctx.scale(btn.scale, btn.scale);
+        const textString = this.isWin ? 'STAGE CLEARED' : 'GAME OVER';
+        ctx.fillText(textString, 0, this.titleY);
+        ctx.restore();
 
-            // Button Fill
-            ctx.fillStyle = btn.hover ? `rgba(231, 76, 60, ${btnAlphaProgress})` : `rgba(44, 62, 80, ${btnAlphaProgress})`;
-            ctx.fillRect(-btn.w / 2, -btn.h / 2, btn.w, btn.h);
+        // Cyber System Status Metadata Feed Subtitle
+        ctx.fillStyle = this.isWin ? '#39ff14' : '#ffe600';
+        ctx.font = `bold ${Math.round(11 * this.scaleFactor)}px "Courier New", Courier, monospace`;
+        ctx.textAlign = 'center';
 
-            // Button Border
-            ctx.strokeStyle = `rgba(236, 240, 241, ${btnAlphaProgress})`;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(-btn.w / 2, -btn.h / 2, btn.w, btn.h);
+        const statusString = this.isWin ? '// TERMINAL: OPERATIONS SUCCESSFUL' : '// WARNING: ASSET DETONATED';
+        ctx.fillText(statusString, 0, this.statusY);
 
-            // Button Text
-            ctx.fillStyle = `rgba(255, 255, 255, ${btnAlphaProgress})`;
-            ctx.fillText(btn.text, 0, 0);
+        // Brutalist Structural Division Bar Separator Line
+        ctx.strokeStyle = '#ff007f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-dw * 0.42, -dh * 0.08);
+        ctx.lineTo(dw * 0.42, -dh * 0.08);
+        ctx.stroke();
 
-            ctx.restore();
-        });
+        // LAYER F: DRAW REUSABLE SYSTEM ACTION BUTTONS
+        this.buttons.forEach(btn => btn.draw(ctx));
 
+        ctx.restore();
         ctx.restore();
     }
 
-    // 3. INPUT: Purely local coordinates (0 to this.width, 0 to this.height)
+    // 3. INPUT ROUTING: Maps localized window pointer contexts down safely
     handleMouseMove(localX, localY) {
-        let isHoveringAny = false;
-        this.buttons.forEach(btn => {
-            btn.hover = (localX >= btn.x && localX <= btn.x + btn.w &&
-                         localY >= btn.y && localY <= btn.y + btn.h);
-            if (btn.hover) isHoveringAny = true;
-        });
-        
-        // Return boolean so the parent orchestrator knows if it should set cursor: pointer
-        return isHoveringAny; 
+        const local = this.getCenterRelativeMouse(localX, localY);
+
+        this.buttons.forEach(btn => btn.handleMouseMove(local.x, local.y));
+
+        // Tells GameManager orchestration loop whether it should swap out pointer shapes
+        return this.buttons.some(btn => btn.isHovered);
+    }
+
+    handleMouseDown(localX, localY) {
+        const local = this.getCenterRelativeMouse(localX, localY);
+        this.buttons.forEach(btn => btn.handleMouseDown(local.x, local.y));
+    }
+
+    handleMouseUp(localX, localY) {
+        const local = this.getCenterRelativeMouse(localX, localY);
+
+        // Execute cleanly bounded click releases natively linked into ArcadeButton components
+        this.mainMenuButton.handleMouseUp(local.x, local.y, this.callbacks.onMainMenu);
+        this.settingsButton.handleMouseUp(local.x, local.y, this.callbacks.onSettings);
+        this.creditsButton.handleMouseUp(local.x, local.y, this.callbacks.onCredits);
     }
 
     handleMouseClick(localX, localY) {
-        this.buttons.forEach(btn => {
-            if (localX >= btn.x && localX <= btn.x + btn.w &&
-                localY >= btn.y && localY <= btn.y + btn.h) {
-                if (btn.action) btn.action();
-            }
-        });
+        // Redundant click hook omitted to avoid double-firing bugs on touch release triggers
     }
 }
