@@ -14,19 +14,27 @@ class MiniGame {
         this.totalCashEarned = 0;
         this.drunkMeter = d.gameplay.initialDrunk;
         this.currentRound = 1;
+
+        // Juice Effects Engine
         this.particles = [];
+        this.screenShake = 0;
+        this.fxTimer = 0;
+        this.fxTargetState = '';
 
-        // Engine State Tree Machine: 'ROUND_START' | 'ACTIVE' | 'BETWEEN_ROUNDS' | 'SHOP' | 'GAMEOVER_DRUNK' | 'GAMEOVER_WIN'
+        // Global Interactive Juicy Buttons
+        this.startBtn = new ArcadeButton({ text: 'START ROUND', themeColor: '#39ff14', glowColor: '#00ff66' });
+        this.nextRoundBtn = new ArcadeButton({ text: 'NEXT ROUND', themeColor: '#39ff14', glowColor: '#00ff66' });
+        this.openShopBtn = new ArcadeButton({ text: 'BUY SNACKS', themeColor: '#00f0ff', glowColor: '#00ffff' });
+        this.restartBtn = new ArcadeButton({ text: 'PLAY AGAIN', themeColor: '#ff007f', glowColor: '#ff00ff' });
+
         this.state = 'ROUND_START';
-
+        this.resize(this.width, this.height);
         this.resetRound();
     }
 
     resetRound() {
         this.roundPrizeMoney = MiniGameData.gameplay.startPrizeMoney;
         this.knifeSystem.reset();
-
-        // Dynamically scale Mahjong tiles to increase difficulty each round (starts at 3)
         const tileCount = Math.min(7, 2 + this.currentRound);
         this.tileSystem.generateTiles(tileCount);
     }
@@ -34,32 +42,50 @@ class MiniGame {
     spawnParticle(text, x, y, color = '#f59e0b') {
         this.particles.push({
             text, x, y, color,
-            vy: -65, opacity: 1.0, life: 1.2
+            vy: -75, opacity: 1.0, life: 1.2
         });
+    }
+
+    spawnJuiceExplosion(x, y, color, count = 25) {
+        for (let i = 0; i < count; i++) {
+            const p = new CanParticle();
+            p.reset(x, y, color);
+            this.particles.push(p);
+        }
     }
 
     triggerRoundFail(reason) {
         this.drunkMeter += MiniGameData.gameplay.drinkPenalty;
-        this.spawnParticle(`FAILED: ${reason.toUpperCase()}`, this.width / 2, this.height * 0.4, '#ef4444');
-        this.spawnParticle(`+${MiniGameData.gameplay.drinkPenalty}% DRUNK PENALTY`, this.width / 2, this.height * 0.45, '#f43f5e');
+        this.screenShake = 24; // Heavy drop impact rumble
+        this.fxTimer = 1.2;    // Delay feedback menu screen
+        this.state = 'FX_LOSE';
+
+        // Explode failure shards from center stage
+        this.spawnJuiceExplosion(this.width / 2, this.height / 2, '#ef4444', 35);
+        this.spawnParticle(`CRASH: ${reason.toUpperCase()}`, this.width / 2, this.height * 0.35, '#ef4444');
 
         if (this.drunkMeter >= 100) {
-            this.state = 'GAMEOVER_DRUNK';
+            this.fxTargetState = 'GAMEOVER_DRUNK';
         } else {
-            this.state = 'BETWEEN_ROUNDS';
+            this.fxTargetState = 'BETWEEN_ROUNDS';
         }
     }
 
     triggerRoundSuccess() {
         this.totalCashEarned += this.roundPrizeMoney;
-        this.spawnParticle(`ROUND WIN! COCKTAIL DELAYED`, this.width / 2, this.height * 0.4, '#22c55e');
-        this.spawnParticle(`+$${this.roundPrizeMoney} SAVED`, this.width / 2, this.height * 0.45, '#4ade80');
+        this.screenShake = 12; // Satisfying victory pop rumble
+        this.fxTimer = 1.2;
+        this.state = 'FX_WIN';
+
+        // Explode golden wealth shards across the layout
+        this.spawnJuiceExplosion(this.width / 2, this.height * 0.75, '#39ff14', 40);
+        this.spawnParticle('SEQUENCE COMPLETE!', this.width / 2, this.height * 0.35, '#39ff14');
 
         if (this.totalCashEarned >= MiniGameData.gameplay.winMoneyTarget) {
-            this.state = 'GAMEOVER_WIN';
+            this.fxTargetState = 'GAMEOVER_WIN';
         } else {
             this.currentRound++;
-            this.state = 'BETWEEN_ROUNDS';
+            this.fxTargetState = 'BETWEEN_ROUNDS';
         }
     }
 
@@ -67,82 +93,107 @@ class MiniGame {
         this.width = w;
         this.height = h;
         this.baseScale = this.width / MiniGameData.config.defaultWidth;
-    }
-
-    handleMouseMove(x, y) { }
-
-    handleMouseDown(x, y) {
         const scale = this.baseScale;
 
-        if (this.state === 'ROUND_START') {
-            this.state = 'ACTIVE';
-            this.resetRound();
-            return;
-        }
+        // Position full arcade button frames dynamically
+        this.startBtn.setPosition(this.width / 2, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
+        this.nextRoundBtn.setPosition(this.width / 2 - 130 * scale, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
+        this.openShopBtn.setPosition(this.width / 2 + 130 * scale, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
+        this.restartBtn.setPosition(this.width / 2, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
 
+        this.shopSystem.resize(w, h);
+    }
+
+    handleMouseMove(mx, my) {
+        if (this.state === 'ROUND_START') this.startBtn.handleMouseMove(mx, my);
         if (this.state === 'BETWEEN_ROUNDS') {
-            const btnY = this.height / 2 + 60 * scale;
-            const btnW = 180 * scale;
-            const btnH = 50 * scale;
-
-            // Target Next Round Check Area
-            const nrx = this.width / 2 - 200 * scale;
-            if (x >= nrx && x <= nrx + btnW && y >= btnY && y <= btnY + btnH) {
-                this.state = 'ACTIVE';
-                this.resetRound();
-                return;
-            }
-
-            // Target Shop Call Box Area
-            const sx = this.width / 2 + 20 * scale;
-            if (x >= sx && x <= sx + btnW && y >= btnY && y <= btnY + btnH) {
-                this.state = 'SHOP';
-                return;
-            }
-            return;
+            this.nextRoundBtn.handleMouseMove(mx, my);
+            this.openShopBtn.handleMouseMove(mx, my);
         }
+        if (this.state === 'SHOP') this.shopSystem.handleMouseMove(mx, my);
+        if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') this.restartBtn.handleMouseMove(mx, my);
+    }
 
-        if (this.state === 'SHOP') {
-            this.shopSystem.handleMouseDown(x, y);
-            return;
-        }
-
-        if (this.state === 'ACTIVE') {
-            // Check Knife clicks before processing Mahjong grid selections
-            if (this.knifeSystem.handleClick(x, y)) return;
-            this.tileSystem.handleClick(x, y);
-            return;
-        }
-
-        if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') {
-            this.totalCashEarned = 0;
-            this.drunkMeter = MiniGameData.gameplay.initialDrunk;
-            this.currentRound = 1;
-            this.state = 'ROUND_START';
-            return;
+    handleMouseDown(mx, my) {
+        if (this.state === 'ROUND_START') {
+            this.startBtn.handleMouseDown(mx, my);
+        } else if (this.state === 'BETWEEN_ROUNDS') {
+            this.nextRoundBtn.handleMouseDown(mx, my);
+            this.openShopBtn.handleMouseDown(mx, my);
+        } else if (this.state === 'SHOP') {
+            this.shopSystem.handleMouseDown(mx, my);
+        } else if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') {
+            this.restartBtn.handleMouseDown(mx, my);
+        } else if (this.state === 'ACTIVE') {
+            if (this.knifeSystem.handleClick(mx, my)) return;
+            this.tileSystem.handleClick(mx, my);
         }
     }
 
-    handleMouseUp(x, y) { }
+    handleMouseUp(mx, my) {
+        if (this.state === 'ROUND_START') {
+            this.startBtn.handleMouseUp(mx, my, () => {
+                this.state = 'ACTIVE';
+                this.resetRound();
+            });
+        } else if (this.state === 'BETWEEN_ROUNDS') {
+            this.nextRoundBtn.handleMouseUp(mx, my, () => {
+                this.state = 'ACTIVE';
+                this.resetRound();
+            });
+            this.openShopBtn.handleMouseUp(mx, my, () => {
+                this.state = 'SHOP';
+            });
+        } else if (this.state === 'SHOP') {
+            this.shopSystem.handleMouseUp(mx, my);
+        } else if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') {
+            this.restartBtn.handleMouseUp(mx, my, () => {
+                this.totalCashEarned = 0;
+                this.drunkMeter = MiniGameData.gameplay.initialDrunk;
+                this.currentRound = 1;
+                this.state = 'ROUND_START';
+            });
+        }
+    }
 
     update(dt) {
-        // Particle Engine Processing
+        if (this.screenShake > 0.1) this.screenShake *= 0.9;
+
+        // Process Interactive Button Physics
+        this.startBtn.update(dt);
+        this.nextRoundBtn.update(dt);
+        this.openShopBtn.update(dt);
+        this.restartBtn.update(dt);
+
+        // Update active custom animation particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
-            p.y += p.vy * dt;
-            p.life -= dt;
-            p.opacity = Math.max(0, p.life / 1.2);
-            if (p.life <= 0) this.particles.splice(i, 1);
+            if (p instanceof CanParticle) {
+                p.update(dt);
+                if (!p.active) this.particles.splice(i, 1);
+            } else {
+                p.y += p.vy * dt;
+                p.life -= dt;
+                p.opacity = Math.max(0, p.life / 1.2);
+                if (p.life <= 0) this.particles.splice(i, 1);
+            }
+        }
+
+        // Handle Visual Intermediate Transition Frames
+        if (this.state === 'FX_WIN' || this.state === 'FX_LOSE') {
+            this.fxTimer -= dt;
+            if (this.state === 'FX_LOSE') this.screenShake = Math.max(this.screenShake, 6);
+            if (this.fxTimer <= 0) {
+                this.state = this.fxTargetState;
+            }
+            return;
         }
 
         if (this.state === 'ACTIVE') {
-            // Handle slow natural sobering decay over time
             this.drunkMeter = Math.max(0, this.drunkMeter - MiniGameData.gameplay.drunkDrainRate * dt);
             this.knifeSystem.update(dt);
-
-            // Prize money acts as the round timer
             if (this.roundPrizeMoney <= 0) {
-                this.triggerRoundFail("Ran out of round funds!");
+                this.triggerRoundFail("Cash run dry");
             }
         }
     }
@@ -150,79 +201,90 @@ class MiniGame {
     draw(ctx) {
         const scale = this.baseScale;
 
-        // Gritty Biker Bar Canvas Background Textures
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.save();
+        if (this.screenShake > 0.5) {
+            ctx.translate((Math.random() - 0.5) * this.screenShake, (Math.random() - 0.5) * this.screenShake);
+        }
 
-        // Bar Counter Board Styling Elements
-        ctx.fillStyle = '#1e293b';
+        // Draw Base Atmosphere
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.fillStyle = '#18181b';
         ctx.fillRect(0, 0, this.width, 65 * scale);
         ctx.fillStyle = '#451a03';
         ctx.fillRect(0, this.height - 35 * scale, this.width, 35 * scale);
 
-        if (this.state === 'ACTIVE') {
+        if (this.state === 'ACTIVE' || this.state === 'FX_WIN' || this.state === 'FX_LOSE') {
             this.knifeSystem.draw(ctx);
             this.tileSystem.draw(ctx);
         }
 
-        // Render Dashboard Metrics Row UI
         this.drawDashboard(ctx);
 
-        // State Machine Text Overlay Renderer
+        if (this.state === 'FX_WIN') {
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+            ctx.fillRect(0, 0, this.width, this.height);
+        } else if (this.state === 'FX_LOSE') {
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+            ctx.fillRect(0, 0, this.width, this.height);
+        }
+
         if (this.state === 'ROUND_START') {
-            this.drawFullScreenOverlay(ctx, `ROUND ${this.currentRound}`, 'CLICK ANYWHERE TO JUGGLE KNIVES & SORT TILES');
+            this.drawWindowOverlay(ctx, `ROUND ${this.currentRound}`, 'JUGGLE THE BLADE & SORT THE MAHJONG TILES');
+            this.startBtn.draw(ctx);
         } else if (this.state === 'BETWEEN_ROUNDS') {
-            this.drawBetweenRoundsMenu(ctx);
+            this.drawWindowOverlay(ctx, 'ROUND OVER', 'REDUCE DRUNKENNESS AT THE SHOP OR PUSH FORWARD');
+            this.nextRoundBtn.draw(ctx);
+            this.openShopBtn.draw(ctx);
         } else if (this.state === 'SHOP') {
             this.shopSystem.draw(ctx);
         } else if (this.state === 'GAMEOVER_DRUNK') {
-            this.drawFullScreenOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE BAR COUCH. CLICK TO RESET.', '#ef4444');
+            this.drawWindowOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE COUCH', '#ef4444');
+            this.restartBtn.draw(ctx);
         } else if (this.state === 'GAMEOVER_WIN') {
-            this.drawFullScreenOverlay(ctx, 'BAR LEGEND!', `YOU RETIRED WITH $${this.totalCashEarned}! CLICK TO REPLAY.`, '#22c55e');
+            this.drawWindowOverlay(ctx, 'BAR CHAMP!', `RETIRED SAFELY WITH $${this.totalCashEarned}`, '#39ff14');
+            this.restartBtn.draw(ctx);
         }
 
-        // Render Active Flying Particles
+        // Corrected Unified Particle Render Loop
         this.particles.forEach(p => {
-            ctx.save();
-            ctx.globalAlpha = p.opacity;
-            ctx.fillStyle = p.color;
-            ctx.font = `900 ${Math.round(20 * scale)}px monospace`;
-            ctx.textAlign = 'center';
-            ctx.fillText(p.text, p.x, p.y);
-            ctx.restore();
+            if (p instanceof CanParticle) {
+                p.draw(ctx);
+            } else {
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.fillStyle = p.color;
+                ctx.font = `900 ${Math.round(20 * scale)}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(p.text, p.x, p.y);
+                ctx.restore();
+            }
         });
+
+        ctx.restore();
     }
 
     drawDashboard(ctx) {
         const scale = this.baseScale;
-
-        // Render Bank balances info
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = '#ffffff';
         ctx.font = `900 ${Math.round(18 * scale)}px monospace`;
         ctx.textAlign = 'left';
-        ctx.fillText(`TOTAL CASH: $${this.totalCashEarned} / $1000`, 20 * scale, 38 * scale);
+        ctx.fillText(`CASH: $${this.totalCashEarned} / $1000`, 20 * scale, 38 * scale);
 
         if (this.state === 'ACTIVE') {
             ctx.fillStyle = '#fbbf24';
-            ctx.fillText(`ROUND POT: $${this.roundPrizeMoney}`, 360 * scale, 38 * scale);
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = `700 ${Math.round(12 * scale)}px monospace`;
-            ctx.fillText('(LOSE $1 PER FLIP CLICK)', 540 * scale, 36 * scale);
+            ctx.fillText(`ROUND VALUE: $${this.roundPrizeMoney}`, 360 * scale, 38 * scale);
         }
 
-        // Drunk Status Indicator Rendering Box Layouts
         const barW = 220 * scale;
         const barH = 18 * scale;
         const bx = this.width - barW - 20 * scale;
         const by = 24 * scale;
 
-        ctx.fillStyle = '#3f3f46';
+        ctx.fillStyle = '#27272a';
         ctx.fillRect(bx, by, barW, barH);
-
-        const fillPct = this.drunkMeter / 100;
-        ctx.fillStyle = (this.drunkMeter > 75) ? '#dc2626' : (this.drunkMeter > 45 ? '#f59e0b' : '#22c55e');
-        ctx.fillRect(bx, by, barW * fillPct, barH);
-
+        ctx.fillStyle = (this.drunkMeter > 75) ? '#ef4444' : (this.drunkMeter > 45 ? '#f59e0b' : '#39ff14');
+        ctx.fillRect(bx, by, barW * (this.drunkMeter / 100), barH);
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2 * scale;
         ctx.strokeRect(bx, by, barW, barH);
@@ -230,55 +292,21 @@ class MiniGame {
         ctx.fillStyle = '#ffffff';
         ctx.font = `900 ${Math.round(12 * scale)}px monospace`;
         ctx.textAlign = 'right';
-        ctx.fillText(`DRUNKENNESS: ${Math.round(this.drunkMeter)}%`, bx - 12 * scale, 37 * scale);
+        ctx.fillText(`BLOOD ALCOHOL: ${Math.round(this.drunkMeter)}%`, bx - 12 * scale, 37 * scale);
     }
 
-    drawFullScreenOverlay(ctx, headerText, subText, color = '#f59e0b') {
+    drawWindowOverlay(ctx, head, sub, color = '#f59e0b') {
         const scale = this.baseScale;
-        ctx.save();
-        ctx.fillStyle = 'rgba(9, 9, 11, 0.85)';
-        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.fillStyle = 'rgba(9, 9, 11, 0.75)';
+        ctx.fillRect(0, 65 * scale, this.width, this.height - 100 * scale);
 
         ctx.fillStyle = color;
-        ctx.font = `900 ${Math.round(52 * scale)}px monospace`;
+        ctx.font = `900 ${Math.round(48 * scale)}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(headerText, this.width / 2, this.height / 2 - 15 * scale);
+        ctx.fillText(head, this.width / 2, this.height / 2 - 25 * scale);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `700 ${Math.round(16 * scale)}px monospace`;
-        ctx.fillText(subText, this.width / 2, this.height / 2 + 35 * scale);
-        ctx.restore();
-    }
-
-    drawBetweenRoundsMenu(ctx) {
-        const scale = this.baseScale;
-        ctx.save();
-        ctx.fillStyle = 'rgba(9, 9, 11, 0.8)';
-        ctx.fillRect(0, 0, this.width, this.height);
-
-        ctx.fillStyle = '#f59e0b';
-        ctx.font = `900 ${Math.round(38 * scale)}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText('ROUND SUMMARY INTERMISSION', this.width / 2, this.height / 2 - 50 * scale);
-
-        const btnY = this.height / 2 + 60 * scale;
-        const btnW = 180 * scale;
-        const btnH = 50 * scale;
-
-        // Draw Next Round Prompt Option
-        const nrx = this.width / 2 - 200 * scale;
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(nrx, btnY, btnW, btnH);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `900 ${Math.round(15 * scale)}px monospace`;
-        ctx.fillText('START NEXT ROUND', nrx + btnW / 2, btnY + 30 * scale);
-
-        // Draw Buy Snack Depot Option
-        const sx = this.width / 2 + 20 * scale;
-        ctx.fillStyle = '#2563eb';
-        ctx.fillRect(sx, btnY, btnW, btnH);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('BUY BAR SNACKS', sx + btnW / 2, btnY + 30 * scale);
-        ctx.restore();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `700 ${Math.round(14 * scale)}px monospace`;
+        ctx.fillText(sub, this.width / 2, this.height / 2 + 25 * scale);
     }
 }

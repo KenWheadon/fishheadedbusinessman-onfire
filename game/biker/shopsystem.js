@@ -1,74 +1,105 @@
 class ShopSystem {
     constructor(manager) {
         this.mgr = manager;
+
+        // Initialize Arcade Components for Purchase Options[cite: 5]
+        this.packButtons = [];
+        MiniGameData.packs.forEach((pack) => {
+            this.packButtons.push(new ArcadeButton({
+                text: `BUY [$${pack.cost}]`,
+                themeColor: '#ff007f',
+                glowColor: '#ff00ff'
+            }));
+        });
+
+        // Modular Neo-Brutalist [ X ] Close Button replacing the old leave button[cite: 7]
+        this.closeBtn = new CloseButton({
+            size: 32,
+            themeColor: '#ff007f',
+            shadowColor: '#9d174d',
+            hoverColor: '#ff0055',
+            lineColor: '#ffffff'
+        });
     }
 
-    handleMouseDown(mx, my) {
+    resize(w, h) {
         const scale = this.mgr.baseScale;
-        const d = MiniGameData;
-
         const panelW = 650 * scale;
         const panelH = 420 * scale;
-        const px = (this.mgr.width - panelW) / 2;
-        const py = (this.mgr.height - panelH) / 2;
+        const px = (w - panelW) / 2;
+        const py = (h - panelH) / 2;
 
-        // Dismiss Interface Box Action Area
-        const cbx = px + panelW - 140 * scale;
-        const cby = py + panelH - 55 * scale;
-        if (mx >= cbx && mx <= cbx + 120 * scale && my >= cby && my <= cby + 40 * scale) {
-            this.mgr.state = 'BETWEEN_ROUNDS';
-            return true;
-        }
+        // Position Close Button perfectly in the top-right corner of the brutalist panel[cite: 3, 7]
+        this.closeBtn.setPosition(px + panelW - 24 * scale, py + 24 * scale, 32 * scale, scale);
 
-        // Loop through Product Option Button Coordinates
         const cardW = 170 * scale;
         const cardH = 240 * scale;
         const startX = px + 40 * scale;
         const startY = py + 100 * scale;
         const gap = 25 * scale;
 
-        for (let i = 0; i < d.packs.length; i++) {
+        this.packButtons.forEach((btn, i) => {
             const cx = startX + i * (cardW + gap);
             const cy = startY;
-            const bx = cx + 10 * scale;
-            const by = cy + cardH - 50 * scale;
-            const bw = cardW - 20 * scale;
-            const bh = 38 * scale;
-
-            if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
-                this.executePackPurchase(d.packs[i]);
-                return true;
-            }
-        }
-        return false;
+            btn.setPosition(cx + cardW / 2, cy + cardH - 35 * scale, cardW - 24 * scale, 40 * scale, scale);
+        });
     }
 
-    executePackPurchase(pack) {
+    handleMouseMove(mx, my) {
+        this.closeBtn.handleMouseMove(mx, my);
+        this.packButtons.forEach(btn => btn.handleMouseMove(mx, my));
+    }
+
+    handleMouseDown(mx, my) {
+        this.closeBtn.handleMouseDown(mx, my);
+        this.packButtons.forEach(btn => btn.handleMouseDown(mx, my));
+    }
+
+    handleMouseUp(mx, my) {
+        // Trigger shop dismissal upon snapping back from click compression
+        this.closeBtn.handleMouseUp(mx, my, () => {
+            this.mgr.state = 'BETWEEN_ROUNDS';
+        });
+
+        this.packButtons.forEach((btn, i) => {
+            btn.handleMouseUp(mx, my, () => {
+                this.executePurchase(MiniGameData.packs[i]);
+            });
+        });
+    }
+
+    executePurchase(pack) {
         if (this.mgr.totalCashEarned >= pack.cost) {
             this.mgr.totalCashEarned -= pack.cost;
 
-            // Generate Odds Distribution Calculations
             const roll = Math.random();
             let accumulatedChance = 0;
-            let finalReduction = 0;
+            let reduction = 0;
 
             for (let option of pack.odds) {
                 accumulatedChance += option.chance;
                 if (roll <= accumulatedChance) {
-                    finalReduction = option.reduction;
+                    reduction = option.reduction;
                     break;
                 }
             }
 
-            if (finalReduction > 0) {
-                this.mgr.drunkMeter = Math.max(0, this.mgr.drunkMeter - finalReduction);
-                this.mgr.spawnParticle(`-${finalReduction}% DRUNK!`, this.mgr.width / 2, this.mgr.height * 0.45, '#22c55e');
+            if (reduction > 0) {
+                this.mgr.drunkMeter = Math.max(0, this.mgr.drunkMeter - reduction);
+                this.mgr.spawnJuiceExplosion(this.mgr.width / 2, this.mgr.height / 2, '#39ff14', 15);
+                this.mgr.spawnParticle(`SOBERED UP -${reduction}%`, this.mgr.width / 2, this.mgr.height * 0.45, '#39ff14');
             } else {
-                this.mgr.spawnParticle('PACK DUD! NO EFFECT!', this.mgr.width / 2, this.mgr.height * 0.45, '#ef4444');
+                this.mgr.spawnJuiceExplosion(this.mgr.width / 2, this.mgr.height / 2, '#ef4444', 8);
+                this.mgr.spawnParticle('PACK HAD NO EFFECT!', this.mgr.width / 2, this.mgr.height * 0.45, '#ef4444');
             }
         } else {
-            this.mgr.spawnParticle('NOT ENOUGH CASH!', this.mgr.width / 2, this.mgr.height * 0.45, '#f43f5e');
+            this.mgr.spawnParticle('INSUFFICIENT BAR FUNDS!', this.mgr.width / 2, this.mgr.height * 0.45, '#ff007f');
         }
+    }
+
+    update(dt) {
+        this.closeBtn.update(dt);
+        this.packButtons.forEach(btn => btn.update(dt));
     }
 
     draw(ctx) {
@@ -81,28 +112,21 @@ class ShopSystem {
         const py = (this.mgr.height - panelH) / 2;
 
         ctx.save();
-        // Overlay screen fade background mask
         ctx.fillStyle = 'rgba(9, 9, 11, 0.85)';
         ctx.fillRect(0, 0, this.mgr.width, this.mgr.height);
 
-        // Core UI Dashboard Structure Frame
         ctx.fillStyle = '#18181b';
         ctx.strokeStyle = '#d97706';
         ctx.lineWidth = 4 * scale;
         ctx.fillRect(px, py, panelW, panelH);
         ctx.strokeRect(px, py, panelW, panelH);
 
-        // Copy Texts header lines
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = `900 ${Math.round(26 * scale)}px monospace`;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 ${Math.round(24 * scale)}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText('BIKER BAR SNACK DEPOT', px + panelW / 2, py + 45 * scale);
+        ctx.fillText('BIKER SNACK DEPOT', px + panelW / 2, py + 45 * scale);
 
-        ctx.fillStyle = '#22c55e';
-        ctx.font = `700 ${Math.round(16 * scale)}px monospace`;
-        ctx.fillText(`BAR WALLET: $${this.mgr.totalCashEarned}`, px + panelW / 2, py + 75 * scale);
-
-        // Product Options Iterative Render Layout Grid Loop
+        // Card rendering loop
         const cardW = 170 * scale;
         const cardH = 240 * scale;
         const startX = px + 40 * scale;
@@ -119,39 +143,19 @@ class ShopSystem {
             ctx.fillRect(cx, cy, cardW, cardH);
             ctx.strokeRect(cx, cy, cardW, cardH);
 
-            // Render Product Labels
-            ctx.fillStyle = '#f59e0b';
+            ctx.fillStyle = '#fbbf24';
             ctx.font = `900 ${Math.round(13 * scale)}px monospace`;
             ctx.fillText(pack.name.toUpperCase(), cx + cardW / 2, cy + 30 * scale);
 
-            // Descriptions and Specs formatting
             ctx.fillStyle = '#94a3b8';
-            ctx.font = `700 ${Math.round(10 * scale)}px monospace`;
+            ctx.font = `700 ${Math.round(11 * scale)}px monospace`;
             this.wrapText(ctx, pack.desc, cx + cardW / 2, cy + 75 * scale, cardW - 20 * scale, 16 * scale);
 
-            // Purchase Button Elements Setup
-            const bx = cx + 10 * scale;
-            const by = cy + cardH - 50 * scale;
-            const bw = cardW - 20 * scale;
-            const bh = 38 * scale;
-
-            ctx.fillStyle = (this.mgr.totalCashEarned >= pack.cost) ? '#b91c1c' : '#4b5563';
-            ctx.fillRect(bx, by, bw, bh);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `900 ${Math.round(12 * scale)}px monospace`;
-            ctx.fillText(`BUY [$${pack.cost}]`, bx + bw / 2, by + bh / 2 + 4 * scale);
+            this.packButtons[i].draw(ctx);
         });
 
-        // Close/Dismiss Panel configuration
-        const cbx = px + panelW - 140 * scale;
-        const cby = py + panelH - 55 * scale;
-        ctx.fillStyle = '#3f3f46';
-        ctx.fillRect(cbx, cby, 120 * scale, 40 * scale);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `900 ${Math.round(14 * scale)}px monospace`;
-        ctx.fillText('LEAVE SHOP', cbx + 60 * scale, cby + 25 * scale);
-
+        // Render the high-juice close button over the panel interface
+        this.closeBtn.draw(ctx);
         ctx.restore();
     }
 
@@ -159,7 +163,6 @@ class ShopSystem {
         const words = text.split(' ');
         let line = '';
         let currentY = y;
-
         for (let n = 0; n < words.length; n++) {
             let testLine = line + words[n] + ' ';
             let metrics = ctx.measureText(testLine);
