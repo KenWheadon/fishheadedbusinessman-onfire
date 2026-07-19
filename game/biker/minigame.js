@@ -12,7 +12,7 @@ class MiniGame {
         this.totalCashEarned = 0;
         this.drunkMeter = d.gameplay.initialDrunk;
         this.currentRound = 1;
-        this.drunkDrainUnlocked = false; // Locks natural recovery behind the shop upgrade
+        this.drunkDrainUnlocked = false;
 
         this.particles = [];
         this.screenShake = 0;
@@ -31,13 +31,10 @@ class MiniGame {
 
     resetRound() {
         const totalKnives = 1 + Math.floor((this.currentRound - 1) / 5);
-
-        // Prize Rule: Starts at $5 baseline + round number bonus ($8 extra for round 8), multiplied by total knives
         this.roundPrizeMoney = (MiniGameData.gameplay.startPrizeMoney + this.currentRound) * totalKnives;
+        if (this.currentRound === 8) this.roundPrizeMoney += 8;
 
         this.knifeSystem.reset();
-
-        // Tile Difficulty Ramping: Resets down whenever a new knife is gained (every 5 rounds)
         const tileCount = 2 + ((this.currentRound - 1) % 5);
         this.tileSystem.generateTiles(tileCount);
     }
@@ -126,6 +123,7 @@ class MiniGame {
         } else if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') {
             this.restartBtn.handleMouseDown(mx, my);
         } else if (this.state === 'ACTIVE') {
+            // Check knife hits first to maintain click isolation overlays
             if (this.knifeSystem.handleClick(mx, my)) return;
             this.tileSystem.handleClick(mx, my);
         }
@@ -191,10 +189,17 @@ class MiniGame {
         }
 
         if (this.state === 'ACTIVE') {
-            // Natural sobriety recovery loop runs only if purchased
             if (this.drunkDrainUnlocked) {
                 this.drunkMeter = Math.max(0, this.drunkMeter - MiniGameData.gameplay.drunkDrainRate * dt);
             }
+
+            // Core Rule: The round ends immediately when the prize money hits 0
+            if (this.roundPrizeMoney <= 0) {
+                this.triggerRoundFail("Cash run dry!");
+                return;
+            }
+
+            this.tileSystem.update(dt);
             this.knifeSystem.update(dt);
         }
     }
@@ -207,6 +212,7 @@ class MiniGame {
             ctx.translate((Math.random() - 0.5) * this.screenShake, (Math.random() - 0.5) * this.screenShake);
         }
 
+        // Atmosphere Layout
         ctx.fillStyle = '#09090b';
         ctx.fillRect(0, 0, this.width, this.height);
         ctx.fillStyle = '#18181b';
@@ -214,12 +220,18 @@ class MiniGame {
         ctx.fillStyle = '#451a03';
         ctx.fillRect(0, this.height - 35 * scale, this.width, 35 * scale);
 
+        // Render Layer Priority Swap: Tiles go underneath UI frames[cite: 3, 6]
         if (this.state === 'ACTIVE' || this.state === 'FX_WIN' || this.state === 'FX_LOSE') {
-            this.knifeSystem.draw(ctx);
             this.tileSystem.draw(ctx);
         }
 
+        // Render standard Dashboard panel frames[cite: 3]
         this.drawDashboard(ctx);
+
+        // Render Layer Priority Swap: Knives draw over top of everything else so they are never hidden[cite: 2, 3]
+        if (this.state === 'ACTIVE' || this.state === 'FX_WIN' || this.state === 'FX_LOSE') {
+            this.knifeSystem.draw(ctx);
+        }
 
         if (this.state === 'FX_WIN') {
             ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
@@ -231,7 +243,7 @@ class MiniGame {
 
         if (this.state === 'ROUND_START') {
             const currentKnives = 1 + Math.floor((this.currentRound - 1) / 5);
-            this.drawWindowOverlay(ctx, `ROUND ${this.currentRound}`, `JUGGLING ${currentKnives} BLADE(S) • DRAG AND SORT ALL TILES`);
+            this.drawWindowOverlay(ctx, `ROUND ${this.currentRound}`, `JUGGLING ${currentKnives} BLADE(S) • SORT ALL TILES AT THE BOTTOM`);
             this.startBtn.draw(ctx);
         } else if (this.state === 'BETWEEN_ROUNDS') {
             this.drawWindowOverlay(ctx, 'ROUND OVER', 'VISIT THE DEPOT FOR UPGRADES OR PUSH FORWARD');
@@ -240,10 +252,10 @@ class MiniGame {
         } else if (this.state === 'SHOP') {
             this.shopSystem.draw(ctx);
         } else if (this.state === 'GAMEOVER_DRUNK') {
-            this.drawWindowOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE BARROOM FLOOR', '#ef4444');
+            this.drawWindowOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE COUCH', '#ef4444');
             this.restartBtn.draw(ctx);
         } else if (this.state === 'GAMEOVER_WIN') {
-            this.drawWindowOverlay(ctx, 'BAR CHAMPION!', `RETIRED SAFELY WITH $${this.totalCashEarned}`, '#39ff14');
+            this.drawWindowOverlay(ctx, 'BAR CHAMP!', `RETIRED SAFELY WITH $${this.totalCashEarned}`, '#39ff14');
             this.restartBtn.draw(ctx);
         }
 

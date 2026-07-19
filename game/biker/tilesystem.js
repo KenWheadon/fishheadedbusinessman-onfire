@@ -27,55 +27,28 @@ class TileSystem {
             }
         }
 
+        const scale = this.mgr.baseScale;
+        // Bound unplaced tiles to upper/middle screen real estate
+        const minX = 50 * scale;
+        const maxX = this.mgr.width - 130 * scale;
+        const minY = 90 * scale;
+        const maxY = this.mgr.height - 300 * scale;
+
         pool.forEach((val) => {
+            // Start tiles randomly placed around the screen area
+            const rx = minX + Math.random() * (maxX - minX);
+            const ry = minY + Math.random() * (maxY - minY);
+
             this.tiles.push({
                 val,
-                x: 0,
-                y: 0,
+                x: rx,
+                y: ry,
+                tx: rx,
+                ty: ry,
                 isPlaced: false,
                 placedX: 0
             });
         });
-
-        this.updateTargetPositions();
-    }
-
-    updateTargetPositions() {
-        const scale = this.mgr.baseScale;
-        const tileW = 75 * scale;
-        const tileH = 105 * scale;
-        const gap = 15 * scale;
-
-        // Process Unplaced rack formatting
-        const unplaced = this.tiles.filter(t => !t.isPlaced);
-        if (unplaced.length > 0) {
-            const totalUnplacedW = unplaced.length * tileW + (unplaced.length - 1) * gap;
-            const startUnplacedX = (this.mgr.width - totalUnplacedW) / 2;
-            const unplacedY = this.mgr.height * 0.78;
-
-            unplaced.forEach((tile, idx) => {
-                if (tile !== this.draggedTile) {
-                    tile.x = startUnplacedX + idx * (tileW + gap);
-                    tile.y = unplacedY;
-                }
-            });
-        }
-
-        // Process Placed layout formatting (Ordered horizontally dynamically by their placedX coordinate position)
-        const placed = this.tiles.filter(t => t.isPlaced).sort((a, b) => a.placedX - b.placedX);
-        if (placed.length > 0) {
-            const totalPlacedW = this.tiles.length * tileW + (this.tiles.length - 1) * gap;
-            const startPlacedX = (this.mgr.width - totalPlacedW) / 2;
-            const placedY = this.mgr.height * 0.56;
-
-            placed.forEach((tile, idx) => {
-                tile.placedX = startPlacedX + idx * (tileW + gap);
-                if (tile !== this.draggedTile) {
-                    tile.x = tile.placedX;
-                    tile.y = placedY;
-                }
-            });
-        }
     }
 
     checkSorted() {
@@ -93,7 +66,7 @@ class TileSystem {
         const tileW = 75 * scale;
         const tileH = 105 * scale;
 
-        // Trace selection detection upwards from front rendering stack
+        // Trace from foreground to background layers
         for (let i = this.tiles.length - 1; i >= 0; i--) {
             const tile = this.tiles[i];
             if (mx >= tile.x && mx <= tile.x + tileW && my >= tile.y && my <= tile.y + tileH) {
@@ -121,52 +94,123 @@ class TileSystem {
         const tileH = 105 * scale;
         const gap = 15 * scale;
 
-        const totalPlacedW = this.tiles.length * tileW + (this.tiles.length - 1) * gap;
-        const startPlacedX = (this.mgr.width - totalPlacedW) / 2;
-        const placedY = this.mgr.height * 0.56;
+        const totalW = this.tiles.length * tileW + (this.tiles.length - 1) * gap;
+        const startX = (this.mgr.width - totalW) / 2;
+        const placedY = this.mgr.height - 160 * scale; // Moved along the bottom edge
 
-        // Check drop accuracy relative to Target Placement zone vertical window bounds
-        if (my >= placedY - 50 * scale && my <= placedY + tileH + 50 * scale) {
-            const existingPlaced = this.tiles.filter(t => t.isPlaced && t !== this.draggedTile)
+        // Check if dropped inside the matching zone bounds
+        if (my >= placedY - 60 * scale && my <= placedY + tileH + 60 * scale) {
+            const otherPlaced = this.tiles.filter(t => t.isPlaced && t !== this.draggedTile)
                 .sort((a, b) => a.placedX - b.placedX);
 
-            let insertIdx = 0;
-            let insertedInline = false;
-
-            // Loop to scan horizontal positions and slice tile directly between neighbors
-            for (let i = 0; i < existingPlaced.length; i++) {
-                const midPoint = existingPlaced[i].placedX + tileW / 2;
-                if (mx < midPoint) {
+            let insertIdx = otherPlaced.length;
+            for (let i = 0; i < otherPlaced.length; i++) {
+                if (mx < otherPlaced[i].x + tileW / 2) {
                     insertIdx = i;
-                    insertedInline = true;
                     break;
                 }
             }
-            if (!insertedInline) insertIdx = existingPlaced.length;
 
             this.draggedTile.isPlaced = true;
 
-            // Assign dummy anchor placements to trigger layout array shifts on target layout refresh updates
-            if (existingPlaced.length === 0) {
-                this.draggedTile.placedX = startPlacedX;
+            // Assign sequential indexing spatial anchors to dictate ordering arrays
+            if (otherPlaced.length === 0) {
+                this.draggedTile.placedX = startX;
             } else if (insertIdx === 0) {
-                this.draggedTile.placedX = existingPlaced[0].placedX - 10;
-            } else if (insertIdx >= existingPlaced.length) {
-                this.draggedTile.placedX = existingPlaced[existingPlaced.length - 1].placedX + 10;
+                this.draggedTile.placedX = otherPlaced[0].placedX - 10;
+            } else if (insertIdx >= otherPlaced.length) {
+                this.draggedTile.placedX = otherPlaced[otherPlaced.length - 1].placedX + 10;
             } else {
-                this.draggedTile.placedX = (existingPlaced[insertIdx - 1].placedX + existingPlaced[insertIdx].placedX) / 2;
+                this.draggedTile.placedX = (otherPlaced[insertIdx - 1].placedX + otherPlaced[insertIdx].placedX) / 2;
             }
         } else {
-            // Snap back down to unplaced item deck if dropped elsewhere
+            // Dropped outside: stays unplaced where released, animating seamlessly to rest target
             this.draggedTile.isPlaced = false;
+            this.draggedTile.tx = this.draggedTile.x;
+            this.draggedTile.ty = this.draggedTile.y;
         }
 
         this.draggedTile = null;
-        this.updateTargetPositions();
 
         if (this.checkSorted()) {
             this.mgr.triggerRoundSuccess();
         }
+    }
+
+    update(dt) {
+        const scale = this.mgr.baseScale;
+        const tileW = 75 * scale;
+        const tileH = 105 * scale;
+        const gap = 15 * scale;
+
+        const totalW = this.tiles.length * tileW + (this.tiles.length - 1) * gap;
+        const startX = (this.mgr.width - totalW) / 2;
+        const placedY = this.mgr.height - 160 * scale;
+
+        // Dynamic Gap Generation Setup: Shifts neighbor tiles to reveal slot openings
+        let isHoveringZone = false;
+        let insertIdx = 0;
+
+        if (this.draggedTile) {
+            const dragCenterY = this.draggedTile.y + tileH / 2;
+            const dragCenterX = this.draggedTile.x + tileW / 2;
+            if (dragCenterY >= placedY - 60 * scale && dragCenterY <= placedY + tileH + 60 * scale) {
+                isHoveringZone = true;
+                const otherPlaced = this.tiles.filter(t => t.isPlaced && t !== this.draggedTile)
+                    .sort((a, b) => a.placedX - b.placedX);
+                insertIdx = otherPlaced.length;
+                for (let i = 0; i < otherPlaced.length; i++) {
+                    if (dragCenterX < otherPlaced[i].x + tileW / 2) {
+                        insertIdx = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Process Target Matrix coordinates loop
+        if (isHoveringZone) {
+            const otherPlaced = this.tiles.filter(t => t.isPlaced && t !== this.draggedTile)
+                .sort((a, b) => a.placedX - b.placedX);
+
+            // Build temporary array tracking structural gap space offsets
+            let previewList = [...otherPlaced];
+            previewList.splice(insertIdx, 0, this.draggedTile);
+
+            previewList.forEach((tile, idx) => {
+                const targetX = startX + idx * (tileW + gap);
+                if (tile === this.draggedTile) {
+                    // Dragged item tracks mouse accurately
+                } else {
+                    tile.tx = targetX;
+                    tile.ty = placedY;
+                }
+            });
+        } else {
+            // Standard layout sorting targets architecture
+            const placed = this.tiles.filter(t => t.isPlaced).sort((a, b) => a.placedX - b.placedX);
+            placed.forEach((tile, idx) => {
+                tile.tx = startX + idx * (tileW + gap);
+                tile.ty = placedY;
+                tile.placedX = tile.tx;
+            });
+        }
+
+        // Unplaced resting logic targets
+        this.tiles.forEach((tile) => {
+            if (!tile.isPlaced && tile !== this.draggedTile) {
+                tile.tx = tile.x;
+                tile.ty = tile.y;
+            }
+        });
+
+        // Fluid Framerate-Independent Interpolation Animation Execution
+        this.tiles.forEach((tile) => {
+            if (tile !== this.draggedTile) {
+                tile.x += (tile.tx - tile.x) * 12 * dt;
+                tile.y += (tile.ty - tile.y) * 12 * dt;
+            }
+        });
     }
 
     draw(ctx) {
@@ -176,40 +220,31 @@ class TileSystem {
         const gap = 15 * scale;
         const totalW = this.tiles.length * tileW + (this.tiles.length - 1) * gap;
         const startX = (this.mgr.width - totalW) / 2;
-
-        const placedY = this.mgr.height * 0.56;
-        const unplacedY = this.mgr.height * 0.78;
+        const placedY = this.mgr.height - 160 * scale;
 
         ctx.save();
 
-        // Render Drop Target Zone
-        ctx.fillStyle = '#141417';
+        // Matching Panel Placement Zone along the absolute bottom region
+        ctx.fillStyle = '#111113';
         ctx.strokeStyle = '#d97706';
         ctx.lineWidth = 2 * scale;
         ctx.setLineDash([6 * scale, 6 * scale]);
-        ctx.fillRect(startX - 15 * scale, placedY - 10 * scale, totalW + 30 * scale, tileH + 20 * scale);
-        ctx.strokeRect(startX - 15 * scale, placedY - 10 * scale, totalW + 30 * scale, tileH + 20 * scale);
+        ctx.fillRect(startX - 20 * scale, placedY - 15 * scale, totalW + 40 * scale, tileH + 30 * scale);
+        ctx.strokeRect(startX - 20 * scale, placedY - 15 * scale, totalW + 40 * scale, tileH + 30 * scale);
         ctx.setLineDash([]);
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.font = `900 ${Math.round(13 * scale)}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText("DRAG & DROP TILES HERE IN ASCENDING ORDER", this.mgr.width / 2, placedY + tileH / 2 + 5 * scale);
+        ctx.fillText("MATCHING PANEL ZONE", this.mgr.width / 2, placedY + tileH + 25 * scale);
 
-        // Render Unplaced Rack Base Board
-        ctx.fillStyle = '#27272a';
-        ctx.strokeStyle = '#7c2d12';
-        ctx.lineWidth = 4 * scale;
-        ctx.fillRect(startX - 25 * scale, unplacedY - 15 * scale, totalW + 50 * scale, tileH + 30 * scale);
-        ctx.strokeRect(startX - 25 * scale, unplacedY - 15 * scale, totalW + 50 * scale, tileH + 30 * scale);
-
-        // Draw standard layout layers
+        // Draw standard tiles
         this.tiles.forEach((tile) => {
             if (tile === this.draggedTile) return;
             this.drawTileGraphic(ctx, tile, scale, tileW, tileH, false);
         });
 
-        // Always draw active selection graphic on top of the layout depth field
+        // Overlay active dragging layer directly on top of system depth buffers
         if (this.draggedTile) {
             this.drawTileGraphic(ctx, this.draggedTile, scale, tileW, tileH, true);
         }
@@ -220,9 +255,9 @@ class TileSystem {
     drawTileGraphic(ctx, tile, scale, tileW, tileH, isDragging) {
         ctx.save();
         if (isDragging) {
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-            ctx.shadowBlur = 14 * scale;
-            ctx.shadowOffsetY = 8 * scale;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+            ctx.shadowBlur = 16 * scale;
+            ctx.shadowOffsetY = 10 * scale;
         }
 
         ctx.fillStyle = isDragging ? '#fef08a' : '#fffbeb';
