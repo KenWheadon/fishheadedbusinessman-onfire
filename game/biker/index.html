@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biker Bar Drinking Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #09090b;
+            color: #ffffff;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            background-color: #18181b;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            border: 4px solid #d97706;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Import System Architecture Components -->
+    <script src="minigamedata.js"></script>
+    <script src="knifesystem.js"></script>
+    <script src="tilesystem.js"></script>
+    <script src="shopsystem.js"></script>
+    <script src="minigame.js"></script>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Target Native Resolution Breakdown
+        const defaultWidth = 1280;
+        const defaultHeight = 720;
+
+        function resizeCanvas() {
+            const windowWidth = window.innerWidth * 0.95;
+            const windowHeight = window.innerHeight * 0.95;
+
+            let w = defaultWidth;
+            let h = defaultHeight;
+
+            const r = defaultWidth / defaultHeight;
+            if (windowWidth / windowHeight > r) {
+                h = windowHeight;
+                w = windowHeight * r;
+            } else {
+                w = windowWidth;
+                h = windowWidth / r;
+            }
+
+            canvas.width = w;
+            canvas.height = h;
+
+            if (gameInstance) {
+                gameInstance.resize(canvas.width, canvas.height);
+            }
+        }
+
+        // Initialize MiniGame Context
+        const gameInstance = new MiniGame({
+            width: defaultWidth,
+            height: defaultHeight
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Bind Mouse Interaction Listeners
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            gameInstance.handleMouseDown(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(e);
+            gameInstance.handleMouseMove(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const pos = getMousePos(e);
+            gameInstance.handleMouseUp(pos.x, pos.y);
+        });
+
+        // Frame Loop Core Engine execution
+        let lastTime = performance.now();
+        function loop(now) {
+            let dt = (now - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; // Cap time skips
+            lastTime = now;
+
+            gameInstance.update(dt);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            gameInstance.draw(ctx);
+
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+    </script>
+</body>
+
+</html>
