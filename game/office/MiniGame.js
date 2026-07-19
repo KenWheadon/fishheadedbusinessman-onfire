@@ -14,10 +14,10 @@ class MiniGame {
 
         // Systems & Progression Trackers
         this.score = 0;
-        this.money = 0;        // Track earned money
-        this.fun = 100;        // Track fun level (0 to 100)
-        this.stealthAlert = 0; // Suspicion bar: 0 to 100
-        this.workDone = 0;     // Work done meter: 0 to 100
+        this.money = 0;
+        this.fun = 100;
+        this.stealthAlert = 0;
+        this.workDone = 0;
 
         this.cans = [];
         this.particles = [];
@@ -47,7 +47,19 @@ class MiniGame {
         this.dragStart = { x: 0, y: 0 };
         this.dragCurrent = { x: 0, y: 0 };
 
+        // Generate properties for the first can
+        this.generateNextCanVariance();
+
         this.resize(this.width, this.height);
+    }
+
+    // Generates a unique physical profile for each individual can
+    generateNextCanVariance() {
+        this.nextCanVariance = {
+            vxModifier: (Math.random() - 0.5) * 260, // Left/Right variation offset
+            vyModifier: (Math.random() - 0.5) * 120, // Gravity weight variation offset
+            vzModifier: (Math.random() - 0.5) * 150  // Depth thrust variation offset
+        };
     }
 
     resize(w, h) {
@@ -120,9 +132,10 @@ class MiniGame {
             const pullX = this.dragStart.x - this.dragCurrent.x;
             const pullY = this.dragCurrent.y - this.dragStart.y;
 
-            const launchVx = pullX * 5.2;
-            const launchVy = -680 - Math.max(0, pullY * 2.8);
-            const launchVz = Math.min(1400, Math.max(450, pullY * 5.5));
+            // Noticeably scaled down multipliers for a highly subtle, controlled sensitivity mapping curve
+            const launchVx = (pullX * 1.8) + this.nextCanVariance.vxModifier;
+            const launchVy = -680 - Math.max(0, pullY * 1.0) + this.nextCanVariance.vyModifier;
+            const launchVz = Math.min(1400, Math.max(450, pullY * 2.2)) + this.nextCanVariance.vzModifier;
 
             const start3DX = (this.canSpawnX - this.horizonX) / this.baseScale;
             const start3DY = (this.canSpawnY - this.horizonY) / this.baseScale;
@@ -141,11 +154,13 @@ class MiniGame {
 
             this.isDragging = false;
 
-            // Gain a bit of fun for throwing a can
             this.fun = Math.min(100, this.fun + 8);
             this.spawnParticle('+FUN', this.canSpawnX, this.canSpawnY - 20, '#ec4899');
 
             if (typeof AssetManager !== 'undefined') AssetManager.playAudio('woosh-fast', { volume: 0.7 });
+
+            // Roll unique attributes for the consecutive loaded can 
+            this.generateNextCanVariance();
 
             if (this.boss.state === 'LOOKING') {
                 this.triggerBossCatch();
@@ -154,7 +169,6 @@ class MiniGame {
     }
 
     triggerBossCatch() {
-        // Suspicion level goes up slower (reduced from 35 to 15 per catch event)
         this.stealthAlert = Math.min(100, this.stealthAlert + 15);
         this.screenShake = 12;
         if (typeof AssetManager !== 'undefined') {
@@ -188,21 +202,18 @@ class MiniGame {
         // --- Work Progress, Money, & Fun Metrics ---
         if (this.playerState === 'WORKING') {
             if (this.fun > 0) {
-                // If the player has fun, work progresses normally, money increases, and fun goes down
                 this.workDone += dt * 45;
-                this.money += dt * 15; // Earn money for doing work
-                this.fun = Math.max(0, this.fun - dt * 20); // Fun goes down while working
+                this.money += dt * 15;
+                this.fun = Math.max(0, this.fun - dt * 20);
 
                 if (this.workDone >= 100) {
                     this.workDone = 0;
                     this.stealthAlert = Math.max(0, this.stealthAlert - 25);
-                    this.money += 50; // Bonus payout on assignment completion
+                    this.money += 50;
                     this.spawnParticle('JOB COMPLETE! +$50', this.width / 2, this.height * 0.5, '#22c55e');
                     if (typeof AssetManager !== 'undefined') AssetManager.playAudio('success-shiny', { volume: 0.5 });
                 }
             } else {
-                // Out of fun: work progress completely stalls out
-                // Boss gets a tiny bit suspicious over time if they are actively looking
                 if (this.boss.state === 'LOOKING') {
                     this.stealthAlert = Math.min(100, this.stealthAlert + dt * 10);
                     if (this.stealthAlert >= 100) {
@@ -232,7 +243,6 @@ class MiniGame {
 
         this.boss.x += (this.boss.targetX - this.boss.x) * 7.5 * dt;
 
-        // Suspicion ticks up slower: reduced background detection probability from 0.015 to 0.007
         if (this.boss.state === 'LOOKING' && this.playerState === 'THROWING' && Math.random() < 0.007) {
             this.triggerBossCatch();
         }
@@ -254,11 +264,8 @@ class MiniGame {
 
                 if (hitX && hitY && !c.bounced) {
                     this.score += 1;
-
-                    // Getting a can in the basket gives a lot of fun
                     this.fun = Math.min(100, this.fun + 30);
                     this.spawnParticle('+1 SCORE! GREAT FUN!', this.width * 0.72, this.height * 0.38, '#ec4899');
-
                     if (typeof AssetManager !== 'undefined') AssetManager.playAudio('coin-drop', { volume: 0.6 });
                     this.cans.splice(i, 1);
                 } else {
@@ -369,7 +376,7 @@ class MiniGame {
             ctx.restore();
         });
 
-        // 5. Draw Static Base Launcher 'can' Node (Modified: removed !this.isDragging so it stays visible while aiming)
+        // 5. Draw Static Base Launcher 'can' Node
         if (this.playerState === 'THROWING') {
             const spawnCanImg = typeof AssetManager !== 'undefined' ? AssetManager.get('can') : null;
             const sSize = 52 * this.baseScale;
@@ -387,7 +394,6 @@ class MiniGame {
             }
             ctx.restore();
 
-            // Hide the instructions prompt text while dragging to keep the workspace clean
             if (!this.isDragging) {
                 ctx.fillStyle = '#f8fafc';
                 ctx.font = `bold ${Math.round(13 * this.baseScale)}px sans-serif`;
@@ -426,33 +432,106 @@ class MiniGame {
             ctx.lineWidth = 3 * this.baseScale;
             ctx.strokeRect(this.computerHitbox.x - 2, this.computerHitbox.y - 2, this.computerHitbox.w + 4, this.computerHitbox.h + 4);
         } else if (this.playerState === 'WORKING' && this.fun <= 0) {
-            ctx.strokeStyle = '#ef4444'; // Flashes red if trying to work without fun
+            ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 3 * this.baseScale;
             ctx.strokeRect(this.computerHitbox.x - 2, this.computerHitbox.y - 2, this.computerHitbox.w + 4, this.computerHitbox.h + 4);
         }
 
-        // 8. Slingshot Vector Path Visualizer
+        // 8. Slingshot Vector Path & Clamped Predictive Dot Engine
         if (this.isDragging) {
             ctx.beginPath();
             ctx.setLineDash([4 * this.baseScale, 4 * this.baseScale]);
-            ctx.strokeStyle = '#38bdf8';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
             ctx.lineWidth = 3 * this.baseScale;
             ctx.moveTo(this.dragStart.x, this.dragStart.y);
             ctx.lineTo(this.dragCurrent.x, this.dragCurrent.y);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Aim visualizer prediction dot
+            // Gather subtle structural throw vector metrics
             const pullX = this.dragStart.x - this.dragCurrent.x;
             const pullY = this.dragCurrent.y - this.dragStart.y;
+
+            const launchVx = (pullX * 1.8) + this.nextCanVariance.vxModifier;
+            const launchVy = -680 - Math.max(0, pullY * 1.0) + this.nextCanVariance.vyModifier;
+            const launchVz = Math.min(1400, Math.max(450, pullY * 2.2)) + this.nextCanVariance.vzModifier;
+
             const start3DX = (this.canSpawnX - this.horizonX) / this.baseScale;
             const start3DY = (this.canSpawnY - this.horizonY) / this.baseScale;
-            const predProj = this.project3D(start3DX + pullX * 1.1, start3DY - pullY * 0.4, Math.min(700, pullY * 5.5));
 
-            ctx.fillStyle = '#38bdf8';
+            // Run flight loop to locate depth coordinate crossing point
+            let simX = start3DX;
+            let simY = start3DY;
+            let simZ = 0;
+            let simVx = launchVx;
+            let simVy = launchVy;
+            let simVz = launchVz;
+            const simDt = 0.012;
+            let safetyCounter = 0;
+
+            while (simZ < this.trashcan.z && safetyCounter < 350) {
+                simX += simVx * simDt * this.baseScale;
+                simY += simVy * simDt * this.baseScale;
+                simZ += simVz * simDt;
+                simVy += 1350 * simDt;
+                safetyCounter++;
+            }
+
+            const landProj = this.project3D(simX, simY, simZ);
+
+            // --- Always-On-Screen Safety Boundaries ---
+            const margin = 24 * this.baseScale;
+            const minX = margin;
+            const maxX = this.width - margin;
+            const minY = 95 * this.baseScale; // Ensure it stays clear beneath the dashboard bar
+            const maxY = this.height - margin;
+
+            const clampedX = Math.max(minX, Math.min(maxX, landProj.x));
+            const clampedY = Math.max(minY, Math.min(maxY, landProj.y));
+
+            // Calculate absolute structural distance from the safe clamped boundaries
+            const offScreenDist = Math.hypot(landProj.x - clampedX, landProj.y - clampedY);
+
+            // Dynamically scale down size based on how far out of bounds it drifts (floor size at 25%)
+            const distanceScale = Math.max(0.25, 1 - (offScreenDist / 450));
+
+            // Draw high-visibility target dot reticle
+            ctx.save();
+            ctx.translate(clampedX, clampedY);
+
+            // Outer backing shadow layer ensures visual contrast on any background color
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = 5;
+
+            // High contrast vibrant electric neon-yellow styling
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3.5 * this.baseScale * distanceScale;
+
+            // Reticle Outer Ring
             ctx.beginPath();
-            ctx.arc(predProj.x, predProj.y, 6 * this.baseScale, 0, Math.PI * 2);
+            ctx.arc(0, 0, 15 * this.baseScale * distanceScale, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Reticle Core Focal Dot
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5 * this.baseScale * distanceScale, 0, Math.PI * 2);
             ctx.fill();
+
+            // If clamped, draw a sleek arrow guide detailing direction of offscreen positioning
+            if (offScreenDist > 2) {
+                const angle = Math.atan2(landProj.y - clampedY, landProj.x - clampedX);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.moveTo(20 * this.baseScale * distanceScale, 0);
+                ctx.lineTo(14 * this.baseScale * distanceScale, -5 * this.baseScale * distanceScale);
+                ctx.lineTo(14 * this.baseScale * distanceScale, 5 * this.baseScale * distanceScale);
+                ctx.closePath();
+                ctx.fillStyle = '#facc15';
+                ctx.fill();
+            }
+
+            ctx.restore();
         }
 
         // 9. Particles System Layer
@@ -521,7 +600,7 @@ class MiniGame {
 
         ctx.fillStyle = '#334155';
         ctx.fillRect(funX, funY, barW, barH);
-        ctx.fillStyle = '#ec4899'; // Hot Pink fun theme representation
+        ctx.fillStyle = '#ec4899';
         ctx.fillRect(funX, funY, barW * (this.fun / 100), barH);
 
         ctx.fillStyle = '#cbd5e1';
