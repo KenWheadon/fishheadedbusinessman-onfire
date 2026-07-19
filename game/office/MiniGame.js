@@ -14,6 +14,8 @@ class MiniGame {
 
         // Systems & Progression Trackers
         this.score = 0;
+        this.money = 0;        // Track earned money
+        this.fun = 100;        // Track fun level (0 to 100)
         this.stealthAlert = 0; // Suspicion bar: 0 to 100
         this.workDone = 0;     // Work done meter: 0 to 100
 
@@ -64,10 +66,10 @@ class MiniGame {
             h: 140 * this.baseScale
         };
 
-        // Static Can Launcher Hotspot - Moved UP by an additional 10% of total screen height
+        // Static Can Launcher Hotspot
         this.canSpawnX = 340 * this.baseScale;
         this.canSpawnY = this.height - 120 * this.baseScale - (this.height * 0.10);
-        this.canInteractionRadius = 60 * this.baseScale; // Generous input tolerance window
+        this.canInteractionRadius = 60 * this.baseScale;
     }
 
     // Perspective Projection Utility
@@ -99,7 +101,7 @@ class MiniGame {
             return;
         }
 
-        // 2. Strict Launcher Check (Must click directly within the bounds of the static can spawn)
+        // 2. Launcher Check
         const distToCan = Math.hypot(x - this.canSpawnX, y - this.canSpawnY);
         if (this.playerState === 'THROWING' && distToCan <= this.canInteractionRadius) {
             this.isDragging = true;
@@ -115,16 +117,13 @@ class MiniGame {
         }
 
         if (this.isDragging) {
-            // Slingshot vector offsets
             const pullX = this.dragStart.x - this.dragCurrent.x;
-            const pullY = this.dragCurrent.y - this.dragStart.y; // Positive when dragging downward
+            const pullY = this.dragCurrent.y - this.dragStart.y;
 
-            // High powered physics variables for smooth, effortless targeting
             const launchVx = pullX * 5.2;
             const launchVy = -680 - Math.max(0, pullY * 2.8);
             const launchVz = Math.min(1400, Math.max(450, pullY * 5.5));
 
-            // Dynamically translate 2D space spawn locations to matching 3D space starting vectors
             const start3DX = (this.canSpawnX - this.horizonX) / this.baseScale;
             const start3DY = (this.canSpawnY - this.horizonY) / this.baseScale;
 
@@ -141,6 +140,11 @@ class MiniGame {
             });
 
             this.isDragging = false;
+
+            // Gain a bit of fun for throwing a can
+            this.fun = Math.min(100, this.fun + 8);
+            this.spawnParticle('+FUN', this.canSpawnX, this.canSpawnY - 20, '#ec4899');
+
             if (typeof AssetManager !== 'undefined') AssetManager.playAudio('woosh-fast', { volume: 0.7 });
 
             if (this.boss.state === 'LOOKING') {
@@ -150,7 +154,8 @@ class MiniGame {
     }
 
     triggerBossCatch() {
-        this.stealthAlert = Math.min(100, this.stealthAlert + 35);
+        // Suspicion level goes up slower (reduced from 35 to 15 per catch event)
+        this.stealthAlert = Math.min(100, this.stealthAlert + 15);
         this.screenShake = 12;
         if (typeof AssetManager !== 'undefined') {
             const randomYell = `yell${Math.floor(Math.random() * 7) + 1}`;
@@ -180,14 +185,30 @@ class MiniGame {
             return;
         }
 
-        // --- Work Progress & Suspicion Lowering Metrics ---
+        // --- Work Progress, Money, & Fun Metrics ---
         if (this.playerState === 'WORKING') {
-            this.workDone += dt * 45; // Speed filling the work meter
-            if (this.workDone >= 100) {
-                this.workDone = 0;
-                this.stealthAlert = Math.max(0, this.stealthAlert - 25); // Decrease suspicion on completion
-                this.spawnParticle('JOB COMPLETE! SUSPICION DECREASED', this.width / 2, this.height * 0.5, '#22c55e');
-                if (typeof AssetManager !== 'undefined') AssetManager.playAudio('success-shiny', { volume: 0.5 });
+            if (this.fun > 0) {
+                // If the player has fun, work progresses normally, money increases, and fun goes down
+                this.workDone += dt * 45;
+                this.money += dt * 15; // Earn money for doing work
+                this.fun = Math.max(0, this.fun - dt * 20); // Fun goes down while working
+
+                if (this.workDone >= 100) {
+                    this.workDone = 0;
+                    this.stealthAlert = Math.max(0, this.stealthAlert - 25);
+                    this.money += 50; // Bonus payout on assignment completion
+                    this.spawnParticle('JOB COMPLETE! +$50', this.width / 2, this.height * 0.5, '#22c55e');
+                    if (typeof AssetManager !== 'undefined') AssetManager.playAudio('success-shiny', { volume: 0.5 });
+                }
+            } else {
+                // Out of fun: work progress completely stalls out
+                // Boss gets a tiny bit suspicious over time if they are actively looking
+                if (this.boss.state === 'LOOKING') {
+                    this.stealthAlert = Math.min(100, this.stealthAlert + dt * 10);
+                    if (this.stealthAlert >= 100) {
+                        this.state = 'GAMEOVER';
+                    }
+                }
             }
         }
 
@@ -211,7 +232,8 @@ class MiniGame {
 
         this.boss.x += (this.boss.targetX - this.boss.x) * 7.5 * dt;
 
-        if (this.boss.state === 'LOOKING' && this.playerState === 'THROWING' && Math.random() < 0.015) {
+        // Suspicion ticks up slower: reduced background detection probability from 0.015 to 0.007
+        if (this.boss.state === 'LOOKING' && this.playerState === 'THROWING' && Math.random() < 0.007) {
             this.triggerBossCatch();
         }
 
@@ -222,18 +244,21 @@ class MiniGame {
             c.x += c.vx * dt * this.baseScale;
             c.y += c.vy * dt * this.baseScale;
             c.z += c.vz * dt;
-            c.vy += 1350 * dt; // Gravity vector pull
+            c.vy += 1350 * dt;
             c.rotation += c.vRotation * dt;
 
-            // Deep visual depth axis target collision check
             if (c.z >= this.trashcan.z) {
                 const halfW = this.trashcan.w / 2;
                 const hitX = c.x >= this.trashcan.x - halfW && c.x <= this.trashcan.x + halfW;
                 const hitY = c.y >= this.trashcan.y - this.trashcan.h && c.y <= this.trashcan.y;
 
                 if (hitX && hitY && !c.bounced) {
-                    this.score += 1; // Increment core performance score safely
-                    this.spawnParticle('+1 SCORE!', this.width * 0.72, this.height * 0.38, '#22c55e');
+                    this.score += 1;
+
+                    // Getting a can in the basket gives a lot of fun
+                    this.fun = Math.min(100, this.fun + 30);
+                    this.spawnParticle('+1 SCORE! GREAT FUN!', this.width * 0.72, this.height * 0.38, '#ec4899');
+
                     if (typeof AssetManager !== 'undefined') AssetManager.playAudio('coin-drop', { volume: 0.6 });
                     this.cans.splice(i, 1);
                 } else {
@@ -283,7 +308,7 @@ class MiniGame {
             ctx.stroke();
         }
 
-        // 2. Draw 'boss' Asset Key Component
+        // 2. Draw 'boss' Asset
         if (this.boss.state !== 'AWAY') {
             const bossProj = this.project3D(this.boss.x, this.boss.y, this.boss.z);
             const bW = this.boss.w * bossProj.scale;
@@ -344,13 +369,13 @@ class MiniGame {
             ctx.restore();
         });
 
-        // 5. Draw Static Base Launcher 'can' hotspot Node
-        if (this.playerState === 'THROWING' && !this.isDragging) {
+        // 5. Draw Static Base Launcher 'can' Node (Modified: removed !this.isDragging so it stays visible while aiming)
+        if (this.playerState === 'THROWING') {
             const spawnCanImg = typeof AssetManager !== 'undefined' ? AssetManager.get('can') : null;
             const sSize = 52 * this.baseScale;
 
             ctx.save();
-            const pulse = 1 + Math.sin(this.time * 5) * 0.06;
+            const pulse = 1 + (this.isDragging ? 0 : Math.sin(this.time * 5) * 0.06);
             ctx.translate(this.canSpawnX, this.canSpawnY);
             ctx.scale(pulse, pulse);
 
@@ -362,18 +387,20 @@ class MiniGame {
             }
             ctx.restore();
 
-            // Constant instructional overlay text context
-            ctx.fillStyle = '#f8fafc';
-            ctx.font = `bold ${Math.round(13 * this.baseScale)}px sans-serif`;
-            ctx.textBaseline = 'middle';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#000';
-            ctx.shadowBlur = 6;
-            ctx.fillText('CLICK HERE AND DRAG TO THROW', this.canSpawnX, this.canSpawnY - 42 * this.baseScale);
-            ctx.shadowBlur = 0;
+            // Hide the instructions prompt text while dragging to keep the workspace clean
+            if (!this.isDragging) {
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = `bold ${Math.round(13 * this.baseScale)}px sans-serif`;
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillText('CLICK HERE AND DRAG TO THROW', this.canSpawnX, this.canSpawnY - 42 * this.baseScale);
+                ctx.shadowBlur = 0;
+            }
         }
 
-        // 6. Draw Player Character Avatar Key (`fhbmon`)
+        // 6. Draw Player Character Avatar
         const playerImg = typeof AssetManager !== 'undefined' ? AssetManager.get('fhbmon') : null;
         const pW = 210 * this.baseScale;
         const pH = 260 * this.baseScale;
@@ -385,7 +412,7 @@ class MiniGame {
             ctx.drawImage(playerImg, pX, pY, pW, pH);
         }
 
-        // 7. Draw Work Terminal Console Graphic Key (`computer`)
+        // 7. Draw Work Terminal Console
         const compImg = typeof AssetManager !== 'undefined' ? AssetManager.get('computer') : null;
         if (compImg && compImg.complete) {
             ctx.drawImage(compImg, this.computerHitbox.x, this.computerHitbox.y, this.computerHitbox.w, this.computerHitbox.h);
@@ -394,8 +421,12 @@ class MiniGame {
             ctx.fillRect(this.computerHitbox.x, this.computerHitbox.y, this.computerHitbox.w, this.computerHitbox.h);
         }
 
-        if (this.playerState === 'WORKING') {
+        if (this.playerState === 'WORKING' && this.fun > 0) {
             ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 3 * this.baseScale;
+            ctx.strokeRect(this.computerHitbox.x - 2, this.computerHitbox.y - 2, this.computerHitbox.w + 4, this.computerHitbox.h + 4);
+        } else if (this.playerState === 'WORKING' && this.fun <= 0) {
+            ctx.strokeStyle = '#ef4444'; // Flashes red if trying to work without fun
             ctx.lineWidth = 3 * this.baseScale;
             ctx.strokeRect(this.computerHitbox.x - 2, this.computerHitbox.y - 2, this.computerHitbox.w + 4, this.computerHitbox.h + 4);
         }
@@ -424,7 +455,7 @@ class MiniGame {
             ctx.fill();
         }
 
-        // 9. Particles System Layer Rendering
+        // 9. Particles System Layer
         this.particles.forEach(p => {
             ctx.save();
             ctx.globalAlpha = p.opacity;
@@ -435,7 +466,7 @@ class MiniGame {
             ctx.restore();
         });
 
-        // 10. Draw UI Layout Panels
+        // 10. Draw UI Panels
         this.drawInterfaceDashboard(ctx);
 
         ctx.restore();
@@ -446,14 +477,17 @@ class MiniGame {
         ctx.fillRect(0, 0, this.width, 75 * this.baseScale);
 
         ctx.fillStyle = '#f8fafc';
-        ctx.font = `900 ${Math.round(22 * this.baseScale)}px monospace`;
+        ctx.font = `900 ${Math.round(20 * this.baseScale)}px monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`SCORE: ${this.score}`, 30 * this.baseScale, 24 * this.baseScale);
+        ctx.fillText(`SCORE: ${this.score}`, 30 * this.baseScale, 15 * this.baseScale);
 
-        const barW = 200 * this.baseScale;
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText(`CASH: $${Math.floor(this.money)}`, 30 * this.baseScale, 42 * this.baseScale);
+
+        const barW = 160 * this.baseScale;
         const barH = 14 * this.baseScale;
-        const edgeSpacing = 30 * this.baseScale;
+        const edgeSpacing = 20 * this.baseScale;
 
         // --- Meter 1: Suspicion Matrix Level ---
         const susX = this.width - barW - edgeSpacing;
@@ -469,7 +503,7 @@ class MiniGame {
         ctx.fillText(`SUSPICION: ${Math.round(this.stealthAlert)}%`, susX, susY + 24 * this.baseScale);
 
         // --- Meter 2: Work Done Meter ---
-        const workX = this.width - (barW * 2) - (edgeSpacing * 2);
+        const workX = susX - barW - edgeSpacing;
         const workY = 20 * this.baseScale;
 
         ctx.fillStyle = '#334155';
@@ -481,20 +515,33 @@ class MiniGame {
         ctx.font = `bold ${Math.round(11 * this.baseScale)}px monospace`;
         ctx.fillText(`WORK DONE: ${Math.round(this.workDone)}%`, workX, workY + 24 * this.baseScale);
 
-        // Center Alert Trackers State Actions
+        // --- Meter 3: Fun Meter ---
+        const funX = workX - barW - edgeSpacing;
+        const funY = 20 * this.baseScale;
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(funX, funY, barW, barH);
+        ctx.fillStyle = '#ec4899'; // Hot Pink fun theme representation
+        ctx.fillRect(funX, funY, barW * (this.fun / 100), barH);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `bold ${Math.round(11 * this.baseScale)}px monospace`;
+        ctx.fillText(`FUN METER: ${Math.round(this.fun)}%`, funX, funY + 24 * this.baseScale);
+
+        // Center Warning Notifications State Actions
         ctx.textAlign = 'center';
         if (this.boss.state === 'LOOKING') {
             ctx.fillStyle = '#ef4444';
-            ctx.font = `900 ${Math.round(16 * this.baseScale)}px monospace`;
-            ctx.fillText('⚠️ BOSS WATCHING! FREEZE OR WORK! ⚠️', this.width / 2, 28 * this.baseScale);
+            ctx.font = `900 ${Math.round(15 * this.baseScale)}px monospace`;
+            ctx.fillText(this.fun <= 0 && this.playerState === 'WORKING' ? '⚠️ OUT OF FUN! BOSS IS GROWING SUSPICIOUS!' : '⚠️ BOSS WATCHING! FREEZE OR WORK! ⚠️', this.width / 2, 28 * this.baseScale);
         } else if (this.boss.state === 'WARNING') {
             ctx.fillStyle = '#f59e0b';
-            ctx.font = `900 ${Math.round(16 * this.baseScale)}px monospace`;
+            ctx.font = `900 ${Math.round(15 * this.baseScale)}px monospace`;
             ctx.fillText('👣 FOOTSTEPS APPROACHING... 👣', this.width / 2, 28 * this.baseScale);
         } else {
             ctx.fillStyle = '#38bdf8';
-            ctx.font = `700 ${Math.round(14 * this.baseScale)}px monospace`;
-            ctx.fillText('STATUS: RADAR CLEAR. DISPOSE CANS', this.width / 2, 28 * this.baseScale);
+            ctx.font = `700 ${Math.round(13 * this.baseScale)}px monospace`;
+            ctx.fillText(this.fun <= 0 ? '❌ OUT OF FUN! THROW CANS TO REGAIN SPIRIT!' : 'STATUS: RADAR CLEAR. DISPOSE CANS', this.width / 2, 28 * this.baseScale);
         }
 
         // Handle GameOver HUD states
@@ -508,7 +555,7 @@ class MiniGame {
 
             ctx.fillStyle = '#f8fafc';
             ctx.font = `700 ${Math.round(22 * this.baseScale)}px monospace`;
-            ctx.fillText(`TOTAL DISPOSAL SCORE: ${this.score}`, this.width / 2, this.height * 0.52);
+            ctx.fillText(`DISPOSAL SCORE: ${this.score} | TOTAL PAYCHECK: $${Math.floor(this.money)}`, this.width / 2, this.height * 0.52);
 
             ctx.fillStyle = '#64748b';
             ctx.font = `500 ${Math.round(14 * this.baseScale)}px monospace`;
