@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Escape Minigame - Sandbox Test Launcher</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #loading {
+            color: #f8fafc;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 1.25rem;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            text-align: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">INITIALIZING GAME ASSET PIPELINE...</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Dependencies -->
+    <script src="../AssetManager.js"></script>
+    <script src="MiniGame.js"></script>
+
+    <script>
+        // Declare globally, but do NOT fetch them until the DOM is loaded
+        let canvas;
+        let ctx;
+        let miniGame;
+        let lastTime = 0;
+
+        // Core Initialization Logic (Runs only when the window is fully ready)
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Initialize game structure with baseline scaling calculations
+            miniGame = new MiniGame({ width: window.innerWidth, height: window.innerHeight });
+
+            // Wire up event resize structures safely now that elements exist
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Setup input listener interceptors
+            setupInputListeners();
+
+            // Kick off asset downloader engine
+            initializeGameAssets();
+        }
+
+        // Global Layout Engine Resizer
+        function resizeCanvas() {
+            if (!canvas || !miniGame) return;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            miniGame.resize(width, height);
+        }
+
+        // Extract Relative Client Coordinates for Inputs
+        function getLocalCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Attaches mouse and touch interactions securely
+        function setupInputListeners() {
+            canvas.addEventListener('mousedown', (e) => {
+                const coords = getLocalCoords(e);
+                miniGame.handleMouseDown(coords.x, coords.y);
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const coords = getLocalCoords(e);
+                miniGame.handleMouseMove(coords.x, coords.y);
+            });
+
+            window.addEventListener('mouseup', () => {
+                miniGame.handleMouseUp();
+            });
+
+            // Mobile Friendly Touch Interface Fallbacks
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const coords = getLocalCoords(e);
+                miniGame.handleMouseDown(coords.x, coords.y);
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const coords = getLocalCoords(e);
+                miniGame.handleMouseMove(coords.x, coords.y);
+            }, { passive: false });
+
+            window.addEventListener('touchend', () => {
+                miniGame.handleMouseUp();
+            });
+        }
+
+        // Fire up the Asset Pipeline explicitly
+        function initializeGameAssets() {
+            if (typeof AssetManager !== 'undefined') {
+                // Dynamically step back up one directory layer to locate assets outside /office/
+                const adjustedManifest = AssetManager.MANIFEST.map(asset => {
+                    return {
+                        key: asset.key,
+                        src: '../' + asset.src
+                    };
+                });
+
+                AssetManager.load(
+                    adjustedManifest,
+                    (progress) => {
+                        document.getElementById('loading').textContent = `LOADING ASSETS: ${Math.round(progress * 100)}%`;
+                    },
+                    () => {
+                        document.getElementById('loading').style.display = 'none';
+                        miniGame.reset();
+                        requestAnimationFrame(gameLoop);
+                    }
+                );
+            } else {
+                console.error("AssetManager script file could not be verified locally.");
+                document.getElementById('loading').textContent = "ERROR: ASSET PIPELINE OFFLINE";
+            }
+        }
+
+        // Main Game Loop Frame Clock Orchestrator
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            let dt = (timestamp - lastTime) / 1000;
+
+            if (dt > 0.1) dt = 0.1;
+            lastTime = timestamp;
+
+            miniGame.update(dt);
+            miniGame.draw(ctx);
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Safely kick off structural loading once document DOM parsing completes completely
+        window.addEventListener('load', init);
+    </script>
+</body>
+
+</html>

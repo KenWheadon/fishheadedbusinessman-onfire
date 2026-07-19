@@ -91,8 +91,15 @@ class SimpleAssetManager {
       { key: 'bg-start', src: 'images/bg-start.jpg' },
       { key: 'bg-main', src: 'images/bg-main.jpg' },
 
+      // 7. Minigame assets
+      { key: 'can', src: 'images/can.webp' },
+      { key: 'boss', src: 'images/boss.webp' },
+      { key: 'fhbmon', src: 'images/fhbmon.webp' },
+      { key: 'computer', src: 'images/computer.png' },
+      { key: 'basket', src: 'images/basket.png' },
 
-      // 7. Audio assets (extracted from folder directory)
+
+      // 8. Audio assets (extracted from folder directory)
       { key: 'alert-ding', src: 'audio/alert-ding.mp3' },
       { key: 'bell-correct', src: 'audio/bell-correct-answer.mp3' },
       { key: 'bell-incorrect', src: 'audio/bell-incorrect-answer.mp3' },
