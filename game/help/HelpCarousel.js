@@ -327,7 +327,7 @@ class HelpCarousel {
     }
 
     handleMouseClick(localX, localY) {
-        // Redundant click hook omitted to avoid double-firing bugs on click routing[cite: 1]
+        // Redundant click hook omitted to avoid double-firing bugs on click routing
     }
 
     getCursorStyle() {

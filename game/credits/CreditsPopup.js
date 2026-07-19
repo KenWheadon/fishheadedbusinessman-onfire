@@ -47,7 +47,7 @@ class CreditsPopup {
         this.dragStartScrollY = 0;
         this.scrollbarHovered = false;
 
-        // Dynamic event listener reference to enable self-cleaning wheel hooks //[cite: 1]
+        // Dynamic event listener reference to enable self-cleaning wheel hooks
         this._boundWheelHandler = null;
 
         // Physics & Animation State
@@ -62,7 +62,7 @@ class CreditsPopup {
             cardHovers: Array(this.credits.length).fill(0)
         };
 
-        // 1. INSTANTIATE RETRO BACK BUTTON //[cite: 2, 6]
+        // 1. INSTANTIATE RETRO BACK BUTTON 
         this.backButton = new ArcadeButton({
             text: 'BACK TO MENU',
             themeColor: '#ff007f', // Hot Pink
@@ -91,9 +91,9 @@ class CreditsPopup {
         const baseScale = Math.min(width / 800, height / 600);
         this.scaleFactor = Math.min(Math.max(baseScale, 0.7), 1.2);
 
-        // Fluid responsive viewport layouts //[cite: 4]
+        // Fluid responsive viewport layouts 
         if (width < 480) {
-            // Mobile Breakpoint //[cite: 4]
+            // Mobile Breakpoint 
             this.dims.w = Math.min(width * 0.94, 340);
             this.dims.h = Math.min(height * 0.94, 520);
             this.cardHeight = 145;
@@ -115,7 +115,7 @@ class CreditsPopup {
             this.isMobile = false;
         }
 
-        // Clamp to avoid visual box clipping boundaries //[cite: 4]
+        // Clamp to avoid visual box clipping boundaries
         this.dims.w = Math.max(290, Math.min(640, this.dims.w));
         this.dims.h = Math.max(440, Math.min(640, this.dims.h));
 
@@ -136,7 +136,7 @@ class CreditsPopup {
         this.anim.maxScroll = Math.max(0, contentHeight - this.clipHeight + 10);
         this.anim.targetScrollY = Math.max(0, Math.min(this.anim.targetScrollY, this.anim.maxScroll));
 
-        // Position the Back Button at the base of the frame //[cite: 4]
+        // Position the Back Button at the base of the frame
         const btnW = bw * 0.82;
         const btnH = this.isMobile ? 36 : 42 * this.scaleFactor;
         const btnY = bh / 2 - btnH - 12;
@@ -151,7 +151,7 @@ class CreditsPopup {
         this.anim.targetAlpha = 1;
         this.anim.targetScale = 1;
 
-        // Register window scroll intercept listener //[cite: 1]
+        // Register window scroll intercept listener
         this._boundWheelHandler = this._onWindowWheel.bind(this);
         window.addEventListener('wheel', this._boundWheelHandler, { passive: false });
     }
@@ -163,7 +163,7 @@ class CreditsPopup {
         this.draggingScrollbar = false;
         this.draggingList = false;
 
-        // Clean up window hooks when popups exit screen space //[cite: 7]
+        // Clean up window hooks when popups exit screen space
         if (this._boundWheelHandler) {
             window.removeEventListener('wheel', this._boundWheelHandler);
             this._boundWheelHandler = null;
@@ -172,7 +172,7 @@ class CreditsPopup {
 
     /**
      * Mouse Wheel interceptor. Prevents default browser page scrolling 
-     * only when the cursor is over the credits window box area. //[cite: 7]
+     * only when the cursor is over the credits window box area.
      */
     _onWindowWheel(e) {
         if (!this.isVisible || this.anim.scale < 0.9) return;
@@ -182,7 +182,7 @@ class CreditsPopup {
         const bw = this.dims.w;
         const bh = this.dims.h;
 
-        // Capture scroll only if mouse coordinates fall inside popup boundaries //[cite: 7]
+        // Capture scroll only if mouse coordinates fall inside popup boundaries
         if (tx >= -bw / 2 && tx <= bw / 2 && ty >= -bh / 2 && ty <= bh / 2) {
             e.preventDefault(); // Lock browser scrolling layers
             this.handleMouseWheel(e.deltaY);
@@ -213,7 +213,7 @@ class CreditsPopup {
         this._processHover(lerpdt);
 
         this.closeButton.update(dt);
-        this.buttons.forEach(btn => btn.update(dt)); //[cite: 2]
+        this.buttons.forEach(btn => btn.update(dt));
     }
 
     _processHover(lerpdt) {
@@ -250,7 +250,7 @@ class CreditsPopup {
             this.anim.cardHovers[i] = lerpdt(this.anim.cardHovers[i], targetHover, 0.2);
         }
 
-        // 4. Check bottom Back button hover //[cite: 2]
+        // 4. Check bottom Back button hover 
         const isButtonHovered = this.buttons.some(btn => btn.scale > 1.01 || btn.targetScale > 1.0);
         if (isButtonHovered) {
             this.cursor = 'pointer';
@@ -283,7 +283,7 @@ class CreditsPopup {
             this.anim.targetScrollY = clickFraction * this.anim.maxScroll;
             this.anim.targetScrollY = Math.max(0, Math.min(this.anim.targetScrollY, this.anim.maxScroll));
         }
-        // 2. Direct Content Swiping/Dragging Drag Loop (Great for mobile!) //[cite: 4]
+        // 2. Direct Content Swiping/Dragging Drag Loop (Great for mobile!)
         else if (this.draggingList) {
             const deltaY = ty - this.dragStartY;
             this.anim.targetScrollY = this.dragStartScrollY - deltaY;
@@ -292,7 +292,7 @@ class CreditsPopup {
 
         // Delegate tracking matrices to sub-elements
         this.closeButton.handleMouseMove(tx, ty);
-        this.buttons.forEach(btn => btn.handleMouseMove(tx, ty)); //[cite: 2]
+        this.buttons.forEach(btn => btn.handleMouseMove(tx, ty));
     }
 
     handleMouseDown(localX, localY) {
@@ -306,7 +306,7 @@ class CreditsPopup {
         // Route interactions to Close button
         this.closeButton.handleMouseDown(tx, ty);
 
-        // Forward press triggers to Back button //[cite: 2]
+        // Forward press triggers to Back button
         if (this.backButton.isPointInRect(tx, ty)) {
             this.backButton.handleMouseDown(tx, ty);
             return;
@@ -324,7 +324,7 @@ class CreditsPopup {
             this.anim.targetScrollY = clickFraction * this.anim.maxScroll;
             this.anim.targetScrollY = Math.max(0, Math.min(this.anim.targetScrollY, this.anim.maxScroll));
         }
-        // Direct List Swipe Drag Fallback (Touch scrolling feel) //[cite: 4]
+        // Direct List Swipe Drag Fallback (Touch scrolling feel)
         else if (this.anim.maxScroll > 0 && tx >= -bw / 2 && tx <= bw / 2 && ty >= trackY && ty <= trackY + trackH) {
             this.draggingList = true;
             this.dragStartY = ty;
@@ -348,14 +348,14 @@ class CreditsPopup {
             this.hide();
         });
 
-        // Back button release route //[cite: 2]
+        // Back button release route
         this.backButton.handleMouseUp(tx, ty, () => {
             this.hide();
         });
     }
 
     handleMouseClick(localX, localY) {
-        // Redundant click hook omitted to avoid double-firing bugs on click routing //[cite: 1]
+        // Redundant click hook omitted to avoid double-firing bugs on click routing
     }
 
     handleMouseWheel(deltaY) {
@@ -389,12 +389,12 @@ class CreditsPopup {
 
         ctx.save();
 
-        // Safety clipping limits to prevent overlay leakage outside boundary bounds //[cite: 7]
+        // Safety clipping limits to prevent overlay leakage outside boundary bounds
         ctx.beginPath();
         ctx.rect(x, y, this.width, this.height);
         ctx.clip();
 
-        // Screen Dim Backdrop Tint (70% Opacity) //[cite: 7]
+        // Screen Dim Backdrop Tint (70% Opacity)
         ctx.fillStyle = `rgba(10, 10, 14, ${this.anim.alpha * 0.7})`;
         ctx.fillRect(x, y, this.width, this.height);
 
@@ -403,16 +403,16 @@ class CreditsPopup {
             return;
         }
 
-        // Draw centered and scaled //[cite: 7]
+        // Draw centered and scaled
         ctx.save();
         ctx.translate(x + this.width / 2, y + this.height / 2);
         ctx.scale(this.anim.scale, this.anim.scale);
 
-        // 1. NEO-BRUTALIST OFFSET DIALOG SHADOW (Vibrant Pink Glow Offset) //[cite: 4]
+        // 1. NEO-BRUTALIST OFFSET DIALOG SHADOW (Vibrant Pink Glow Offset)
         ctx.fillStyle = '#ff007f';
         ctx.fillRect(-bw / 2 + 8, -bh / 2 + 8, bw, bh);
 
-        // 2. MAIN DIALOG BODY PANEL (Neon Blue Case Trim) //[cite: 4]
+        // 2. MAIN DIALOG BODY PANEL (Neon Blue Case Trim)
         ctx.fillStyle = '#0a0a0c';
         ctx.strokeStyle = '#00f0ff';
         ctx.lineWidth = 4;
@@ -434,21 +434,21 @@ class CreditsPopup {
         }
         ctx.restore();
 
-        // 4. TECH CORNER CORNER DECO //[cite: 4]
+        // 4. TECH CORNER CORNER DECO
         ctx.fillStyle = 'rgba(0, 240, 255, 0.2)';
         ctx.fillRect(-bw / 2 + 10, -bh / 2 + 10, 8, 2);
         ctx.fillRect(-bw / 2 + 10, -bh / 2 + 10, 2, 8);
         ctx.fillRect(bw / 2 - 18, -bh / 2 + 10, 8, 2);
         ctx.fillRect(bw / 2 - 12, -bh / 2 + 10, 2, 8);
 
-        // 5. HEADER TYPOGRAPHY //[cite: 5, 6]
+        // 5. HEADER TYPOGRAPHY
         ctx.fillStyle = '#ffffff';
         ctx.font = `bold ${Math.round(24 * this.scaleFactor)}px "Courier New", Courier, monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('CREDITS', 0, -bh / 2 + 35);
 
-        // Neo divider line //[cite: 4]
+        // Neo divider line
         ctx.strokeStyle = '#ff007f';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -459,7 +459,7 @@ class CreditsPopup {
         // 6. DRAW CLOSE WINDOW CORNER BOX
         this.closeButton.draw(ctx);
 
-        // 7. SCROLL VIEWPORT RENDER //[cite: 7]
+        // 7. SCROLL VIEWPORT RENDER
         const contentY = this.contentY;
         const clipHeight = this.clipHeight;
         const listWidth = this.listWidth;
@@ -475,7 +475,7 @@ class CreditsPopup {
         for (let i = 0; i < this.credits.length; i++) {
             const cardY = contentY + (i * (this.cardHeight + this.cardGap)) - this.anim.scrollY;
 
-            // Frustum Culling checks //[cite: 7]
+            // Frustum Culling checks
             if (cardY > contentY + clipHeight || cardY + this.cardHeight < contentY) {
                 this.hitboxes.cards[i] = null;
                 continue;
@@ -487,11 +487,11 @@ class CreditsPopup {
             ctx.save();
             ctx.translate(0, -hoverAmt * 4);
 
-            // Brutalist Neon Orange Card Offset Shadows //[cite: 4]
+            // Brutalist Neon Orange Card Offset Shadows
             ctx.fillStyle = '#ff9800';
             ctx.fillRect(listX + 6, cardY + 6, listWidth, this.cardHeight);
 
-            // Card Panel Body //[cite: 4]
+            // Card Panel Body
             ctx.fillStyle = '#121215';
             ctx.strokeStyle = hoverAmt > 0.01 ? '#00f0ff' : '#222228'; // Cyan border glow on hover
             ctx.lineWidth = 3;
@@ -500,7 +500,7 @@ class CreditsPopup {
 
             this.hitboxes.cards[i] = { x: listX, y: cardY, w: listWidth, h: this.cardHeight };
 
-            // Image Avatar Box Placement //[cite: 7]
+            // Image Avatar Box Placement
             const padY = (this.cardHeight - 110) / 2;
             const imgSize = 110;
             const imgX = listX + 16;
@@ -531,7 +531,7 @@ class CreditsPopup {
             ctx.lineWidth = 2;
             ctx.strokeRect(imgX, imgY, imgSize, imgSize);
 
-            // --- DETAILS PANEL DETAILS (Responsive formatting offsets) --- //[cite: 7]
+            // --- DETAILS PANEL DETAILS (Responsive formatting offsets)
             const textX = listX + 142;
             let textY = cardY + 16;
 
@@ -565,7 +565,7 @@ class CreditsPopup {
         }
         ctx.restore(); // Restore internal scrolling viewport clip
 
-        // 8. HIGH-CONTRAST NEON SCROLLBAR TRACK //[cite: 7]
+        // 8. HIGH-CONTRAST NEON SCROLLBAR TRACK
         if (this.anim.maxScroll > 0) {
             const trackW = 6;
             const trackH = clipHeight;
@@ -585,7 +585,7 @@ class CreditsPopup {
             ctx.fillRect(trackX - 1, thumbY, trackW + 2, thumbH);
         }
 
-        // 9. DRAW BOTTOM ARCADEBUTTON //[cite: 2]
+        // 9. DRAW BOTTOM ARCADEBUTTON
         this.backButton.draw(ctx);
 
         ctx.restore(); // Restore center scaled frame translate matrix

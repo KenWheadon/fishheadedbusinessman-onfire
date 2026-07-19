@@ -6,7 +6,7 @@ class Can {
         this.y = config.y || -this.height;
         this.scaleFactor = config.scaleFactor || 1.0;
 
-        // Choose asset profiles based on unlocking flags[cite: 1]
+        // Choose asset profiles based on unlocking flags
         const allowCan2 = config.can2Unlocked || false;
         const allowCan3 = config.can3Unlocked || false;
         const allowCan4 = config.can4Unlocked || false;
@@ -22,7 +22,7 @@ class Can {
         this.type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
         this.isCrumpled = false;
 
-        // Base Fall State Properties[cite: 1]
+        // Base Fall State Properties
         this.speed = (120 + Math.random() * 80) * this.scaleFactor;
         this.swaySpeed = 2 + Math.random() * 3;
         this.swayAmount = (15 + Math.random() * 20) * this.scaleFactor;
@@ -34,7 +34,7 @@ class Can {
 
         this.baseX = this.x;
 
-        // Click Physics trajectory[cite: 1]
+        // Click Physics trajectory
         this.vx = 0;
         this.vy = 0;
         this.gravity = 1200 * this.scaleFactor;
@@ -67,7 +67,7 @@ class Can {
     crumple(clickX) {
         this.isCrumpled = true;
 
-        // Physics reaction: Launch the can dynamically upwards and away[cite: 1]
+        // Physics reaction: Launch the can dynamically upwards and away
         const clickOffsetRatio = (this.x - clickX) / ((this.width * this.scaleFactor) / 2);
         this.vx = (clickOffsetRatio * 350 + (Math.random() - 0.5) * 150) * this.scaleFactor;
         this.vy = -(500 + Math.random() * 300) * this.scaleFactor;
@@ -82,20 +82,20 @@ class Can {
         this.hoverScale += (targetHover - this.hoverScale) * 15 * dt;
 
         if (!this.isCrumpled) {
-            // Uncrumpled falling behavior[cite: 1]
+            // Uncrumpled falling behavior
             this.y += this.speed * dt;
             this.x = this.baseX + Math.sin(this.time * this.swaySpeed + this.swayOffset) * this.swayAmount;
 
             // Continuous rotational tumbling down
             this.angle += this.spinSpeed * dt;
         } else {
-            // Exploded/Crumpled physical response[cite: 1]
+            // Exploded/Crumpled physical response
             this.vy += this.gravity * dt;
             this.x += this.vx * dt;
             this.y += this.vy * dt;
             this.angle += this.angularVelocity * dt;
 
-            // Fade crumpled cans out gracefully[cite: 1]
+            // Fade crumpled cans out gracefully
             this.alpha -= dt * 1.5;
             if (this.alpha <= 0) {
                 this.isActive = false;
@@ -159,7 +159,7 @@ class Can {
             }
 
             if (!this.isCrumpled) {
-                // 1. Clean Retro Can Vector Shape[cite: 1]
+                // 1. Clean Retro Can Vector Shape  
                 ctx.fillStyle = '#1e293b';
                 ctx.strokeStyle = baseColor;
                 ctx.lineWidth = 3;
@@ -176,7 +176,7 @@ class Can {
                 ctx.fillRect(-w * 0.35, -h / 2 - 2, w * 0.7, 4);
                 ctx.fillRect(-w * 0.35, h / 2 - 2, w * 0.7, 4);
             } else {
-                // 2. Distressed Crumpled Can Jagged Shape[cite: 1]
+                // 2. Distressed Crumpled Can Jagged Shape
                 ctx.fillStyle = '#0f172a';
                 ctx.strokeStyle = '#ff0055';
                 ctx.lineWidth = 2.5;

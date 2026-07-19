@@ -22,7 +22,7 @@ class CloseButton {
         this.tension = 320;
         this.friction = 14;
 
-        // Original Rotational Animation States[cite: 8]
+        // Original Rotational Animation States 
         this.rot = 0;
         this.targetRot = 0;
 
@@ -32,7 +32,7 @@ class CloseButton {
     }
 
     /**
-     * Re-assign layout coordinates dynamically on scale shifts[cite: 6]
+     * Re-assign layout coordinates dynamically on scale shifts 
      */
     setPosition(x, y, size, scale = 1.0) {
         this.x = x;
@@ -57,7 +57,7 @@ class CloseButton {
      */
     handleMouseMove(mx, my) {
         this.isHovered = this.isPointInRect(mx, my);
-        // Smoothly rotate 90 degrees when hovered[cite: 8]
+        // Smoothly rotate 90 degrees when hovered 
         this.targetRot = this.isHovered ? Math.PI / 2 : 0;
     }
 
@@ -67,7 +67,7 @@ class CloseButton {
     handleMouseDown(mx, my) {
         if (this.isPointInRect(mx, my)) {
             this.isPressed = true;
-            // Instantly snap scale down to 0.6 on down press[cite: 8]
+            // Instantly snap scale down to 0.6 on down press 
             this.scale = 0.6;
             this.targetScale = 0.6;
             this.scaleVel = 0;
@@ -75,14 +75,14 @@ class CloseButton {
     }
 
     /**
-     * Handles snap release popping triggers[cite: 6]
+     * Handles snap release popping triggers 
      */
     handleMouseUp(mx, my, callback) {
         if (this.isPressed) {
             this.isPressed = false;
 
             if (this.isPointInRect(mx, my)) {
-                // Satisfying pop-release overshoot spring[cite: 6]
+                // Satisfying pop-release overshoot spring 
                 this.targetScale = 1.30;
                 this.scaleVel = 18;
 
@@ -99,16 +99,16 @@ class CloseButton {
     update(dt) {
         this.time += dt;
 
-        // Smooth Exponential Decay rotation mapping[cite: 8]
+        // Smooth Exponential Decay rotation mapping 
         const rotFactor = 1 - Math.exp(-12 * dt);
         this.rot += (this.targetRot - this.rot) * Math.min(1, Math.max(0, rotFactor));
 
-        // Scale updates (spring handles normal postures)[cite: 6]
+        // Scale updates (spring handles normal postures) 
         if (!this.isPressed) {
             if (!this.isHovered) {
                 this.targetScale = 1.0;
             } else {
-                this.targetScale = 1.12 + Math.sin(this.time * 15) * 0.02; // Cyber idle hover wiggle[cite: 6]
+                this.targetScale = 1.12 + Math.sin(this.time * 15) * 0.02; // Cyber idle hover wiggle 
             }
 
             const deltaX = this.scale - this.targetScale;
@@ -127,8 +127,8 @@ class CloseButton {
     draw(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.rot); // Apply smooth rotational translation[cite: 8]
-        ctx.scale(this.scale, this.scale); // Apply smooth scale transition[cite: 8]
+        ctx.rotate(this.rot); // Apply smooth rotational translation 
+        ctx.scale(this.scale, this.scale); // Apply smooth scale transition 
 
         const s = this.size;
         const offset = this.isHovered ? 1.5 : 4; // Flat-press offset on active hover

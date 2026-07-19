@@ -1,18 +1,16 @@
 class ShopSystem {
     constructor(manager) {
         this.mgr = manager;
-
-        // Initialize Arcade Components for Purchase Options[cite: 5]
         this.packButtons = [];
+
         MiniGameData.packs.forEach((pack) => {
             this.packButtons.push(new ArcadeButton({
-                text: `BUY [$${pack.cost}]`,
-                themeColor: '#ff007f',
-                glowColor: '#ff00ff'
+                text: pack.isUpgrade ? `UNLOCK [$${pack.cost}]` : `BUY [$${pack.cost}]`,
+                themeColor: pack.isUpgrade ? '#00f0ff' : '#ff007f',
+                glowColor: pack.isUpgrade ? '#00ffff' : '#ff00ff'
             }));
         });
 
-        // Modular Neo-Brutalist [ X ] Close Button replacing the old leave button[cite: 7]
         this.closeBtn = new CloseButton({
             size: 32,
             themeColor: '#ff007f',
@@ -24,19 +22,18 @@ class ShopSystem {
 
     resize(w, h) {
         const scale = this.mgr.baseScale;
-        const panelW = 650 * scale;
+        const panelW = 820 * scale; // Expanded structural frame horizontally to clean fit 4 card columns
         const panelH = 420 * scale;
         const px = (w - panelW) / 2;
         const py = (h - panelH) / 2;
 
-        // Position Close Button perfectly in the top-right corner of the brutalist panel[cite: 3, 7]
         this.closeBtn.setPosition(px + panelW - 24 * scale, py + 24 * scale, 32 * scale, scale);
 
-        const cardW = 170 * scale;
+        const cardW = 165 * scale;
         const cardH = 240 * scale;
         const startX = px + 40 * scale;
         const startY = py + 100 * scale;
-        const gap = 25 * scale;
+        const gap = 20 * scale;
 
         this.packButtons.forEach((btn, i) => {
             const cx = startX + i * (cardW + gap);
@@ -56,7 +53,6 @@ class ShopSystem {
     }
 
     handleMouseUp(mx, my) {
-        // Trigger shop dismissal upon snapping back from click compression
         this.closeBtn.handleMouseUp(mx, my, () => {
             this.mgr.state = 'BETWEEN_ROUNDS';
         });
@@ -69,9 +65,25 @@ class ShopSystem {
     }
 
     executePurchase(pack) {
+        if (pack.isUpgrade) {
+            if (this.mgr.drunkDrainUnlocked) {
+                this.mgr.spawnParticle('ALREADY OWNED!', this.mgr.width / 2, this.mgr.height * 0.45, '#ff007f');
+                return;
+            }
+            if (this.mgr.totalCashEarned >= pack.cost) {
+                this.mgr.totalCashEarned -= pack.cost;
+                this.mgr.drunkDrainUnlocked = true;
+                this.mgr.spawnJuiceExplosion(this.mgr.width / 2, this.mgr.height / 2, '#39ff14', 25);
+                this.mgr.spawnParticle('FOCUS UNLOCKED: ALCOHOL DRAINS OVER TIME!', this.mgr.width / 2, this.mgr.height * 0.45, '#39ff14');
+            } else {
+                this.mgr.spawnParticle('INSUFFICIENT UPGRADE FUNDS!', this.mgr.width / 2, this.mgr.height * 0.45, '#ff007f');
+            }
+            return;
+        }
+
+        // Standard snack logic tracking branch
         if (this.mgr.totalCashEarned >= pack.cost) {
             this.mgr.totalCashEarned -= pack.cost;
-
             const roll = Math.random();
             let accumulatedChance = 0;
             let reduction = 0;
@@ -104,9 +116,7 @@ class ShopSystem {
 
     draw(ctx) {
         const scale = this.mgr.baseScale;
-        const d = MiniGameData;
-
-        const panelW = 650 * scale;
+        const panelW = 820 * scale;
         const panelH = 420 * scale;
         const px = (this.mgr.width - panelW) / 2;
         const py = (this.mgr.height - panelH) / 2;
@@ -124,26 +134,25 @@ class ShopSystem {
         ctx.fillStyle = '#ffffff';
         ctx.font = `900 ${Math.round(24 * scale)}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText('BIKER SNACK DEPOT', px + panelW / 2, py + 45 * scale);
+        ctx.fillText('BIKER SNACK & UPGRADE DEPOT', px + panelW / 2, py + 45 * scale);
 
-        // Card rendering loop
-        const cardW = 170 * scale;
+        const cardW = 165 * scale;
         const cardH = 240 * scale;
         const startX = px + 40 * scale;
         const startY = py + 100 * scale;
-        const gap = 25 * scale;
+        const gap = 20 * scale;
 
-        d.packs.forEach((pack, i) => {
+        MiniGameData.packs.forEach((pack, i) => {
             const cx = startX + i * (cardW + gap);
             const cy = startY;
 
             ctx.fillStyle = '#27272a';
-            ctx.strokeStyle = '#4b5563';
+            ctx.strokeStyle = pack.isUpgrade ? '#00f0ff' : '#4b5563';
             ctx.lineWidth = 2 * scale;
             ctx.fillRect(cx, cy, cardW, cardH);
             ctx.strokeRect(cx, cy, cardW, cardH);
 
-            ctx.fillStyle = '#fbbf24';
+            ctx.fillStyle = pack.isUpgrade ? '#00f0ff' : '#fbbf24';
             ctx.font = `900 ${Math.round(13 * scale)}px monospace`;
             ctx.fillText(pack.name.toUpperCase(), cx + cardW / 2, cy + 30 * scale);
 
@@ -154,7 +163,6 @@ class ShopSystem {
             this.packButtons[i].draw(ctx);
         });
 
-        // Render the high-juice close button over the panel interface
         this.closeBtn.draw(ctx);
         ctx.restore();
     }

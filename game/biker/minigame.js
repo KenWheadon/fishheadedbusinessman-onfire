@@ -5,23 +5,20 @@ class MiniGame {
         this.height = config.height || d.config.defaultHeight;
         this.baseScale = this.width / d.config.defaultWidth;
 
-        // Subsystem Instantiations
         this.knifeSystem = new KnifeSystem(this);
         this.tileSystem = new TileSystem(this);
         this.shopSystem = new ShopSystem(this);
 
-        // Master Player Account Tracking Profiles
         this.totalCashEarned = 0;
         this.drunkMeter = d.gameplay.initialDrunk;
         this.currentRound = 1;
+        this.drunkDrainUnlocked = false; // Locks natural recovery behind the shop upgrade
 
-        // Juice Effects Engine
         this.particles = [];
         this.screenShake = 0;
         this.fxTimer = 0;
         this.fxTargetState = '';
 
-        // Global Interactive Juicy Buttons
         this.startBtn = new ArcadeButton({ text: 'START ROUND', themeColor: '#39ff14', glowColor: '#00ff66' });
         this.nextRoundBtn = new ArcadeButton({ text: 'NEXT ROUND', themeColor: '#39ff14', glowColor: '#00ff66' });
         this.openShopBtn = new ArcadeButton({ text: 'BUY SNACKS', themeColor: '#00f0ff', glowColor: '#00ffff' });
@@ -33,9 +30,15 @@ class MiniGame {
     }
 
     resetRound() {
-        this.roundPrizeMoney = MiniGameData.gameplay.startPrizeMoney;
+        const totalKnives = 1 + Math.floor((this.currentRound - 1) / 5);
+
+        // Prize Rule: Starts at $5 baseline + round number bonus ($8 extra for round 8), multiplied by total knives
+        this.roundPrizeMoney = (MiniGameData.gameplay.startPrizeMoney + this.currentRound) * totalKnives;
+
         this.knifeSystem.reset();
-        const tileCount = Math.min(7, 2 + this.currentRound);
+
+        // Tile Difficulty Ramping: Resets down whenever a new knife is gained (every 5 rounds)
+        const tileCount = 2 + ((this.currentRound - 1) % 5);
         this.tileSystem.generateTiles(tileCount);
     }
 
@@ -56,11 +59,10 @@ class MiniGame {
 
     triggerRoundFail(reason) {
         this.drunkMeter += MiniGameData.gameplay.drinkPenalty;
-        this.screenShake = 24; // Heavy drop impact rumble
-        this.fxTimer = 1.2;    // Delay feedback menu screen
+        this.screenShake = 24;
+        this.fxTimer = 1.2;
         this.state = 'FX_LOSE';
 
-        // Explode failure shards from center stage
         this.spawnJuiceExplosion(this.width / 2, this.height / 2, '#ef4444', 35);
         this.spawnParticle(`CRASH: ${reason.toUpperCase()}`, this.width / 2, this.height * 0.35, '#ef4444');
 
@@ -73,11 +75,10 @@ class MiniGame {
 
     triggerRoundSuccess() {
         this.totalCashEarned += this.roundPrizeMoney;
-        this.screenShake = 12; // Satisfying victory pop rumble
+        this.screenShake = 12;
         this.fxTimer = 1.2;
         this.state = 'FX_WIN';
 
-        // Explode golden wealth shards across the layout
         this.spawnJuiceExplosion(this.width / 2, this.height * 0.75, '#39ff14', 40);
         this.spawnParticle('SEQUENCE COMPLETE!', this.width / 2, this.height * 0.35, '#39ff14');
 
@@ -95,7 +96,6 @@ class MiniGame {
         this.baseScale = this.width / MiniGameData.config.defaultWidth;
         const scale = this.baseScale;
 
-        // Position full arcade button frames dynamically
         this.startBtn.setPosition(this.width / 2, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
         this.nextRoundBtn.setPosition(this.width / 2 - 130 * scale, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
         this.openShopBtn.setPosition(this.width / 2 + 130 * scale, this.height / 2 + 80 * scale, 220 * scale, 55 * scale, scale);
@@ -112,6 +112,7 @@ class MiniGame {
         }
         if (this.state === 'SHOP') this.shopSystem.handleMouseMove(mx, my);
         if (this.state === 'GAMEOVER_DRUNK' || this.state === 'GAMEOVER_WIN') this.restartBtn.handleMouseMove(mx, my);
+        if (this.state === 'ACTIVE') this.tileSystem.handleMouseMove(mx, my);
     }
 
     handleMouseDown(mx, my) {
@@ -150,22 +151,23 @@ class MiniGame {
             this.restartBtn.handleMouseUp(mx, my, () => {
                 this.totalCashEarned = 0;
                 this.drunkMeter = MiniGameData.gameplay.initialDrunk;
+                this.drunkDrainUnlocked = false;
                 this.currentRound = 1;
                 this.state = 'ROUND_START';
             });
+        } else if (this.state === 'ACTIVE') {
+            this.tileSystem.handleMouseUp(mx, my);
         }
     }
 
     update(dt) {
         if (this.screenShake > 0.1) this.screenShake *= 0.9;
 
-        // Process Interactive Button Physics
         this.startBtn.update(dt);
         this.nextRoundBtn.update(dt);
         this.openShopBtn.update(dt);
         this.restartBtn.update(dt);
 
-        // Update active custom animation particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             if (p instanceof CanParticle) {
@@ -179,7 +181,6 @@ class MiniGame {
             }
         }
 
-        // Handle Visual Intermediate Transition Frames
         if (this.state === 'FX_WIN' || this.state === 'FX_LOSE') {
             this.fxTimer -= dt;
             if (this.state === 'FX_LOSE') this.screenShake = Math.max(this.screenShake, 6);
@@ -190,11 +191,11 @@ class MiniGame {
         }
 
         if (this.state === 'ACTIVE') {
-            this.drunkMeter = Math.max(0, this.drunkMeter - MiniGameData.gameplay.drunkDrainRate * dt);
-            this.knifeSystem.update(dt);
-            if (this.roundPrizeMoney <= 0) {
-                this.triggerRoundFail("Cash run dry");
+            // Natural sobriety recovery loop runs only if purchased
+            if (this.drunkDrainUnlocked) {
+                this.drunkMeter = Math.max(0, this.drunkMeter - MiniGameData.gameplay.drunkDrainRate * dt);
             }
+            this.knifeSystem.update(dt);
         }
     }
 
@@ -206,7 +207,6 @@ class MiniGame {
             ctx.translate((Math.random() - 0.5) * this.screenShake, (Math.random() - 0.5) * this.screenShake);
         }
 
-        // Draw Base Atmosphere
         ctx.fillStyle = '#09090b';
         ctx.fillRect(0, 0, this.width, this.height);
         ctx.fillStyle = '#18181b';
@@ -230,23 +230,23 @@ class MiniGame {
         }
 
         if (this.state === 'ROUND_START') {
-            this.drawWindowOverlay(ctx, `ROUND ${this.currentRound}`, 'JUGGLE THE BLADE & SORT THE MAHJONG TILES');
+            const currentKnives = 1 + Math.floor((this.currentRound - 1) / 5);
+            this.drawWindowOverlay(ctx, `ROUND ${this.currentRound}`, `JUGGLING ${currentKnives} BLADE(S) • DRAG AND SORT ALL TILES`);
             this.startBtn.draw(ctx);
         } else if (this.state === 'BETWEEN_ROUNDS') {
-            this.drawWindowOverlay(ctx, 'ROUND OVER', 'REDUCE DRUNKENNESS AT THE SHOP OR PUSH FORWARD');
+            this.drawWindowOverlay(ctx, 'ROUND OVER', 'VISIT THE DEPOT FOR UPGRADES OR PUSH FORWARD');
             this.nextRoundBtn.draw(ctx);
             this.openShopBtn.draw(ctx);
         } else if (this.state === 'SHOP') {
             this.shopSystem.draw(ctx);
         } else if (this.state === 'GAMEOVER_DRUNK') {
-            this.drawWindowOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE COUCH', '#ef4444');
+            this.drawWindowOverlay(ctx, 'WASTED!', 'YOU PASSED OUT ON THE BARROOM FLOOR', '#ef4444');
             this.restartBtn.draw(ctx);
         } else if (this.state === 'GAMEOVER_WIN') {
-            this.drawWindowOverlay(ctx, 'BAR CHAMP!', `RETIRED SAFELY WITH $${this.totalCashEarned}`, '#39ff14');
+            this.drawWindowOverlay(ctx, 'BAR CHAMPION!', `RETIRED SAFELY WITH $${this.totalCashEarned}`, '#39ff14');
             this.restartBtn.draw(ctx);
         }
 
-        // Corrected Unified Particle Render Loop
         this.particles.forEach(p => {
             if (p instanceof CanParticle) {
                 p.draw(ctx);
@@ -305,7 +305,7 @@ class MiniGame {
         ctx.textAlign = 'center';
         ctx.fillText(head, this.width / 2, this.height / 2 - 25 * scale);
 
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = '#94a3b8';
         ctx.font = `700 ${Math.round(14 * scale)}px monospace`;
         ctx.fillText(sub, this.width / 2, this.height / 2 + 25 * scale);
     }

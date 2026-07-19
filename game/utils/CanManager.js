@@ -5,7 +5,7 @@ class CanManager {
         this.scaleFactor = 1.0;
 
         this.cans = [];
-        this.delayedSpawns = []; // Queue for future staggered spawns[cite: 2]
+        this.delayedSpawns = []; // Queue for future staggered spawns 
 
         // Game Configuration
         this.maxCans = 15; // Cap to prevent clipping fast offspring clicks
@@ -22,8 +22,8 @@ class CanManager {
         this.shopTargetScale = 0.0;
 
         // --- PROGRESSIVE UPGRADES STATE (PER CAN TYPE) ---
-        this.can1Level = 1;            // Can Mk.I starts at Level 1 (Value: 1 PT)[cite: 2]
-        this.can2Level = 1;            // Can Mk.II starts at Level 1 (Value: 2 PTS) once unlocked[cite: 2]
+        this.can1Level = 1;            // Can Mk.I starts at Level 1 (Value: 1 PT) 
+        this.can2Level = 1;            // Can Mk.II starts at Level 1 (Value: 2 PTS) once unlocked 
         this.can3Level = 1;            // Can Mk.III starts at Level 1 (Value: 3 PTS) once unlocked
         this.can4Level = 1;            // Can Mk.IV starts at Level 1 (Value: 4 PTS) once unlocked
         this.can5Level = 1;            // Can Mk.V starts at Level 1 (Value: 5 PTS) once unlocked
@@ -45,10 +45,10 @@ class CanManager {
         // Screen Shake impact tracker
         this.screenShake = 0;
 
-        // Periodic Falling Timers[cite: 2]
+        // Periodic Falling Timers 
         this.spawnTimer = this.getRandomSpawnInterval();
 
-        // Neon Typography Components[cite: 2]
+        // Neon Typography Components 
         this.scoreText = new NeonTextComponent({
             text: "SCORE: 00",
             fontSize: 28,
@@ -65,7 +65,7 @@ class CanManager {
             autoStart: false
         });
 
-        // Instantiate Shop UI Buttons[cite: 3]
+        // Instantiate Shop UI Buttons 
         this.shopButton = new ArcadeButton({
             text: 'UPGRADES',
             themeColor: '#ffe600',
@@ -74,7 +74,7 @@ class CanManager {
 
         this.shopCloseButton = new CloseButton({ size: 24 });
 
-        // Item Buy Buttons (Dynamic progression costs)[cite: 3]
+        // Item Buy Buttons (Dynamic progression costs) 
         this.buyMk1Button = new ArcadeButton({
             text: '5 PTS',
             themeColor: '#39ff14',
@@ -306,7 +306,7 @@ class CanManager {
             const viewYMin = -sh / 2 + 90 * this.scaleFactor;
             const viewYMax = sh / 2 - 20 * this.scaleFactor;
 
-            // Progressive Mk.I Can Value Upgrade[cite: 2]
+            // Progressive Mk.I Can Value Upgrade 
             if (this.buyMk1Button.y >= viewYMin && this.buyMk1Button.y <= viewYMax) {
                 const upgradeMk1Cost = 5 * this.can1Level;
                 this.buyMk1Button.handleMouseUp(tx, ty, () => {
@@ -315,7 +315,7 @@ class CanManager {
                         this.can1Level++;
                         this.scoreText.setText(`SCORE: ${this.score}`);
 
-                        // Set the next progressive upgrade cost total[cite: 3]
+                        // Set the next progressive upgrade cost total 
                         this.buyMk1Button.text = `${5 * this.can1Level} PTS`;
 
                         this.screenShake = 15;
@@ -524,7 +524,7 @@ class CanManager {
             if (can.checkClick(mx, my)) {
                 clickedAny = true;
 
-                // Base scoring tiers + progression multipliers[cite: 2]
+                // Base scoring tiers + progression multipliers 
                 let baseScore = this.can1Level;
                 let colorCode = '#ff007f';
 
@@ -626,7 +626,7 @@ class CanManager {
 
         if (this.shopOpen) return;
 
-        // 1. Process regular periodic spawns[cite: 2]
+        // 1. Process regular periodic spawns 
         this.spawnTimer -= dt;
         if (this.spawnTimer <= 0) {
             if (this.cans.length === 0) {
@@ -635,7 +635,7 @@ class CanManager {
             this.spawnTimer = this.getRandomSpawnInterval();
         }
 
-        // 2. Process staggered queued offspring spawns[cite: 2]
+        // 2. Process staggered queued offspring spawns 
         for (let i = this.delayedSpawns.length - 1; i >= 0; i--) {
             const spawn = this.delayedSpawns[i];
             spawn.timer -= dt;
@@ -645,7 +645,7 @@ class CanManager {
             }
         }
 
-        // 3. Process can motion and bounds cleanup[cite: 2]
+        // 3. Process can motion and bounds cleanup 
         for (let i = this.cans.length - 1; i >= 0; i--) {
             const can = this.cans[i];
             can.update(dt);
@@ -804,7 +804,7 @@ class CanManager {
             const c4Y = viewY + 3 * (cardH + cardGap) - this.shopScrollY;
             const c5Y = viewY + 4 * (cardH + cardGap) - this.shopScrollY;
 
-            // --- CARD 1: CAN MK.I VALUE UPGRADE[cite: 2] ---
+            // --- CARD 1: CAN MK.I VALUE UPGRADE ---
             ctx.fillStyle = '#121215';
             ctx.strokeStyle = '#39ff14';
             ctx.lineWidth = 2;

@@ -101,15 +101,15 @@ class GameManager {
     this._canvas.height = this._height;
     this._ctx = this._canvas.getContext('2d');
 
-    // 2. Create and start the GameLoader[cite: 1, 2]
+    // 2. Create and start the GameLoader
     this._loader = new GameLoader({
       width: this._width,
       height: this._height,
       ...this._loaderConfig,
     });
-    this._loader.start(); //[cite: 1, 2]
+    this._loader.start();
 
-    // 3. Trigger initial neon ignition sequence[cite: 2]
+    // 3. Trigger initial neon ignition sequence
     this._loadingNeon?.animateIn();
 
     // 4. Wire input and window resize listeners
@@ -128,10 +128,10 @@ class GameManager {
     AssetManager.load(
       this._assets,
       (normalisedPct) => {
-        this._loader?.setProgress(normalisedPct * 100); //[cite: 1, 2]
+        this._loader?.setProgress(normalisedPct * 100);
       },
       () => {
-        // Begin fading out the loading screen neon text alongside the loader exit transition[cite: 1, 2]
+        // Begin fading out the loading screen neon text alongside the loader exit transition
         this._loadingNeon?.animateOut();
 
         if (typeof this.onAssetsLoaded === 'function') {
@@ -142,7 +142,7 @@ class GameManager {
           }
         }
 
-        // Wait for the loader's own exit animation to finish before switching[cite: 1, 2]
+        // Wait for the loader's own exit animation to finish before switching
         this._waitForLoaderExit(() => {
           this._transitionTo('START');
         });
@@ -259,13 +259,13 @@ class GameManager {
 
   /** @private */
   _update(dt) {
-    // Tick the active status clocks of active text arrays to process fades and wiggles[cite: 2]
+    // Tick the active status clocks of active text arrays to process fades and wiggles
     this._loadingNeon?.update(dt);
     this._startNeon?.update(dt);
 
     switch (this._state) {
       case 'LOADING':
-        this._loader?.update(dt); //[cite: 1, 2]
+        this._loader?.update(dt);
         break;
 
       case 'START':
@@ -312,15 +312,15 @@ class GameManager {
 
     switch (this._state) {
       case 'LOADING':
-        // GameLoader owns the entire background canvas during loading[cite: 1, 2]
+        // GameLoader owns the entire background canvas during loading
         this._loader?.draw(ctx, 0, 0);
-        // Draw the neon text cleanly layered on top of the centered background image[cite: 2]
+        // Draw the neon text cleanly layered on top of the centered background image
         this._loadingNeon?.draw(ctx, 0, 0);
         break;
 
       case 'START':
         this._drawActiveComponents(ctx);
-        // Draw the active screen neon text layered directly over the start menu components[cite: 2]
+        // Draw the active screen neon text layered directly over the start menu components
         this._startNeon?.draw(ctx, 0, 0);
         break;
 
@@ -363,7 +363,7 @@ class GameManager {
     const prev = this._state;
     if (prev === nextState) return;
 
-    // Power off the Start Screen neon text if exiting the Start state[cite: 2]
+    // Power off the Start Screen neon text if exiting the Start state
     if (prev === 'START') {
       this._startNeon?.animateOut();
     }
@@ -389,7 +389,7 @@ class GameManager {
   _onStateEnter(state) {
     switch (state) {
       case 'START': {
-        // Ignite start screen neon text with dynamic flickering entrance[cite: 2]
+        // Ignite start screen neon text with dynamic flickering entrance
         this._startNeon?.animateIn();
 
         const startComp = this._components['start'];
@@ -469,9 +469,9 @@ class GameManager {
   /** @private */
   _routeInput(handlerName, cx, cy) {
     if (this._state === 'LOADING') {
-      const lh = this._loader; //[cite: 1, 2]
+      const lh = this._loader;
       if (lh && typeof lh[handlerName] === 'function') {
-        lh[handlerName](cx, cy); //[cite: 1, 2]
+        lh[handlerName](cx, cy);
       }
       return;
     }

@@ -39,7 +39,7 @@ class CarrotCutter {
   }
 
   /**
-   * Safe size sync engine that prevents scaling accumulations[cite: 8].
+   * Safe size sync engine that prevents scaling accumulations
    */
   resize(width, height) {
     this.width = width;
