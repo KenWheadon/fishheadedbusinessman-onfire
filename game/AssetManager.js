@@ -97,6 +97,8 @@ class SimpleAssetManager {
       { key: 'fhbmon', src: 'images/fhbmon.webp' },
       { key: 'computer', src: 'images/computer.png' },
       { key: 'basket', src: 'images/basket.png' },
+      { key: 'fish', src: 'images/fish.png' },
+      { key: 'knife', src: 'images/knife.png' },
 
 
       // 8. Audio assets (extracted from folder directory)

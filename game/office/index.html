@@ -41,35 +41,33 @@
 
     <!-- Dependencies -->
     <script src="../AssetManager.js"></script>
+    <script src="../utils/ArcadeButton.js"></script>
+    <script src="../utils/CloseButton.js"></script>
+
+    <!-- Modular Game Systems -->
+    <script src="ThrowingSystem.js"></script>
+    <script src="ShopSystem.js"></script>
     <script src="MiniGame.js"></script>
 
     <script>
-        // Declare globally, but do NOT fetch them until the DOM is loaded
         let canvas;
         let ctx;
         let miniGame;
         let lastTime = 0;
 
-        // Core Initialization Logic (Runs only when the window is fully ready)
         function init() {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
 
-            // Initialize game structure with baseline scaling calculations
             miniGame = new MiniGame({ width: window.innerWidth, height: window.innerHeight });
 
-            // Wire up event resize structures safely now that elements exist
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
 
-            // Setup input listener interceptors
             setupInputListeners();
-
-            // Kick off asset downloader engine
             initializeGameAssets();
         }
 
-        // Global Layout Engine Resizer
         function resizeCanvas() {
             if (!canvas || !miniGame) return;
             const width = window.innerWidth;
@@ -79,7 +77,6 @@
             miniGame.resize(width, height);
         }
 
-        // Extract Relative Client Coordinates for Inputs
         function getLocalCoords(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -90,7 +87,6 @@
             };
         }
 
-        // Attaches mouse and touch interactions securely
         function setupInputListeners() {
             canvas.addEventListener('mousedown', (e) => {
                 const coords = getLocalCoords(e);
@@ -102,11 +98,11 @@
                 miniGame.handleMouseMove(coords.x, coords.y);
             });
 
-            window.addEventListener('mouseup', () => {
-                miniGame.handleMouseUp();
+            window.addEventListener('mouseup', (e) => {
+                const coords = getLocalCoords(e);
+                miniGame.handleMouseUp(coords.x, coords.y);
             });
 
-            // Mobile Friendly Touch Interface Fallbacks
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 const coords = getLocalCoords(e);
@@ -119,15 +115,13 @@
                 miniGame.handleMouseMove(coords.x, coords.y);
             }, { passive: false });
 
-            window.addEventListener('touchend', () => {
+            window.addEventListener('touchend', (e) => {
                 miniGame.handleMouseUp();
             });
         }
 
-        // Fire up the Asset Pipeline explicitly
         function initializeGameAssets() {
             if (typeof AssetManager !== 'undefined') {
-                // Dynamically step back up one directory layer to locate assets outside /office/
                 const adjustedManifest = AssetManager.MANIFEST.map(asset => {
                     return {
                         key: asset.key,
@@ -147,12 +141,11 @@
                     }
                 );
             } else {
-                console.error("AssetManager script file could not be verified locally.");
-                document.getElementById('loading').textContent = "ERROR: ASSET PIPELINE OFFLINE";
+                console.error("AssetManager framework down.");
+                document.getElementById('loading').textContent = "ERROR: PIPELINE OFFLINE";
             }
         }
 
-        // Main Game Loop Frame Clock Orchestrator
         function gameLoop(timestamp) {
             if (!lastTime) lastTime = timestamp;
             let dt = (timestamp - lastTime) / 1000;
@@ -165,7 +158,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Safely kick off structural loading once document DOM parsing completes completely
         window.addEventListener('load', init);
     </script>
 </body>
